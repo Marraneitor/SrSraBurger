@@ -1,0 +1,394 @@
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hamburguesas Deliciosas</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" type="module"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ffffff">
+
+    <script type="importmap">
+    {
+      "imports": {
+      }
+    }
+    </script>
+
+</head>
+<body>
+
+    <header>
+        <div class="company-logo">
+            <img src=Imagen/Logo.jpg alt="Company Logo">
+        </div>
+        <h1>Sr y Sra Burger</h1>
+        <nav>
+            <a href="#menu">Menú</a>
+            <a href="#nosotros">Nosotros</a>
+            <a href="#contacto">Contacto</a>
+        </nav>
+    </header>
+
+    <section id="hero">
+        <div class="hero-gallery">
+            <!-- You'll need to replace these image paths with your actual images -->
+          
+        </div>
+        <div class="hero-content">
+            <h2>Las mejores hamburguesas de la ciudad</h2>
+            <p>Ingredientes frescos y sabores increíbles.</p>
+            <a href="#menu" class="button">Ver el Menú</a>
+        </div>
+    </section>
+
+    <section id="menu">
+        <h2>Hamburguesas</h2>
+        <div class="menu-grid">
+            <div class="menu-item">
+                <img src=Imagen/Clasica.jpg copy.jpg alt="Hamburguesa Clásica">
+                <h3>Hamburguesa Clásica</h3>
+                <p>Hamburguesa con carne jugosa, queso americano, lechuga, tomate, cebolla y aderezo especial, todo en un pan suave y delicioso</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="lechuga" value="lechuga"> Lechuga</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$120.00</span>
+                <button class="order-button" data-product="Hamburguesa Clásica" data-price="120.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/bbq.png alt="Hamburguesa BBQ">
+                <h3>Hamburguesa BBQ</h3>
+                <p>Hamburguesa Grande BBQ ,con aros de cebolla crujientes, Arrachera , Tocino, Queso americano, Cebollita caramelizada y salsa BBQ dulce, Irresistible.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        
+                        
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$130.00</span>
+                <button class="order-button" data-product="Hamburguesa BBQ" data-price="130.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/HamburguesaDoble.jpg .jpg alt="Hamburguesa Doble">
+                <h3>Hamburguesa Doble</h3>
+                <p>Hamburguesa doble con carne de arrachera,tocino, queso gouda y americano, cebolla caramelizada, lechuga, tomate y aderezo de pepinillo especial, todo en un pan delicioso.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="lechuga" value="lechuga"> Lechuga</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$150.00</span>
+                <button class="order-button" data-product="Hamburguesa Doble" data-price="150.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/DobleBbq.png alt="Hamburguesa Doble BBQ">
+                <h3>Hamburguesa Doble BBQ</h3>
+                <p>Doble Carne, Doble SABOR,Hamburguesa Grande BBQ ,con aros de cebolla crujientes, Arrachera , Tocino, Queso americano, Cebollita caramelizada y salsa BBQ dulce, Irresistible.
+
+.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        
+                        
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$160.00</span>
+                <button class="order-button" data-product="Hamburguesa Doble BBQ" data-price="160.00">Agregar al carrito</button>
+            </div>
+        </div>
+
+        <h2>Hotdogs</h2>
+        <div class="menu-grid">
+            <div class="menu-item">
+                <img src=Imagen/Hotdog.jpg alt="Hotdog Jumbo">
+                <h3>Hotdog Jumbo</h3>
+                <p>Hotdog Delicioso, Pan Jumbo, Salchicha Extra larga cubierta con tocino, Cebollita caramelizada, Tomatito y acompañado de papas a de tu preferencia.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$80.00</span>
+                <button class="order-button" data-product="Hotdog Jumbo" data-price="80.00">Agregar al carrito</button>
+            </div>
+        </div>
+
+        <h2>Combos</h2>
+        <div class="menu-grid">
+            <div class="menu-item">
+                <img src=Imagen/Pareja.jpg alt="Combo Pareja">
+                <h3>Combo Pareja</h3>
+                <p>2 Hamburguesas clásicas con papas a elección y 8 aros de cebolla.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="lechuga" value="lechuga"> Lechuga</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$240.00</span>
+                <button class="order-button" data-product="Combo Pareja" data-price="240.00">Agregar al carrito</button>
+            </div>
+
+            <div class="menu-item">
+                <img src=Imagen/Combotriple.jpg alt="Combo Amigos">
+                <h3>Combo Amigos</h3>
+                <p>3 Hamburguesas clásicas con papas a elección y 12 aros de cebolla.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="lechuga" value="lechuga"> Lechuga</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$360.00</span>
+                <button class="order-button" data-product="Combo Amigos" data-price="360.00">Agregar al carrito</button>
+            </div>
+
+            <div class="menu-item">
+                <img src=Imagen/Combotriple.jpg alt="Combo Familiar">
+                <h3>Combo Familiar</h3>
+                <p>5 Hamburguesas clásicas con papas a elección, 15 aros de cebolla y una Coca-Cola de 3 litros.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="lechuga" value="lechuga"> Lechuga</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$600.00</span>
+                <button class="order-button" data-product="Combo Familiar" data-price="600.00">Agregar al carrito</button>
+            </div>
+
+            <div class="menu-item">
+                <img src="Imagen/Hotdotbur.png" alt="Combo Duo">
+                <h3>Combo Duo</h3>
+                <p>1 Hotdog Jumbo y 1 Hamburguesa clásica con papas a elección.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$180.00</span>
+                <button class="order-button" data-product="Combo Duo" data-price="180.00">Agregar al carrito</button>
+            </div>
+
+            <div class="menu-item">
+                <img src="https://raw.githubusercontent.com/Marraneitor/Fotos/main/combo5.jpg" alt="Combo TripleDog">
+                <h3>Combo TripleDog</h3>
+                <p>3 Hotdogs Jumbo con papas a elección.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                    <div class="condiments">
+                        <label><input type="checkbox" name="mayo" value="mayonesa"> Mayonesa</label>
+                        <label><input type="checkbox" name="ketchup" value="ketchup"> Ketchup</label>
+                        <label><input type="checkbox" name="tomate" value="tomate"> Tomate</label>
+                        <label><input type="checkbox" name="cebolla" value="cebolla"> Cebolla</label>
+                    </div>
+                </div>
+                <span class="price">$210.00</span>
+                <button class="order-button" data-product="Combo TripleDog" data-price="210.00">Agregar al carrito</button>
+            </div>
+        </div>
+
+        <h2>Costillas</h2>
+        <div class="menu-grid">
+            <div class="menu-item">
+                <img src=Imagen/Costillas.jpg alt="Costillas BBQ">
+                <h3>Costillas BBQ</h3>
+                <p>Deliciosas costillas bañadas en salsa BBQ, acompañadas de un elote a la mantequilla y papas a tu elección.</p>
+                <div class="side-options">
+                    <select class="side-select">
+                        <option value="francesa">Papas Francesas</option>
+                        <option value="gajo">Papas Gajo</option>
+                    </select>
+                </div>
+                <span class="price">$200.00</span>
+                <button class="order-button" data-product="Costillas BBQ" data-price="200.00">Agregar al carrito</button>
+            </div>
+        </div>
+
+        <h2>Extras</h2>
+        <div class="menu-grid">
+            <div class="menu-item">
+                <img src=Imagen/papasgajo.jpg alt="Papas Gajo Medianas">
+                <h3>Papas Gajo Medianas</h3>
+                <p>Deliciosas papas gajo sazonadas</p>
+                <span class="price">$60.00</span>
+                <button class="order-button" data-product="Papas Gajo Medianas" data-price="60.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/papasgajo.jpg alt="Papas Gajo Grandes">
+                <h3>Papas Gajo Grandes</h3>
+                <p>Porción grande de papas gajo sazonadas</p>
+                <span class="price">$100.00</span>
+                <button class="order-button" data-product="Papas Gajo Grandes" data-price="100.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/Salchipapas.jpg alt="Salchipapas Medianas">
+                <h3>Salchipapas Medianas</h3>
+                <p>Papas fritas con trozos de salchicha</p>
+                <span class="price">$80.00</span>
+                <button class="order-button" data-product="Salchipapas Medianas" data-price="80.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/Salchipapas.jpg alt="Salchipapas Grandes">
+                <h3>Salchipapas Grandes</h3>
+                <p>Porción grande de salchipapas</p>
+                <span class="price">$120.00</span>
+                <button class="order-button" data-product="Salchipapas Grandes" data-price="120.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/aros-Photoroom.jpg alt="Aros de Cebolla">
+                <h3>Aros de Cebolla (7 pz)</h3>
+                <p>Crujientes aros de cebolla empanizados</p>
+                <span class="price">$45.00</span>
+                <button class="order-button" data-product="Aros de Cebolla 7pz" data-price="45.00">Agregar al carrito</button>
+            </div>
+            <div class="menu-item">
+                <img src=Imagen/aros-Photoroom.jpg alt="Aros de Cebolla Grande">
+                <h3>Aros de Cebolla (15 pz)</h3>
+                <p>Porción grande de aros de cebolla</p>
+                <span class="price">$80.00</span>
+                <button class="order-button" data-product="Aros de Cebolla 15pz" data-price="80.00">Agregar al carrito</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="contacto">
+        <h2>Contacto</h2>
+        <p>¡Contáctanos para hacer tu pedido o para cualquier consulta!</p>
+        
+        <div class="contact-container">
+            <div class="contact-item">
+                <div class="contact-icon">
+                    <span class="material-symbols-outlined">phone</span>
+                </div>
+                <h3>Teléfono</h3>
+                <p>9221593688</p>
+            </div>
+            
+            <div class="contact-item">
+                <div class="contact-icon">
+                    <span class="material-symbols-outlined">chat</span>
+                </div>
+                <h3>WhatsApp</h3>
+                <p><a href="https://wa.me/529221593688">9221593688</a></p>
+            </div>
+            
+            <div class="contact-item">
+                <div class="contact-icon">
+                    <span class="material-symbols-outlined">groups</span>
+                </div>
+                <h3>Facebook</h3>
+                <p><a href="https://www.facebook.com/profile.php?id=61570144580225">Sr y Sra Burger</a></p>
+                <p>¡Gracias por seguirnos!</p>
+            </div>
+            
+            <div class="contact-item">
+                <div class="contact-icon">
+                    <span class="material-symbols-outlined">mail</span>
+                </div>
+                <h3>Email</h3>
+                <p><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7c0f0e050f0e1d1e090e1b190e3c1b111d1510521f1311">[email&#160;protected]</a></p>
+            </div>
+        </div>
+    </section>
+
+    <section id="nosotros">
+        <h2>Sobre Nosotros</h2>
+        <p>Bienvenidos a Sr Y Sra Burger 🍔, donde cada hamburguesa es hecha con pasión y amor. Somos una pareja trabajando juntos para lograr nuestros sueños, trayéndote el mejor sabor en cada bocado 🍔🔥. Más que solo comida, ofrecemos una experiencia deliciosa que nace de nuestro esfuerzo y dedicación. Gracias por apoyarnos y ser parte de nuestra historia. ¡Disfruta! 🍔❤️</p>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 Sr y Sra Burger</p>
+    </footer>
+
+    <div id="cart" class="cart">
+    <h2>Carrito de Compras</h2>
+    <ul id="cart-items">
+        <!-- Items del carrito se agregarán aquí dinámicamente -->
+    </ul>
+    <p>Total: <span id="cart-total">$0.00</span></p>
+    <button id="checkout-button">Finalizar Compra</button>
+</div>
+
+<button id="cart-button">
+    <span class="material-symbols-outlined">
+        shopping_cart
+    </span>
+    <span id="cart-item-count">0</span>
+</button>
+
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+</body>
+</html>
