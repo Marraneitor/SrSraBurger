@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Global variable to store hidden products and admin overrides from Firebase
     let hiddenProductsFromFirebase = [];
+    let hiddenCategoriesFromFirebase = [];
     let priceOverridesFromFirebase = {};
     let imageOverridesFromFirebase = {};
     let customProductsFromFirebase = {};
@@ -188,12 +189,45 @@ document.addEventListener('DOMContentLoaded', () => {
         return out;
     }
 
+    function categoryKey(name) {
+        return String(name || '').trim().toLowerCase();
+    }
+
+    function normalizeHiddenCategoriesList(list) {
+        const arr = Array.isArray(list) ? list : [];
+        const seen = new Set();
+        const out = [];
+        arr.forEach((raw) => {
+            const k = categoryKey(raw);
+            if (!k) return;
+            if (seen.has(k)) return;
+            seen.add(k);
+            out.push(k);
+        });
+        return out;
+    }
+
+    function getHiddenCategoryKeys() {
+        if (Array.isArray(hiddenCategoriesFromFirebase) && hiddenCategoriesFromFirebase.length > 0) {
+            return normalizeHiddenCategoriesList(hiddenCategoriesFromFirebase);
+        }
+        // Fallback: localStorage
+        try {
+            const raw = localStorage.getItem('hiddenCategories');
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return normalizeHiddenCategoriesList(parsed);
+        } catch (_) {
+            return [];
+        }
+    }
+
     function getMenuCategoriesInOrder() {
         const base = Object.keys(menuData);
         const fromFirebase = normalizeCategoriesList(categoriesFromFirebase);
 
-        // Orden fijo deseado para las categorías principales del menú
-        const DESIRED_CATEGORY_ORDER = [
+        // Orden por defecto (solo si aún no hay orden guardado en Firebase)
+        const DEFAULT_CATEGORY_ORDER = [
             'Hamburguesas',
             'Hot Dogs',
             'Boneles',
@@ -202,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'Bebidas'
         ];
 
-        // Punto de partida: si hay configuración en Firebase, usarla; si no, usar las claves base
+        // Punto de partida: si hay configuración en Firebase, respetarla; si no, usar base
         const initial = fromFirebase.length ? fromFirebase : base;
 
         // Asegurar que las categorías base sigan visibles aunque no estén en settings
@@ -213,25 +247,33 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Aplicar el orden deseado, respetando solo las categorías realmente presentes
-        const lowerPresent = new Set(withBase.map((c) => String(c).toLowerCase()));
-        const ordered = [];
+        let ordered = [];
 
-        // 1) Agregar en el orden fijo deseado
-        DESIRED_CATEGORY_ORDER.forEach((cat) => {
-            const key = String(cat).toLowerCase();
-            if (lowerPresent.has(key)) {
-                const found = withBase.find((c) => String(c).toLowerCase() === key);
-                if (found && !ordered.includes(found)) {
-                    ordered.push(found);
+        // Si Firebase trae un orden, ese manda
+        if (fromFirebase.length) {
+            ordered = [...withBase];
+        } else {
+            // Si no hay orden guardado, aplicar el orden por defecto
+            const lowerPresent = new Set(withBase.map((c) => String(c).toLowerCase()));
+            DEFAULT_CATEGORY_ORDER.forEach((cat) => {
+                const key = String(cat).toLowerCase();
+                if (lowerPresent.has(key)) {
+                    const found = withBase.find((c) => String(c).toLowerCase() === key);
+                    if (found && !ordered.includes(found)) ordered.push(found);
                 }
-            }
-        });
+            });
+            withBase.forEach((c) => {
+                if (!ordered.includes(c)) ordered.push(c);
+            });
+        }
 
-        // 2) Agregar cualquier categoría adicional que no esté en el orden fijo
-        withBase.forEach((c) => {
-            if (!ordered.includes(c)) ordered.push(c);
-        });
+        // Ocultar categorías según configuración del admin
+        const hiddenKeys = getHiddenCategoryKeys();
+        if (hiddenKeys.length) {
+            const filtered = ordered.filter((c) => !hiddenKeys.includes(categoryKey(c)));
+            // Evitar menú vacío por accidente
+            return filtered.length ? filtered : ordered;
+        }
 
         return ordered;
     }
@@ -300,6 +342,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load hidden products from Firebase on page load
     async function loadHiddenProductsFromFirebase() {
         try {
+            // Preferimos leer settings una sola vez para extraer múltiples valores
+            if (window.firebaseManager && typeof window.firebaseManager.getSettings === 'function') {
+                const settings = await window.firebaseManager.getSettings();
+                hiddenProductsFromFirebase = Array.isArray(settings?.hiddenProducts) ? settings.hiddenProducts : [];
+                hiddenCategoriesFromFirebase = normalizeHiddenCategoriesList(settings?.hiddenCategories);
+                categoriesFromFirebase = Array.isArray(settings?.categories) ? settings.categories : null;
+                try { localStorage.setItem('hiddenCategories', JSON.stringify(hiddenCategoriesFromFirebase)); } catch (_) {}
+                console.log('Productos ocultos cargados desde Firebase:', hiddenProductsFromFirebase);
+                console.log('Categorías ocultas cargadas desde Firebase:', hiddenCategoriesFromFirebase);
+                return;
+            }
+
             hiddenProductsFromFirebase = await window.firebaseManager.getHiddenProducts();
             console.log('Productos ocultos cargados desde Firebase:', hiddenProductsFromFirebase);
         } catch (error) {
@@ -309,6 +363,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (hiddenProducts) {
                 hiddenProductsFromFirebase = JSON.parse(hiddenProducts);
             }
+
+            try {
+                const rawCats = localStorage.getItem('hiddenCategories');
+                if (rawCats) hiddenCategoriesFromFirebase = normalizeHiddenCategoriesList(JSON.parse(rawCats));
+            } catch (_) {}
         }
     }
 
@@ -619,6 +678,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (oldCats !== newCats) {
                             categoriesFromFirebase = nextCats;
                             console.log('Categorías actualizadas, re-renderizando menú...');
+                            isUpdating = true;
+                            renderMenu();
+                            setTimeout(() => { isUpdating = false; }, 500);
+                        }
+                    }
+
+                    // Handle hidden categories changes
+                    if (newSettings.hiddenCategories !== undefined) {
+                        const oldHidden = JSON.stringify(normalizeHiddenCategoriesList(hiddenCategoriesFromFirebase || []));
+                        const nextHidden = normalizeHiddenCategoriesList(newSettings.hiddenCategories || []);
+                        const newHidden = JSON.stringify(nextHidden);
+                        if (oldHidden !== newHidden) {
+                            hiddenCategoriesFromFirebase = nextHidden;
+                            try { localStorage.setItem('hiddenCategories', JSON.stringify(hiddenCategoriesFromFirebase)); } catch (_) {}
+                            console.log('Categorías ocultas actualizadas, re-renderizando menú...');
                             isUpdating = true;
                             renderMenu();
                             setTimeout(() => { isUpdating = false; }, 500);
@@ -1168,8 +1242,74 @@ document.addEventListener('DOMContentLoaded', () => {
     userAddress = null;
     deliveryCalcPending = 0;
 
+    // ── API pública para integración externa (IA, pedido-manual, etc.) ──────
+    window._srAddCartItem = function(cartItem) {
+        cart.push(cartItem);
+        updateCart();
+    };
+    window._srClearCart = function() {
+        cart.length = 0;
+        updateCart();
+    };
+    window._srGetCart = function() { return cart; };
+    window._srGetCartItemById = function(id) {
+        return cart.find(item => item.id === Number(id)) || null;
+    };
+    window._srUpdateCartItem = function(id, updates) {
+        const idx = cart.findIndex(item => item.id === Number(id));
+        if (idx === -1) return;
+        Object.assign(cart[idx], updates);
+        // Sincronizar customizations con specifications
+        if (updates.specifications !== undefined) {
+            cart[idx].customizations = updates.specifications
+                ? [{ name: updates.specifications, price: 0 }]
+                : [];
+        }
+        updateCart();
+    };
+    window._srOpenCustomizationModal = function(id) {
+        const cartItem = cart.find(ci => ci.id === Number(id));
+        if (!cartItem || !cartItem.baseItem) return;
+        openCustomizationModal({ isCombo: false, itemId: cartItem.baseItem.id, editCartItemId: Number(id) });
+    };
+    window._srGetToppings = function() { return toppingsData; };
+    window._srGetMenuExtras = function() { return menuData.Extras || []; };
+    window._srGetFriesPrice = function() { return FRIES_PRICE; };
+    window._srGetOnionRingsPrice = function() { return ONION_RINGS_PRICE; };
+    window._srGetMenuFlat = function() {
+        const flat = [];
+        Object.entries(menuData).forEach(([category, items]) => {
+            if (!Array.isArray(items)) return;
+            items.forEach(item => {
+                flat.push({
+                    id    : item.id,
+                    name  : item.name,
+                    category,
+                    price : item.price,
+                    description: item.description || ''
+                });
+            });
+        });
+        return flat;
+    };
+    window._srFindItemById = function(id) {
+        for (const cat of Object.values(menuData)) {
+            if (!Array.isArray(cat)) continue;
+            const found = cat.find(i => Number(i.id) === Number(id));
+            if (found) return found;
+        }
+        return null;
+    };
+    window._srFindItemByIdWithCategory = function(id) {
+        return findItemByIdWithCategory(id);
+    };
+    // ── Fin API pública ───────────────────────────────────────────────────────
+
     // Recompensa activa (canjeada en Mi cuenta) para aplicar en la siguiente compra
     let activeReward = null;
+
+    // Código de descuento activo (cupón)
+    let activeDiscountCode = null;
 
     function setActiveRewardState(reward) {
         activeReward = (reward && typeof reward === 'object') ? reward : null;
@@ -1192,16 +1332,100 @@ document.addEventListener('DOMContentLoaded', () => {
         return activeReward;
     }
 
+    function normalizeDiscountCode(raw) {
+        const s = String(raw || '').trim().toUpperCase();
+        // Permitir letras, números, guion y guion bajo
+        return s.replace(/[^A-Z0-9_-]/g, '').slice(0, 32);
+    }
+
+    function setActiveDiscountCodeState(codeObj) {
+        const normalized = codeObj && typeof codeObj === 'object'
+            ? {
+                code: normalizeDiscountCode(codeObj.code),
+                amount: Number(codeObj.amount || 0),
+                verifiedAt: Number(codeObj.verifiedAt || Date.now())
+            }
+            : null;
+
+        if (!normalized || !normalized.code || !isFinite(normalized.amount) || normalized.amount <= 0) {
+            activeDiscountCode = null;
+            try { localStorage.removeItem('activeDiscountCode'); } catch (_) {}
+            return;
+        }
+
+        activeDiscountCode = normalized;
+        try { localStorage.setItem('activeDiscountCode', JSON.stringify(activeDiscountCode)); } catch (_) {}
+    }
+
+    function clearActiveDiscountCodeState() {
+        activeDiscountCode = null;
+        try { localStorage.removeItem('activeDiscountCode'); } catch (_) {}
+    }
+
+    function getActiveDiscountCodeState() {
+        if (activeDiscountCode && typeof activeDiscountCode === 'object') return activeDiscountCode;
+        try {
+            const raw = localStorage.getItem('activeDiscountCode');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') {
+                    const code = normalizeDiscountCode(parsed.code);
+                    const amount = Number(parsed.amount || 0);
+                    if (code && isFinite(amount) && amount > 0) {
+                        activeDiscountCode = {
+                            code,
+                            amount,
+                            verifiedAt: Number(parsed.verifiedAt || 0) || 0
+                        };
+                        return activeDiscountCode;
+                    }
+                }
+            }
+        } catch (_) {}
+        activeDiscountCode = null;
+        return null;
+    }
+
+    async function fetchDiscountCodeInfo(codeUpper) {
+        const code = normalizeDiscountCode(codeUpper);
+        if (!code) return null;
+        if (!window.firebaseDb) throw new Error('Firebase no está listo');
+
+        const firestore = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+        const ref = firestore.doc(window.firebaseDb, 'discount_codes', code);
+        const snap = await firestore.getDoc(ref);
+        if (!snap.exists()) return null;
+
+        const data = snap.data() || {};
+        const active = data.active !== false;
+        const amount = Number(data.amount || data.discountAmount || 0);
+        if (!active) throw new Error('Código desactivado');
+        if (!isFinite(amount) || amount <= 0) throw new Error('Código inválido');
+
+        return {
+            code,
+            amount: Number(amount.toFixed(2))
+        };
+    }
+
     function computeCheckoutPricing(deliveryTypeValue) {
         const subtotal = Number(getCartTotal() || 0);
         const reward = getActiveRewardState();
         const discountPercent = reward && isFinite(reward.discountPercent) ? Number(reward.discountPercent) : 0;
 
-        const discountAmount = (discountPercent > 0)
+        const rewardDiscountAmount = (discountPercent > 0)
             ? Number(((subtotal * discountPercent) / 100).toFixed(2))
             : 0;
 
-        const subtotalAfterDiscount = Math.max(0, Number((subtotal - discountAmount).toFixed(2)));
+        const discountCodeState = getActiveDiscountCodeState();
+        const discountCode = discountCodeState && discountCodeState.code ? String(discountCodeState.code) : '';
+        const rawCodeAmount = discountCodeState && isFinite(discountCodeState.amount) ? Number(discountCodeState.amount) : 0;
+
+        const subtotalAfterReward = Math.max(0, Number((subtotal - rewardDiscountAmount).toFixed(2)));
+        const discountCodeAmount = discountCode ? Math.min(Math.max(0, rawCodeAmount), subtotalAfterReward) : 0;
+
+        const discountAmount = Number((rewardDiscountAmount + discountCodeAmount).toFixed(2));
+        const subtotalAfterDiscount = Math.max(0, Number((subtotalAfterReward - discountCodeAmount).toFixed(2)));
 
         const isDelivery = deliveryTypeValue === 'delivery';
         
@@ -1232,15 +1456,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const rewardApplied = !!(
             reward && (
-                (discountPercent > 0 && discountAmount > 0) ||
+                (discountPercent > 0 && rewardDiscountAmount > 0) ||
                 (isDelivery && freeDelivery && baseDeliveryFee > 0)
             )
         );
+
+        const parts = [];
+        if (rewardApplied && reward && reward.label) parts.push(`Recompensa: ${reward.label}`);
+        if (discountCode) parts.push(`Código: ${discountCode}`);
+        const discountReason = parts.join(' + ');
 
         return {
             subtotal,
             discountPercent,
             discountAmount,
+            rewardDiscountAmount,
+            discountCode,
+            discountCodeAmount,
+            discountReason,
             subtotalAfterDiscount,
             baseDeliveryFee,
             deliveryFee,
@@ -1599,6 +1832,93 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'Papas Gajo Medianas';
     }
 
+    // Detecta si una categoría es una hamburguesa de boneles
+    // (contiene 'boneles' pero NO es exactamente la categoría de piezas 'Boneles')
+    function isBurgerBonelesCategory(cat) {
+        const c = String(cat || '').toLowerCase().trim();
+        return c.includes('boneles') && c !== 'boneles';
+    }
+
+    // Modal de salsa para hamburguesas de boneles NO customizables
+    function openBurgerBonelesSauceModal(itemId, buttonEl) {
+        const found = findItemByIdWithCategory(itemId);
+        if (!found || !found.item) { addToCart(itemId); return; }
+        const item = found.item;
+        const SAUCES = ['NATURAL', 'BBQ DULCE', 'BBQ PICANTE', 'PARMESANO RANCH'];
+
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div class="bg-gradient-to-r from-yellow-500 to-orange-500 text-[#212121] p-5">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="text-xs font-bold opacity-90">Hamburguesa de Boneles</div>
+                            <h3 class="text-xl font-extrabold">${String(item.name)}</h3>
+                        </div>
+                        <button type="button" class="sr-bb-close w-10 h-10 rounded-full bg-white/30 hover:bg-white/40 flex items-center justify-center" aria-label="Cerrar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-5">
+                    <div class="font-bold text-gray-800 mb-3"><i class="fas fa-pepper-hot text-red-500 mr-2"></i>Tipo de salsa</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${SAUCES.map((s, i) => `
+                            <label class="border rounded-xl p-3 cursor-pointer hover:border-yellow-400 transition-colors">
+                                <input type="radio" name="bb-sauce" value="${s}" class="mr-2" ${i === 0 ? 'checked' : ''}>
+                                <span class="font-semibold text-gray-800 text-sm">${s}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="p-5 pt-0 flex gap-3">
+                    <button type="button" class="sr-bb-cancel w-1/2 border rounded-xl py-3 font-bold">Cancelar</button>
+                    <button type="button" class="sr-bb-confirm w-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-[#212121] rounded-xl py-3 font-extrabold shadow-lg hover:from-yellow-500 hover:to-orange-600">
+                        Agregar
+                    </button>
+                </div>
+            </div>
+        `;
+
+        const close = () => { try { document.removeEventListener('keydown', onKeyDown); } catch (_) {} if (modal.parentElement) modal.parentElement.removeChild(modal); };
+        const onKeyDown = (e) => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKeyDown);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+        modal.querySelector('.sr-bb-close')?.addEventListener('click', close);
+        modal.querySelector('.sr-bb-cancel')?.addEventListener('click', close);
+
+        modal.querySelector('.sr-bb-confirm')?.addEventListener('click', () => {
+            const sauce = modal.querySelector('input[name="bb-sauce"]:checked')?.value || 'NATURAL';
+            const originalText = buttonEl ? buttonEl.innerHTML : '';
+            if (buttonEl) showLoading(buttonEl);
+            close();
+            setTimeout(() => {
+                const cartItem = {
+                    id: Date.now(),
+                    baseItem: item,
+                    customizations: [{ name: `Salsa: ${sauce}`, price: 0 }],
+                    fries: null, onionRings: null, menuExtras: [],
+                    freeFriesIncluded: null,
+                    specifications: '',
+                    price: typeof item.price === 'number' ? item.price : 0,
+                    quantity: 1,
+                };
+                cart.push(cartItem);
+                updateCart();
+                if (buttonEl) hideLoading(buttonEl, originalText);
+                setTimeout(() => {
+                    showSuccessNotification(`${item.name} agregado al carrito`);
+                    bounceCart();
+                    startCartAbandonmentTimer();
+                }, 200);
+            }, 800);
+        });
+
+        document.body.appendChild(modal);
+    }
+
+    // Modal de opciones para Boneles (porciones: 250g / 500g / 1000g)
     function openBonelesOptionsModal(itemId, buttonEl) {
         const found = findItemByIdWithCategory(itemId);
         if (!found || !found.item) return;
@@ -2712,6 +3032,108 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupEventListeners() {
         console.log('⚙️ setupEventListeners() ejecutándose...');
 
+        // Cupón: aplicar / quitar
+        try {
+            const discountInput = document.getElementById('discount-code-input');
+            const applyBtn = document.getElementById('apply-discount-code-btn');
+            const clearBtn = document.getElementById('clear-discount-code-btn');
+            const msgEl = document.getElementById('discount-code-msg');
+
+            const setMsg = (text, tone) => {
+                if (!msgEl) return;
+                msgEl.textContent = String(text || '');
+                msgEl.classList.remove('text-gray-600', 'text-green-700', 'text-red-600', 'text-amber-600');
+                if (tone === 'ok') msgEl.classList.add('text-green-700');
+                else if (tone === 'err') msgEl.classList.add('text-red-600');
+                else if (tone === 'warn') msgEl.classList.add('text-amber-600');
+                else msgEl.classList.add('text-gray-600');
+            };
+
+            const syncUiFromState = () => {
+                const st = getActiveDiscountCodeState();
+                if (discountInput && st && st.code) discountInput.value = st.code;
+                if (clearBtn) clearBtn.classList.toggle('hidden', !(st && st.code));
+                if (st && st.code) {
+                    setMsg(`Código aplicado: ${st.code}`, 'ok');
+                } else {
+                    setMsg('', '');
+                }
+                try { updateCheckoutTotals(); } catch (_) {}
+                try { renderOrderSummary(); } catch (_) {}
+            };
+
+            const applyFromInput = async () => {
+                const raw = discountInput ? discountInput.value : '';
+                const code = normalizeDiscountCode(raw);
+                if (!code) {
+                    clearActiveDiscountCodeState();
+                    syncUiFromState();
+                    setMsg('Ingresa un código válido.', 'err');
+                    return;
+                }
+
+                if (applyBtn) applyBtn.disabled = true;
+                setMsg('Verificando código...', 'warn');
+                try {
+                    const info = await fetchDiscountCodeInfo(code);
+                    if (!info) {
+                        clearActiveDiscountCodeState();
+                        syncUiFromState();
+                        setMsg('Código no encontrado.', 'err');
+                        return;
+                    }
+
+                    setActiveDiscountCodeState({ code: info.code, amount: info.amount, verifiedAt: Date.now() });
+                    syncUiFromState();
+                    setMsg(`Código aplicado: ${info.code} (-$${Number(info.amount || 0).toFixed(0)})`, 'ok');
+                } catch (e) {
+                    console.warn('No se pudo verificar el código de descuento:', e);
+                    setMsg('No se pudo verificar el código. Intenta de nuevo.', 'err');
+                } finally {
+                    if (applyBtn) applyBtn.disabled = false;
+                }
+            };
+
+            const clearCoupon = () => {
+                clearActiveDiscountCodeState();
+                if (discountInput) discountInput.value = '';
+                syncUiFromState();
+                setMsg('Código removido.', '');
+            };
+
+            if (applyBtn) applyBtn.addEventListener('click', applyFromInput);
+            if (clearBtn) clearBtn.addEventListener('click', clearCoupon);
+            if (discountInput) {
+                discountInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyFromInput();
+                    }
+                });
+            }
+
+            // Cargar cupón guardado y revalidar en segundo plano
+            syncUiFromState();
+            const st = getActiveDiscountCodeState();
+            if (st && st.code) {
+                setTimeout(async () => {
+                    try {
+                        const info = await fetchDiscountCodeInfo(st.code);
+                        if (!info) {
+                            clearActiveDiscountCodeState();
+                            syncUiFromState();
+                            setMsg('El código guardado ya no está disponible.', 'warn');
+                            return;
+                        }
+                        setActiveDiscountCodeState({ code: info.code, amount: info.amount, verifiedAt: Date.now() });
+                        syncUiFromState();
+                    } catch (_) {
+                        // Si no hay conexión, dejamos el cupón como estaba.
+                    }
+                }, 800);
+            }
+        } catch (_) {}
+
         // Carrusel por categoría: flechas izq/der que hacen scroll horizontal suave
         if (!window.__carouselNavBound) {
             window.__carouselNavBound = true;
@@ -2878,6 +3300,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const category = found ? String(found.category || '').trim() : '';
             if (category.toLowerCase() === 'boneles') {
                 openBonelesOptionsModal(itemId, btn);
+                return;
+            }
+            if (isBurgerBonelesCategory(category)) {
+                openBurgerBonelesSauceModal(itemId, btn);
                 return;
             }
             addToCart(itemId);
@@ -3318,6 +3744,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const category = getCategoryForItemId(itemId);
                 const item = applyDailyPromotion(originalItem, category);
 
+                // Salsa para hamburguesas de boneles (inyectada al final de customizations)
+                if (isBurgerBonelesCategory(category)) {
+                    const sauce = document.querySelector('input[name="burger-boneles-sauce"]:checked')?.value || 'NATURAL';
+                    customizations.push({ name: `Salsa: ${sauce}`, price: 0 });
+                }
+
                 if (friesRequested) {
                     const isFreeFriesEligible = Boolean(item.freeFries) && isFreeFriesPromotionActiveForCategory(category);
                     if (isFreeFriesEligible) {
@@ -3350,9 +3782,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     freeFries: item.freeFries || false
                 };
                 
-                cart.push(cartItem);
-                updateCart();
-                openCart();
+                if (context.editCartItemId != null) {
+                    const _editIdx = cart.findIndex(ci => ci.id === context.editCartItemId);
+                    if (_editIdx !== -1) {
+                        Object.assign(cart[_editIdx], {
+                            customizations    : cartItem.customizations,
+                            fries             : cartItem.fries,
+                            onionRings        : cartItem.onionRings,
+                            menuExtras        : cartItem.menuExtras,
+                            freeFriesIncluded : cartItem.freeFriesIncluded,
+                            specifications    : cartItem.specifications,
+                            price             : cartItem.price
+                        });
+                    }
+                    updateCart();
+                } else {
+                    cart.push(cartItem);
+                    updateCart();
+                    openCart();
+                }
             }
             
             closeCustomizationModal();
@@ -3433,6 +3881,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 addressInput.dataset.userEdited = '1';
             });
         }
+
+        // Modo manual: escuchar cambios en el textarea de dirección
+        const manualAddressInput = document.getElementById('manual-address');
+        if (manualAddressInput) {
+            manualAddressInput.addEventListener('input', validateCheckoutForm);
+            manualAddressInput.addEventListener('blur', validateCheckoutForm);
+        }
+        // Exportar para que el map picker pueda forzar re-validación
+        window.validateCheckoutForm = validateCheckoutForm;
         
         const cashAmountInput = document.getElementById('cash-amount');
         if (cashAmountInput) {
@@ -3585,6 +4042,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (item.isCombo) {
                         const hasMultipleBurgers = Array.isArray(item.choices) && item.choices.length > 1;
+                        const hotdogDetails = (item.hotdogs || []).map((hd, idx) => {
+                                let text = `Hot Dog: ` + (hd?.hotdog?.name || hd?.name || 'Hot Dog');
+                                if (hd && hd.fries) text += `, Papas ${hd.fries.type}`;
+                                return text;
+                            });
                         const choiceDetails = (item.choices || []).map((choice, idx) => {
                                 const prefix = hasMultipleBurgers ? `Hamburguesa ${idx + 1}: ` : 'Hamburguesa: ';
                                 let text = prefix + (choice?.burger?.name || 'Hamburguesa');
@@ -3606,7 +4068,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
 
                                 return text;
-                            }).join(' | ');
+                            }).concat(hotdogDetails).join(' | ');
                         // Anexar información de acompañamientos incluidos del combo (para Control de Envíos)
                         const extraInfo = [];
                         if (item.includedFries && item.includedFries.type && item.includedFries.size) {
@@ -3621,8 +4083,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Combo Familiar incluye Aros Medianos y Coca-Cola 3L
                             extraInfo.push('Aros de Cebolla Medianos', 'Coca-Cola 3L');
                         } else if (item.baseItem && Number(item.baseItem.id) === 6) {
-                            // Combo Pareja incluye aros (7 pz)
-                            extraInfo.push('Aros de Cebolla (7 pz)');
+                            // Combo Pareja incluye aros medianas
+                            extraInfo.push('Aros de Cebolla Medianas');
+                        } else if (item.baseItem && Number(item.baseItem.id) === 7) {
+                            // Combo Amigos incluye aros medianas
+                            extraInfo.push('Aros de Cebolla Medianas');
                         }
 
                         customizations = choiceDetails + (extraInfo.length ? ` | Incluye: ${extraInfo.join(', ')}` : '');
@@ -3716,6 +4181,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     notes += (notes ? ' | ' : '') + `Recompensa: ${pricing.reward.label}`;
                 }
 
+                if (pricing.discountCode) {
+                    notes += (notes ? ' | ' : '') + `Cupón: ${pricing.discountCode}`;
+                }
+
                 // Sesión requerida (excepto modo manual): asociar siempre el pedido al usuario autenticado
                 const clienteId = isManualMode ? (sessionUid || null) : sessionUid;
 
@@ -3734,7 +4203,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     changeAmount: changeAmount || undefined,
                     clienteId: clienteId || undefined,
                     reward: (pricing.rewardApplied && pricing.reward) ? pricing.reward : undefined,
-                    discountAmount: pricing.discountAmount || 0
+                    discountAmount: pricing.discountAmount || 0,
+                    discountReason: pricing.discountReason || undefined,
+                    discountCode: pricing.discountCode || undefined,
+                    discountCodeAmount: pricing.discountCodeAmount || 0,
+                    rewardDiscountAmount: pricing.rewardDiscountAmount || 0
                 };
 
                 // 1) Crear la orden y obtener el número (Firebase o respaldo local)
@@ -3977,10 +4450,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             item = findItemById(context.itemId);
-            currentCustomizations = [];
-            currentFries = null;
-            currentMenuExtras = [];
-            currentSpecifications = '';
+            if (context.editCartItemId != null) {
+                const _existingCI = cart.find(ci => ci.id === context.editCartItemId);
+                currentCustomizations = _existingCI ? (_existingCI.customizations || []) : [];
+                currentFries = _existingCI ? (_existingCI.fries || null) : null;
+                currentMenuExtras = _existingCI ? (_existingCI.menuExtras || []) : [];
+                currentSpecifications = _existingCI ? (_existingCI.specifications || '') : '';
+            } else {
+                currentCustomizations = [];
+                currentFries = null;
+                currentMenuExtras = [];
+                currentSpecifications = '';
+            }
             customModalTitle.textContent = `Personaliza tu ${item.name}`;
 
             // Ajustar el pill de papas según promo del día (jueves: papas gratis)
@@ -4217,7 +4698,33 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Mostrar modal y calcular precio
         updateCustomModalPrice();
-        
+
+        // Sección de salsa para hamburguesas de boneles
+        const _existBBSauce = document.getElementById('burger-boneles-sauce-section');
+        if (_existBBSauce) _existBBSauce.remove();
+        const _bbCat = isCombo ? '' : getCategoryForItemId(context.itemId);
+        if (!isCombo && isBurgerBonelesCategory(_bbCat)) {
+            const BURGER_BONELES_SAUCES = ['NATURAL', 'BBQ DULCE', 'BBQ PICANTE', 'PARMESANO RANCH'];
+            const _sauceSection = document.createElement('div');
+            _sauceSection.id = 'burger-boneles-sauce-section';
+            _sauceSection.className = 'mt-4 pt-4 border-t border-gray-200 dark:border-white/10';
+            _sauceSection.innerHTML = `
+                <div class="font-bold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                    <i class="fas fa-pepper-hot text-red-500"></i>Tipo de salsa
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    ${BURGER_BONELES_SAUCES.map((s, idx) => `
+                        <label class="flex items-center gap-2 border border-gray-200 dark:border-white/20 rounded-xl p-3 cursor-pointer hover:border-yellow-400 dark:hover:border-yellow-400 transition-colors">
+                            <input type="radio" name="burger-boneles-sauce" value="${s}" class="form-radio text-yellow-500" ${idx === 0 ? 'checked' : ''}>
+                            <span class="font-semibold text-sm text-gray-800 dark:text-gray-200">${s}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            `;
+            const _modalBody = document.getElementById('custom-modal-body');
+            if (_modalBody) _modalBody.appendChild(_sauceSection);
+        }
+
         // Mostrar el modal
         customModal.classList.add('flex');
         customModal.classList.remove('hidden');
@@ -4664,8 +5171,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateBurgerDisplay(choiceIndex, burger) {
         const priceText = getBurgerPriceDiffText(burger);
         
-        document.getElementById(`burger-img-${choiceIndex}`).src = burger.image;
-        document.getElementById(`burger-img-${choiceIndex}`).alt = burger.name;
+        // En modo rápido (MANUAL_FAST_MODE) la imagen no se renderiza — evitar crash
+        const imgEl = document.getElementById(`burger-img-${choiceIndex}`);
+        if (imgEl) {
+            imgEl.src = burger.image;
+            imgEl.alt = burger.name;
+        }
         document.getElementById(`burger-name-${choiceIndex}`).textContent = burger.name;
         document.getElementById(`burger-price-${choiceIndex}`).textContent = priceText;
     }
@@ -4781,6 +5292,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.body.classList.toggle('sr-sticky-cart-visible', shouldShowSticky);
         } catch (_) {}
+
+        // FAB carrito desktop
+        try {
+            const fabCart = document.getElementById('fab-cart-desktop');
+            const fabCount = document.getElementById('fab-cart-count');
+            const fabTotal = document.getElementById('fab-cart-total');
+            if (fabCart) fabCart.classList.toggle('!hidden', units === 0);
+            if (fabCount) fabCount.textContent = String(units);
+            if (fabTotal) fabTotal.textContent = `$${total.toFixed(0)}`;
+        } catch (_) {}
         
         // Guardar carrito en localStorage
         localStorage.setItem('cart', JSON.stringify(cart));
@@ -4882,9 +5403,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="ml-4 flex-grow">
                         <div class="flex justify-between items-start">
                             <h4 class="font-semibold text-gray-800 leading-tight">${itemName}${promotionBadge}</h4>
-                            <button class="remove-item-btn text-gray-400 hover:text-red-500" data-id="${item.id}" aria-label="Eliminar">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <div class="flex items-center gap-1">
+                                <button class="edit-item-btn text-gray-400 hover:text-blue-500 p-1" data-id="${item.id}" aria-label="Editar">
+                                    <i class="fas fa-pen text-xs"></i>
+                                </button>
+                                <button class="remove-item-btn text-gray-400 hover:text-red-500 p-1" data-id="${item.id}" aria-label="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
                         ${customizationsText ? `<p class=\"text-xs text-gray-500 mt-1\">${customizationsText}</p>` : ''}
                         <div class="mt-2 flex items-center justify-between">
@@ -4904,7 +5430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Event listeners para botones de cantidad y eliminar
             document.querySelectorAll('.cart-qty-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const id = parseInt(e.currentTarget.dataset.id);
+                    const id = Number(e.currentTarget.dataset.id);
                     const action = e.currentTarget.dataset.action;
                     const itemIndex = cart.findIndex(item => item.id === id);
                     
@@ -4923,9 +5449,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.querySelectorAll('.remove-item-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const id = parseInt(e.currentTarget.dataset.id);
+                    const id = Number(e.currentTarget.dataset.id);
                     cart = cart.filter(item => item.id !== id);
                     updateCart();
+                });
+            });
+
+            document.querySelectorAll('.edit-item-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = Number(e.currentTarget.dataset.id);
+                    if (typeof window._srOpenCartItemEditor === 'function') {
+                        window._srOpenCartItemEditor(id);
+                    }
                 });
             });
         }
@@ -5031,7 +5566,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totals.className = 'order-summary-totals mt-3 p-3 bg-gray-50 rounded-lg border';
         totals.innerHTML = `
             <div class=\"flex items-center justify-between text-sm text-gray-600\"><span>Subtotal:</span><span>$${subtotal.toFixed(0)}</span></div>
-            ${pricing.discountAmount > 0 ? `<div class=\"flex items-center justify-between text-sm text-gray-600\"><span>Descuento (${pricing.discountPercent}%):</span><span>-$${pricing.discountAmount.toFixed(0)}</span></div>` : ''}
+            ${pricing.discountAmount > 0 ? `<div class=\"flex items-center justify-between text-sm text-gray-600\"><span>Descuento${pricing.discountReason ? ` (${pricing.discountReason})` : ''}:</span><span>-$${pricing.discountAmount.toFixed(0)}</span></div>` : ''}
             <div class=\"flex items-center justify-between text-sm text-gray-600\"><span>Envío:</span><span>${deliveryTypeValue === 'delivery' ? (deliveryCost > 0 ? `+$${deliveryCost.toFixed(0)}` : 'Pendiente de cotizar') : 'Gratis'}</span></div>
             <div class=\"flex items-center justify-between font-bold text-lg mt-2 pt-2 border-t\"><span>Total:</span><span class=\"text-[#FFB300]\">$${total.toFixed(0)}</span></div>
         `;
@@ -5198,6 +5733,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const subtotalElement = document.getElementById('checkout-subtotal');
         const deliveryFeeElement = document.getElementById('checkout-delivery-fee');
         const totalElement = document.getElementById('checkout-total');
+        const discountRowEl = document.getElementById('checkout-discount-row');
+        const discountLabelEl = document.getElementById('checkout-discount-label');
+        const discountAmountEl = document.getElementById('checkout-discount-amount');
         const deliveryOptionFeeEl = document.getElementById('delivery-option-fee');
         const deliveryLiveInfoEl = document.getElementById('delivery-live-info');
         
@@ -5236,6 +5774,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // Actualizar elementos
         subtotalElement.textContent = `$${subtotal.toFixed(0)}`;
         totalElement.textContent = `$${total.toFixed(0)}`;
+
+        // Descuento (recompensa y/o cupón)
+        try {
+            if (discountRowEl && discountLabelEl && discountAmountEl) {
+                if (pricing.discountAmount > 0) {
+                    const label = pricing.discountReason
+                        ? `Descuento (${pricing.discountReason}):`
+                        : 'Descuento:';
+                    discountLabelEl.textContent = label;
+                    discountAmountEl.textContent = `-$${Number(pricing.discountAmount || 0).toFixed(0)}`;
+                    discountRowEl.classList.remove('hidden');
+                } else {
+                    discountRowEl.classList.add('hidden');
+                }
+            }
+        } catch (_) {}
 
         // Resumen fijo (footer): envío + total
         const stickyDeliveryEl = document.getElementById('checkout-sticky-delivery');
@@ -5295,14 +5849,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     : '';
 
                 const rewardLine = (pricing.rewardApplied && pricing.reward && pricing.reward.label)
-                    ? `<br><i class=\"fas fa-tag mr-1 text-green-600\"></i>Recompensa aplicada: <strong>${pricing.reward.label}</strong>${pricing.discountAmount > 0 ? ` • Descuento: <strong>-$${pricing.discountAmount.toFixed(0)}</strong>` : ''}`
+                    ? `<br><i class=\"fas fa-tag mr-1 text-green-600\"></i>Recompensa aplicada: <strong>${pricing.reward.label}</strong>${pricing.rewardDiscountAmount > 0 ? ` • Descuento: <strong>-$${pricing.rewardDiscountAmount.toFixed(0)}</strong>` : ''}`
                     : (pricing.reward && pricing.reward.label)
                         ? `<br><i class=\"fas fa-tag mr-1 text-green-600\"></i>Recompensa activa: <strong>${pricing.reward.label}</strong>${pricing.reward.freeDelivery ? ' (solo a domicilio)' : ''}`
                         : '';
+
+                const couponLine = (pricing.discountCode)
+                    ? `<br><i class=\"fas fa-tag mr-1 text-emerald-500\"></i>Código aplicado: <strong>${pricing.discountCode}</strong>${pricing.discountCodeAmount > 0 ? ` • Descuento: <strong>-$${pricing.discountCodeAmount.toFixed(0)}</strong>` : ''}`
+                    : '';
                 deliveryLiveInfoEl.innerHTML = `
                     <i class="fas fa-route mr-1 text-blue-600"></i>
                     Distancia: <strong>${km.toFixed(1)} km</strong>${modeText} • Envío: <strong>$${fee.toFixed(0)}</strong>${(pricing.reward && pricing.reward.freeDelivery && pricing.baseDeliveryFee > 0) ? ' (gratis con recompensa)' : ` (${kmToCharge} km x $${COSTO_POR_KM})`}${eta}
-                    ${rewardLine}
+                    ${rewardLine}${couponLine}
                 `;
                 deliveryLiveInfoEl.classList.remove('hidden');
             } else if (deliveryCalcPending > 0) {
@@ -5516,13 +6074,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pricing.reward && pricing.reward.label) {
             if (pricing.rewardApplied) {
                 message += `\n🏷️ *Recompensa aplicada:* ${pricing.reward.label}`;
-                if (pricing.discountAmount > 0) {
-                    message += ` (ahorro -$${pricing.discountAmount.toFixed(0)})`;
+                if (pricing.rewardDiscountAmount > 0) {
+                    message += ` (ahorro -$${pricing.rewardDiscountAmount.toFixed(0)})`;
                 }
                 message += `\n`;
             } else if (pricing.reward.freeDelivery && deliveryTypeValue !== 'delivery') {
                 message += `\n🏷️ *Recompensa activa:* ${pricing.reward.label} (se aplica solo a domicilio)\n`;
             }
+        }
+
+        if (pricing.discountCode) {
+            message += `\n🏷️ *Código aplicado:* ${pricing.discountCode}`;
+            if (pricing.discountCodeAmount > 0) {
+                message += ` (ahorro -$${pricing.discountCodeAmount.toFixed(0)})`;
+            }
+            message += `\n`;
         }
 
         if (pointsEarned > 0) {
@@ -5594,7 +6160,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Totales
         message += `\n*Subtotal:* $${subtotal.toFixed(0)}`;
         if (pricing.discountAmount > 0) {
-            message += `\n*Descuento (${pricing.discountPercent}%):* -$${pricing.discountAmount.toFixed(0)}`;
+            const label = pricing.discountReason ? `Descuento (${pricing.discountReason})` : 'Descuento';
+            message += `\n*${label}:* -$${pricing.discountAmount.toFixed(0)}`;
         }
         message += `\n*Envío:* ${deliveryTypeValue === 'delivery' ? (pricing.deliveryFee > 0 ? `$${pricing.deliveryFee.toFixed(0)}` : (pricing.reward && pricing.reward.freeDelivery && pricing.baseDeliveryFee > 0 ? 'Gratis (recompensa)' : 'Pendiente de cotizar')) : 'Gratis'}`;
         message += `\n*TOTAL:* $${total.toFixed(0)}`;
@@ -8286,8 +8853,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (item.isCombo) {
                     // Para combos, agregar detalles de las elecciones
-                    const choiceDetails = item.choices.map(choice => {
-                        let text = choice.burger.name;
+                    const hasMultipleBurgers = Array.isArray(item.choices) && item.choices.length > 1;
+                    const choiceDetails = (item.choices || []).map((choice, idx) => {
+                        const prefix = hasMultipleBurgers ? `Hamburguesa ${idx + 1}: ` : 'Hamburguesa: ';
+                        let text = prefix + (choice?.burger?.name || 'Hamburguesa');
                         if (choice.customizations && choice.customizations.length > 0) {
                             text += ` (+ ${choice.customizations.map(c => c.name).join(', ')})`;
                         }
@@ -8297,9 +8866,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (choice.onionRings) {
                             text += `, Aros de Cebolla`;
                         }
+                        // Extras del menú ligados a esta hamburguesa dentro del combo
+                        if (choice.menuExtras && choice.menuExtras.length > 0) {
+                            choice.menuExtras.forEach(extra => {
+                                const qty = Number(extra.quantity) || 1;
+                                const name = String(extra.name || '').trim();
+                                if (name) text += `, ${qty}x ${name}`;
+                            });
+                        }
                         return text;
                     }).join(' | ');
-                    customizations = choiceDetails;
+
+                    // Acompañamientos incluidos del combo
+                    const extraInfo = [];
+                    if (item.includedFries && item.includedFries.type && item.includedFries.size) {
+                        extraInfo.push(`Papas ${item.includedFries.type} ${item.includedFries.size}`);
+                    }
+                    if (item.boneles && typeof item.boneles.sauce === 'string' && item.boneles.sauce.trim()) {
+                        extraInfo.push(`Salsa: ${item.boneles.sauce.trim()}`);
+                    }
+                    // Detalles específicos por combo
+                    const comboId = item.baseItem && Number(item.baseItem.id);
+                    if (comboId === 14) {
+                        extraInfo.push('Aros de Cebolla Medianos', 'Coca-Cola 3L');
+                    } else if (comboId === 6) {
+                        extraInfo.push('Aros de Cebolla Medianas');
+                    } else if (comboId === 7) {
+                        extraInfo.push('Aros de Cebolla Medianas');
+                    }
+
+                    customizations = choiceDetails + (extraInfo.length ? ` | Incluye: ${extraInfo.join(', ')}` : '');
                 } else {
                     // Para items individuales
                     const details = [];
@@ -8337,9 +8933,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Calcular totales
-            const subtotal = getCartTotal();
-            const deliveryCost = deliveryTypeValue === 'delivery' ? getCurrentDeliveryFee() : 0;
-            const total = subtotal + deliveryCost;
+            const pricing = computeCheckoutPricing(deliveryTypeValue);
+            const subtotal = Number(pricing.subtotal || 0);
+            const deliveryCost = Number(pricing.deliveryFee || 0);
+            const total = Number(pricing.total || 0);
             
             // Crear notas especiales
             let notes = '';
@@ -8349,6 +8946,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (paymentMethod !== 'Efectivo') {
                 notes += `Pago: ${paymentMethod}`;
+            }
+
+            if (pricing.rewardApplied && pricing.reward && pricing.reward.label) {
+                notes += (notes ? ' | ' : '') + `Recompensa: ${pricing.reward.label}`;
+            }
+
+            if (pricing.discountCode) {
+                notes += (notes ? ' | ' : '') + `Cupón: ${pricing.discountCode}`;
             }
 
             // Intentar asociar el pedido al usuario autenticado (para puntos)
@@ -8374,14 +8979,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 items: orderItems,
                 // Totales y desglose (flujo secundario sin recompensas)
                 subtotal: parseFloat(subtotal.toFixed(2)),
-                subtotalAfterDiscount: parseFloat(subtotal.toFixed(2)),
+                subtotalAfterDiscount: parseFloat(Number(pricing.subtotalAfterDiscount || subtotal).toFixed(2)),
                 deliveryFee: parseFloat(deliveryCost.toFixed(2)),
                 total: parseFloat(total.toFixed(2)),
                 notes: notes || '',
                 deliveryType: deliveryTypeValue,
                 paymentMethod: paymentMethod,
                 clienteId: clienteId || undefined,
-                discountAmount: 0
+                discountAmount: Number(pricing.discountAmount || 0),
+                discountReason: pricing.discountReason || undefined,
+                discountCode: pricing.discountCode || undefined,
+                discountCodeAmount: pricing.discountCodeAmount || 0,
+                rewardDiscountAmount: pricing.rewardDiscountAmount || 0,
+                reward: (pricing.rewardApplied && pricing.reward) ? pricing.reward : undefined
             };
             
             console.log('📝 Enviando pedido a Firebase...', orderData);

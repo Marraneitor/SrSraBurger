@@ -20,6 +20,12 @@
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- ⚡ WHITE-LABEL SYSTEM ⚡ -->
+    <link rel="stylesheet" href="styles/variables.css">
+    <script type="module" src="js/config-loader.js"></script>
+    <!-- ⚡ END WHITE-LABEL SYSTEM ⚡ -->
+    
     <!-- Nota: en pedido-manual usamos modo rápido (sin fotos) -->
     <link rel="stylesheet" href="styles/sr-ui.css">
     <script src="js/sr-shell.js" defer></script>
@@ -40,19 +46,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Estilos personalizados -->
     <style>
+        /* Las variables CSS ahora se cargan desde styles/variables.css */
+        /* Este bloque mantiene compatibilidad con código antiguo */
         :root {
-            --primary-gold: #16A34A;
-            --primary-gold-dark: #15803D;
-            --primary-red: #0B1220;
+            /* DEPRECATED: Usar variables de variables.css en su lugar */
+            --primary-gold: var(--primary-color);
+            --primary-gold-dark: var(--primary-color-dark);
+            --primary-red: var(--secondary-color);
             --text-primary: #0F172A;
             --text-secondary: #64748B;
             --bg-light: #FFFFFF;
             --bg-section: #F8F9FA;
             --border-light: #E2E8F0;
-            --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
-            --shadow-hover: 0 18px 45px rgba(15, 23, 42, 0.14);
-            --border-radius: 24px;
-            --transition: all 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+            --shadow-soft: var(--shadow-soft);
+            --shadow-hover: var(--shadow-hover);
+            --border-radius: var(--radius-xl);
+            --transition: var(--transition-base);
         }
 
         /* Dark mode (class-based) */
@@ -2496,6 +2505,9 @@
                     <button id="show-menu-btn" type="button" class="mt-5 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-amber-400 text-slate-900 font-bold hover:brightness-110 active:scale-[0.99] transition">
                         Mostrar menú
                     </button>
+                    <button id="ai-order-btn" type="button" class="mt-5 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-violet-600 text-white font-bold hover:bg-violet-700 active:scale-[0.99] transition shadow-lg">
+                        <i class="fas fa-robot"></i> Pedido por escrito (IA)
+                    </button>
                 </div>
             </div>
 
@@ -2748,6 +2760,9 @@
             <button id="open-customers-page-btn" type="button" class="w-full mb-2 bg-slate-800 text-white font-bold py-2 rounded-xl hover:bg-slate-700 transition duration-300">
                 <i class="fas fa-address-book mr-2"></i>Clientes
             </button>
+            <button id="consumo-local-btn" type="button" class="w-full mb-2 bg-indigo-600 text-white font-bold py-2 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 transition duration-300">
+                <i class="fas fa-store mr-2"></i>Consumo Local
+            </button>
             <button id="checkout-btn" class="w-full bg-[#FFB300] text-[#212121] font-bold py-3 rounded-xl hover:bg-[#FFA000] transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
                 <i class="fas fa-receipt mr-2"></i>Finalizar Pedido
             </button>
@@ -2771,7 +2786,7 @@
                 <div class="flex gap-2">
                     <div class="relative flex-1">
                         <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                        <input id="customer-picker-search" type="text" class="w-full pl-9 pr-3 py-2 border rounded-xl text-sm" placeholder="Buscar por nombre o teléfono" />
+                        <input id="customer-picker-search" type="text" autocomplete="off" class="w-full pl-9 pr-3 py-2 border rounded-xl text-sm" placeholder="Buscar por nombre o teléfono" />
                     </div>
                     <button id="customer-picker-refresh" type="button" class="px-3 py-2 rounded-xl bg-slate-800 text-white text-sm font-semibold hover:bg-slate-700">
                         <i class="fas fa-rotate"></i>
@@ -2997,13 +3012,30 @@
                                 <i class="fas fa-map-marker-alt text-red-600 mr-2"></i>Dirección de Entrega
                             </h4>
                             <div class="space-y-3">
+                                <!-- Botón abrir mapa -->
+                                <button id="open-map-picker-btn" type="button"
+                                    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold text-sm transition-all duration-200 shadow-sm">
+                                    <i class="fas fa-map-location-dot text-base"></i>
+                                    Ingresar ubicación en el mapa
+                                </button>
+                                <!-- Badge ubicación confirmada -->
+                                <div id="map-location-badge" class="hidden flex items-start gap-2 p-2.5 rounded-xl bg-green-50 border border-green-300 text-xs text-green-800">
+                                    <i class="fas fa-circle-check text-green-500 mt-0.5 flex-shrink-0"></i>
+                                    <div>
+                                        <div class="font-semibold">Ubicación confirmada desde el mapa</div>
+                                        <div id="map-location-summary" class="mt-0.5 text-green-700"></div>
+                                    </div>
+                                    <button id="clear-map-location-btn" type="button" class="ml-auto text-green-500 hover:text-red-500 transition-colors" title="Borrar">
+                                        <i class="fas fa-xmark"></i>
+                                    </button>
+                                </div>
                                 <div>
                                     <label for="manual-address" class="block text-sm font-medium mb-1">Dirección completa:</label>
                                     <textarea id="manual-address" rows="3" placeholder="Calle, número, colonia, referencias..." class="w-full p-2 border rounded-md text-sm focus:ring-1 focus:ring-yellow-300 focus:border-yellow-400 bg-white"></textarea>
                                     <div id="manual-address-error" class="mt-1 text-xs text-red-600 hidden"></div>
                                 </div>
                                 <div>
-                                    <label for="manual-delivery-cost" class="block text-sm font-medium mb-1">Costo de envío (ingresa manualmente):</label>
+                                    <label for="manual-delivery-cost" class="block text-sm font-medium mb-1">Costo de envío:</label>
                                     <div class="flex items-center gap-2">
                                         <span class="text-lg font-bold text-gray-700">$</span>
                                         <input type="number" id="manual-delivery-cost" placeholder="0" min="0" step="1" value="0" class="flex-1 p-2 border rounded-md text-sm focus:ring-1 focus:ring-yellow-300 focus:border-yellow-400 bg-white">
@@ -3153,7 +3185,7 @@
                     <div class="text-gray-700">Envío: <span id="checkout-sticky-delivery" class="font-semibold">—</span></div>
                     <div class="text-gray-800">Total: <span id="checkout-sticky-total" class="font-bold text-[#FFB300]">$0</span></div>
                 </div>
-                <button id="send-whatsapp-btn" class="hidden w-full bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition duration-300 flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg">
+                <button id="send-whatsapp-btn" class="w-full bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition duration-300 flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg">
                     <i class="fas fa-check-circle text-xl"></i><span>Confirmar Pedido</span>
                 </button>
             </div>
@@ -3336,6 +3368,54 @@
     </div>
 
     <!-- Botón flotante de ayuda optimizado para móvil -->
+
+    <!-- ─── Modal: Consumo Local ─── -->
+    <div id="consumo-local-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm mx-auto overflow-hidden">
+            <div class="p-5 border-b dark:border-white/10">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <i class="fas fa-store text-indigo-500"></i> Consumo Local
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Se registrará sin datos de cliente</p>
+            </div>
+            <div class="p-5 space-y-2">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">¿Método de pago?</p>
+                <label class="flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition-colors border-indigo-300 bg-indigo-50/40 dark:bg-indigo-900/20 dark:border-indigo-500/30">
+                    <input type="radio" name="consumo-local-payment" value="Efectivo" class="form-radio text-indigo-600" checked>
+                    <span class="font-medium text-gray-800 dark:text-gray-100">💵 Efectivo</span>
+                </label>
+                <label class="flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition-colors border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5">
+                    <input type="radio" name="consumo-local-payment" value="Tarjeta" class="form-radio text-indigo-600">
+                    <span class="font-medium text-gray-800 dark:text-gray-100">💳 Tarjeta</span>
+                </label>
+                <label class="flex items-center gap-3 p-3 border-2 rounded-xl cursor-pointer transition-colors border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5">
+                    <input type="radio" name="consumo-local-payment" value="Transferencia" class="form-radio text-indigo-600">
+                    <span class="font-medium text-gray-800 dark:text-gray-100">🏦 Transferencia</span>
+                </label>
+            </div>
+            <div class="p-5 pt-2 border-t dark:border-white/10 flex flex-col gap-2">
+                <button id="consumo-local-confirm-btn" type="button"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-check"></i> Registrar Consumo Local
+                </button>
+                <button id="consumo-local-cancel-btn" type="button"
+                    class="w-full text-gray-500 dark:text-gray-400 text-sm hover:text-gray-800 dark:hover:text-white transition-colors py-2">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- FAB carrito — solo escritorio (md+), se oculta cuando el carrito está vacío -->
+    <button id="fab-cart-desktop" onclick="openCart()"
+        class="fixed bottom-4 sm:bottom-20 right-[5.5rem] sm:right-[5.5rem] z-40 hidden md:flex items-center gap-2 bg-green-600 hover:bg-green-700 active:scale-95 text-white rounded-2xl px-4 h-14 sm:h-16 shadow-2xl hover:shadow-3xl transition-all duration-200 select-none"
+        aria-label="Abrir carrito">
+        <i class="fas fa-shopping-cart text-xl"></i>
+        <div class="flex flex-col leading-none">
+            <span id="fab-cart-total" class="text-base font-bold">$0</span>
+            <span class="text-[11px] opacity-80"><span id="fab-cart-count">0</span> artículo(s)</span>
+        </div>
+    </button>
+
     <button id="help-btn" class="fixed bottom-4 sm:bottom-20 right-4 sm:right-6 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 z-40 group">
         <i class="fas fa-question text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-300"></i>
         <div class="absolute -left-12 sm:-left-16 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white px-3 py-1 rounded-lg text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap hidden sm:block">
@@ -3760,7 +3840,7 @@
             window.__MANUAL_MODE = true;
             window.__MANUAL_FAST_MODE = true;
         </script>
-        <script src="js/script.js.backup?v=2026-01-23a"></script>
+        <script src="js/script.js.backup?v=2026-02-27a"></script>
 
         <!-- Script personalizado para entrada manual -->
         <script>
@@ -4005,10 +4085,13 @@
                     if (!pickerList || !pickerEmpty) return;
 
                     const q = String((pickerSearch && pickerSearch.value) || '').trim().toLowerCase();
+                    const qDigits = normalizeDigits(q);
                     const filtered = pickerCustomers.filter(c => {
+                        if (!q) return true;
                         const n = String(c.name || '').toLowerCase();
                         const p = normalizeDigits(c.phone);
-                        return !q || n.includes(q) || p.includes(normalizeDigits(q));
+                        const addr = String(c.address || '').toLowerCase();
+                        return n.includes(q) || addr.includes(q) || (qDigits.length > 0 && p.includes(qDigits));
                     });
 
                     pickerList.innerHTML = '';
@@ -4325,27 +4408,97 @@
                             const baseId = Number(base.id || base.productId || 0) || 0;
                             const name = String(base.name || ci.name || 'Producto').trim();
 
-                            const parts = [];
-                            if (Array.isArray(ci.customizations) && ci.customizations.length) {
-                                ci.customizations.forEach(c => {
-                                    const n = String(c && c.name ? c.name : '').trim();
-                                    if (n) parts.push(n);
-                                });
-                            }
-                            if (Array.isArray(ci.extras) && ci.extras.length) {
-                                ci.extras.forEach(e => {
-                                    const n = String(e || '').trim();
-                                    if (n) parts.push(n);
-                                });
-                            }
-                            if (ci.fries && ci.fries.type) parts.push(`Papas: ${ci.fries.type}`);
-                            if (ci.onionRings) parts.push('Aros de Cebolla');
-                            if (Array.isArray(ci.menuExtras) && ci.menuExtras.length) {
-                                ci.menuExtras.forEach(ex => {
-                                    const q = Number(ex.quantity || 1) || 1;
-                                    const n = String(ex.name || '').trim();
-                                    if (n) parts.push(`${q}x ${n}`);
-                                });
+                            let customizationsStr = '';
+                            let specificationsStr = '';
+
+                            if (ci.isCombo) {
+                                // ── Combo: serializar igual que el checkout de paginaburger ──
+                                const hasMultipleBurgers = Array.isArray(ci.choices) && ci.choices.length > 1;
+                                const choiceDetails = (ci.choices || []).map((choice, idx) => {
+                                    const prefix = hasMultipleBurgers ? `Hamburguesa ${idx + 1}: ` : 'Hamburguesa: ';
+                                    let text = prefix + (choice?.burger?.name || 'Hamburguesa');
+                                    if (Array.isArray(choice.customizations) && choice.customizations.length) {
+                                        text += ` (+ ${choice.customizations.map(c => c.name).join(', ')})`;
+                                    }
+                                    if (choice.fries) text += `, Papas ${choice.fries.type}`;
+                                    if (choice.onionRings) text += `, Aros de Cebolla`;
+                                    if (Array.isArray(choice.menuExtras) && choice.menuExtras.length) {
+                                        choice.menuExtras.forEach(ex => {
+                                            const q = Number(ex.quantity) || 1;
+                                            const n = String(ex.name || '').trim();
+                                            if (n) text += `, ${q}x ${n}`;
+                                        });
+                                    }
+                                    return text;
+                                }).join(' | ');
+
+                                const extraInfo = [];
+                                if (ci.includedFries && ci.includedFries.type && ci.includedFries.size) {
+                                    extraInfo.push(`Papas ${ci.includedFries.type} ${ci.includedFries.size}`);
+                                }
+                                if (ci.boneles && typeof ci.boneles.sauce === 'string' && ci.boneles.sauce.trim()) {
+                                    extraInfo.push(`Salsa: ${ci.boneles.sauce.trim()}`);
+                                }
+                                if (ci.boneles && Array.isArray(ci.boneles.sauces) && ci.boneles.sauces.length) {
+                                    extraInfo.push(`Salsa: ${ci.boneles.sauces[0]}`);
+                                }
+                                const baseId14 = Number(base.id) === 14;
+                                const baseId6  = Number(base.id) === 6;
+                                const baseId7  = Number(base.id) === 7;
+                                if (baseId14) { extraInfo.push('Aros de Cebolla Medianos', 'Coca-Cola 3L'); }
+                                else if (baseId6) { extraInfo.push('Aros de Cebolla Medianas'); }
+                                else if (baseId7) { extraInfo.push('Aros de Cebolla Medianas'); }
+
+                                customizationsStr = choiceDetails + (extraInfo.length ? ` | Incluye: ${extraInfo.join(', ')}` : '');
+
+                                // Especificaciones por elección
+                                const specsPieces = [];
+                                if (Array.isArray(ci.choices)) {
+                                    ci.choices.forEach(choice => {
+                                        if (choice && choice.specifications) {
+                                            const n = choice.burger && choice.burger.name ? choice.burger.name : 'Elección';
+                                            specsPieces.push(`${n}: ${choice.specifications}`);
+                                        }
+                                    });
+                                }
+                                if (Array.isArray(ci.hotdogs)) {
+                                    ci.hotdogs.forEach((hd, idx) => {
+                                        if (hd && hd.specifications) {
+                                            specsPieces.push(`${hd.name || `Hot Dog ${idx + 1}`}: ${hd.specifications}`);
+                                        }
+                                    });
+                                }
+                                specificationsStr = specsPieces.join(' | ');
+                            } else {
+                                // ── Producto individual ──
+                                const parts = [];
+                                if (Array.isArray(ci.customizations) && ci.customizations.length) {
+                                    const custNames = ci.customizations.map(c => String(c && c.name ? c.name : '').trim()).filter(Boolean);
+                                    if (ci.boneles) {
+                                        const portionLine = custNames.find(n => /^Porci[oó]n\s*:/i.test(n));
+                                        const friesLine   = custNames.find(n => /^Papas\s*:/i.test(n));
+                                        const sauceLine   = custNames.find(n => /^Salsa[s]?\s*:/i.test(n));
+                                        const other       = custNames.filter(n => n !== portionLine && n !== friesLine && n !== sauceLine);
+                                        if (portionLine) parts.push(`+ ${portionLine}`);
+                                        if (other.length) parts.push(`+ ${other.join(', ')}`);
+                                        if (friesLine)   parts.push(friesLine);
+                                        if (sauceLine)   parts.push(sauceLine);
+                                    } else {
+                                        parts.push(`+ ${custNames.join(', ')}`);
+                                    }
+                                }
+                                if (ci.fries && ci.fries.type) parts.push(`Papas ${ci.fries.type}`);
+                                if (ci.freeFriesIncluded && ci.freeFriesIncluded.name) parts.push(`${ci.freeFriesIncluded.name} (GRATIS)`);
+                                if (ci.onionRings) parts.push('Aros de Cebolla');
+                                if (Array.isArray(ci.menuExtras) && ci.menuExtras.length) {
+                                    ci.menuExtras.forEach(ex => {
+                                        const q = Number(ex.quantity || 1) || 1;
+                                        const n = String(ex.name || '').trim();
+                                        if (n) parts.push(`${q}x ${n}`);
+                                    });
+                                }
+                                customizationsStr = parts.join(', ');
+                                specificationsStr = String(ci.specifications || '').trim();
                             }
 
                             return {
@@ -4355,12 +4508,15 @@
                                 quantity: qty,
                                 unitPrice: isFinite(unit) ? Number(unit.toFixed(2)) : 0,
                                 price: isFinite(unit) ? Number((unit * qty).toFixed(2)) : 0,
-                                customizations: parts.join(', ')
+                                customizations: customizationsStr,
+                                specifications: specificationsStr
                             };
                         });
 
                         const orderData = {
-                            customer: { name, phone, address: (deliveryType === 'delivery' ? address : 'Recoger en local - SR & SRA BURGER'), coordinates: null },
+                            customer: { name, phone, address: (deliveryType === 'delivery' ? address : 'Recoger en local - SR & SRA BURGER'), coordinates: window._manualMapCoords || null },
+                            lat: window._manualMapCoords ? window._manualMapCoords.lat : null,
+                            lng: window._manualMapCoords ? window._manualMapCoords.lng : null,
                             items: orderItems,
                             subtotal: Number(subtotal.toFixed(2)),
                             subtotalAfterDiscount: Number(subtotalAfterDiscount.toFixed(2)),
@@ -4383,6 +4539,7 @@
                     }
 
                     // Pedido manual: no enviar WhatsApp automáticamente.
+                    window._manualMapCoords = null; // limpiar coords tras guardar
                     const orderLabel = createdOrderNumber ? `\n\nNúmero de orden: ${createdOrderNumber}` : '';
                     alert(`✅ Pedido guardado correctamente.${orderLabel}`);
                     
@@ -4395,9 +4552,1034 @@
                         }
                     }, 500);
                 };
-                
+
+                // ══════════════════════════════════════════════════════
+                // CONSUMO LOCAL: registra venta sin datos de cliente
+                // ══════════════════════════════════════════════════════
+                window.__consumoLocalPlaceOrder = async function(payment) {
+                    const cart = readUnifiedCartForManual();
+                    if (!cart.length) {
+                        alert('El carrito está vacío');
+                        return;
+                    }
+
+                    let subtotal = 0;
+                    const orderItems = cart.map((ci) => {
+                        const qty = Number(ci.quantity || 1) || 1;
+                        const unit = Number(ci.price || 0);
+                        const base = ci.baseItem || {};
+                        const baseId = Number(base.id || base.productId || 0) || 0;
+                        const itemName = String(base.name || ci.name || 'Producto').trim();
+
+                        const parts = [];
+                        if (Array.isArray(ci.customizations) && ci.customizations.length) {
+                            const custNames = ci.customizations.map(c => String(c && c.name ? c.name : '').trim()).filter(Boolean);
+                            if (custNames.length) parts.push(`+ ${custNames.join(', ')}`);
+                        }
+                        if (ci.fries && ci.fries.type) parts.push(`Papas ${ci.fries.type}`);
+                        if (ci.onionRings) parts.push('Aros de Cebolla');
+
+                        subtotal += unit * qty;
+                        return {
+                            id: baseId,
+                            productId: baseId,
+                            name: itemName,
+                            quantity: qty,
+                            unitPrice: isFinite(unit) ? Number(unit.toFixed(2)) : 0,
+                            price: isFinite(unit) ? Number((unit * qty).toFixed(2)) : 0,
+                            customizations: parts.join(', '),
+                            specifications: String(ci.specifications || '').trim()
+                        };
+                    });
+
+                    const total = subtotal;
+                    const orderData = {
+                        customer: {
+                            name: 'Consumo Local',
+                            phone: '---',
+                            address: 'Consumo Local - En sitio',
+                            coordinates: null
+                        },
+                        lat: null,
+                        lng: null,
+                        items: orderItems,
+                        subtotal: Number(subtotal.toFixed(2)),
+                        subtotalAfterDiscount: Number(subtotal.toFixed(2)),
+                        deliveryFee: 0,
+                        total: Number(total.toFixed(2)),
+                        notes: 'Consumo Local (sin datos de cliente)',
+                        deliveryType: 'local',
+                        paymentMethod: payment || 'Efectivo',
+                        discountAmount: 0,
+                        discountReason: ''
+                    };
+
+                    let createdOrderNumber = null;
+                    try {
+                        if (window.firebaseOrderManager && typeof window.firebaseOrderManager.addOrder === 'function') {
+                            const res = await window.firebaseOrderManager.addOrder(orderData);
+                            createdOrderNumber = res && res.orderNumber ? res.orderNumber : null;
+                            console.log('✅ Consumo Local guardado. No. Orden:', createdOrderNumber);
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ No se pudo guardar Consumo Local en Firebase:', e);
+                    }
+
+                    const orderLabel = createdOrderNumber ? `\n\nNúmero de orden: ${createdOrderNumber}` : '';
+                    alert(`✅ Consumo Local registrado correctamente.${orderLabel}`);
+
+                    setTimeout(() => {
+                        if (confirm('¿Deseas vaciar el carrito?')) {
+                            try { localStorage.removeItem('cart'); } catch (_) {}
+                            try { localStorage.removeItem('sr_burger_cart'); } catch (_) {}
+                            location.reload();
+                        }
+                    }, 300);
+                };
+
+                // ── Bindings del modal Consumo Local ──────────────────
+                const consumoLocalBtn = document.getElementById('consumo-local-btn');
+                const consumoLocalModal = document.getElementById('consumo-local-modal');
+                const consumoLocalConfirmBtn = document.getElementById('consumo-local-confirm-btn');
+                const consumoLocalCancelBtn = document.getElementById('consumo-local-cancel-btn');
+
+                function openConsumoLocalModal() {
+                    if (!consumoLocalModal) return;
+                    // Reset radio a Efectivo
+                    const radios = consumoLocalModal.querySelectorAll('input[name="consumo-local-payment"]');
+                    radios.forEach(r => { r.checked = r.value === 'Efectivo'; });
+                    // Actualizar estilos de labels
+                    consumoLocalModal.querySelectorAll('label').forEach(lbl => {
+                        const inp = lbl.querySelector('input');
+                        if (inp) {
+                            lbl.classList.toggle('border-indigo-300', inp.checked);
+                            lbl.classList.toggle('bg-indigo-50/40', inp.checked);
+                            lbl.classList.toggle('dark:bg-indigo-900/20', inp.checked);
+                            lbl.classList.toggle('dark:border-indigo-500/30', inp.checked);
+                            lbl.classList.toggle('border-gray-200', !inp.checked);
+                            lbl.classList.toggle('dark:border-white/10', !inp.checked);
+                        }
+                    });
+                    consumoLocalModal.classList.remove('hidden');
+                    consumoLocalModal.classList.add('flex');
+                }
+
+                function closeConsumoLocalModal() {
+                    if (!consumoLocalModal) return;
+                    consumoLocalModal.classList.add('hidden');
+                    consumoLocalModal.classList.remove('flex');
+                }
+
+                if (consumoLocalBtn) {
+                    consumoLocalBtn.addEventListener('click', () => {
+                        const cart = readUnifiedCartForManual();
+                        if (!cart.length) {
+                            alert('El carrito está vacío');
+                            return;
+                        }
+                        // Cerrar el carrito lateral y abrir el modal
+                        const sidebar = document.getElementById('cart-sidebar');
+                        const overlay = document.getElementById('cart-overlay');
+                        if (sidebar) sidebar.classList.add('translate-x-full');
+                        if (overlay) overlay.classList.add('hidden');
+                        openConsumoLocalModal();
+                    });
+                }
+
+                if (consumoLocalCancelBtn) {
+                    consumoLocalCancelBtn.addEventListener('click', closeConsumoLocalModal);
+                }
+
+                if (consumoLocalModal) {
+                    consumoLocalModal.addEventListener('click', (e) => {
+                        if (e.target === consumoLocalModal) closeConsumoLocalModal();
+                    });
+                    // Actualizar estilo de labels al cambiar radio
+                    consumoLocalModal.addEventListener('change', (e) => {
+                        if (e.target.name === 'consumo-local-payment') {
+                            consumoLocalModal.querySelectorAll('label').forEach(lbl => {
+                                const inp = lbl.querySelector('input');
+                                if (!inp) return;
+                                lbl.classList.toggle('border-indigo-300', inp.checked);
+                                lbl.classList.toggle('bg-indigo-50/40', inp.checked);
+                                lbl.classList.toggle('dark:bg-indigo-900/20', inp.checked);
+                                lbl.classList.toggle('dark:border-indigo-500/30', inp.checked);
+                                lbl.classList.toggle('border-gray-200', !inp.checked);
+                                lbl.classList.toggle('dark:border-white/10', !inp.checked);
+                            });
+                        }
+                    });
+                }
+
+                if (consumoLocalConfirmBtn) {
+                    consumoLocalConfirmBtn.addEventListener('click', async () => {
+                        const selectedPayment = consumoLocalModal
+                            ? consumoLocalModal.querySelector('input[name="consumo-local-payment"]:checked')?.value || 'Efectivo'
+                            : 'Efectivo';
+                        closeConsumoLocalModal();
+                        consumoLocalConfirmBtn.disabled = true;
+                        try {
+                            await window.__consumoLocalPlaceOrder(selectedPayment);
+                        } finally {
+                            consumoLocalConfirmBtn.disabled = false;
+                        }
+                    });
+                }
+
                 console.log('✅ Implementación de placeOrder manual lista');
             }, 1000);
+        </script>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- MODAL: SELECTOR DE UBICACIÓN EN MAPA                          -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div id="map-picker-modal" class="fixed inset-0 z-[9999] hidden">
+            <!-- Overlay -->
+            <div id="map-picker-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+            <!-- Dialog -->
+            <div class="relative z-10 flex items-center justify-center min-h-screen p-4">
+                <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden" style="max-height:92vh">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-white/10 flex-shrink-0">
+                        <h3 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <i class="fas fa-map-location-dot text-green-600"></i>
+                            Ubicación del cliente
+                        </h3>
+                        <button id="close-map-picker-btn" type="button"
+                            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 transition-colors">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </div>
+                    <!-- Body -->
+                    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                        <!-- Input de búsqueda -->
+                        <div class="flex gap-2">
+                            <input id="map-picker-input" type="text"
+                                placeholder="Ej. Vicente Guerrero 19, Patria Libre"
+                                class="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 dark:bg-gray-800 dark:border-white/20 dark:text-white"/>
+                            <button id="map-picker-verify-btn" type="button"
+                                class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors whitespace-nowrap">
+                                <i class="fas fa-search"></i>
+                                Verificar
+                            </button>
+                        </div>
+                        <!-- Dirección detectada -->
+                        <div class="px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-500/30">
+                            <div class="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">Dirección detectada</div>
+                            <div id="map-picker-address" class="text-sm font-semibold text-gray-800 dark:text-gray-100">—</div>
+                        </div>
+                        <!-- Mapa -->
+                        <div id="map-picker-map-wrapper" class="hidden">
+                            <div class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-2 flex items-start gap-2 dark:bg-blue-900/20 dark:border-blue-500/30 dark:text-blue-300">
+                                <i class="fas fa-hand-pointer mt-0.5 flex-shrink-0"></i>
+                                <span>Mueve el pin o haz clic en el mapa para ajustar la ubicación exacta</span>
+                            </div>
+                            <div id="map-picker-map" class="w-full rounded-xl border border-gray-200 overflow-hidden" style="height:260px"></div>
+                        </div>
+                        <!-- Resultado distancia/costo -->
+                        <div id="map-picker-result" class="text-sm"></div>
+                    </div>
+                    <!-- Footer -->
+                    <div class="px-4 py-3 border-t border-gray-200 dark:border-white/10 flex gap-2 flex-shrink-0">
+                        <button id="map-picker-cancel-btn" type="button"
+                            class="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-white/20 text-gray-700 dark:text-gray-200 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                            Cancelar
+                        </button>
+                        <button id="map-picker-confirm-btn" type="button" disabled
+                            class="flex-1 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="fas fa-check mr-1.5"></i>
+                            Confirmar ubicación
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- LÓGICA DEL MAPA PICKER                                        -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <script>
+        (function () {
+            const RESTAURANT = { lat: 18.022398, lng: -94.546974 };
+            const RATE_PER_KM = 8;
+            const MAX_KM = 12;
+
+            // Estado del picker
+            let _map = null, _marker = null, _geocoder = null, _distSvc = null;
+            let _mapsReady = false;
+            let _revSeq = 0;
+            let _pendingSelection = null; // { lat, lng, address, distKm, fee }
+
+            // ── Helpers DOM ───────────────────────────────────────────────
+            const $ = (id) => document.getElementById(id);
+            function showResult(html, kind) {
+                const el = $('map-picker-result');
+                if (!el) return;
+                const k = { ok: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-500/30 dark:text-green-300',
+                             error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:text-red-300',
+                             info: 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-white/5 dark:border-white/10 dark:text-gray-300' };
+                el.className = 'text-sm p-3 rounded-xl border ' + (k[kind] || k.info);
+                el.innerHTML = html;
+            }
+            function clearResult() { const el = $('map-picker-result'); if (el) { el.className = 'text-sm'; el.innerHTML = ''; } }
+
+            // ── Distancias ────────────────────────────────────────────────
+            function haversineKm(lat1, lng1, lat2, lng2) {
+                const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+                const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            }
+            function kmToFee(km) {
+                if (!isFinite(km) || km <= 0) return 0;
+                if (km > MAX_KM) return null;
+                return Math.max(1, Math.round(km)) * RATE_PER_KM;
+            }
+            async function calcDistKm(lat, lng) {
+                if (_mapsReady && _distSvc) {
+                    try {
+                        const result = await new Promise((res, rej) => {
+                            _distSvc.getDistanceMatrix({
+                                origins: [new google.maps.LatLng(RESTAURANT.lat, RESTAURANT.lng)],
+                                destinations: [new google.maps.LatLng(lat, lng)],
+                                travelMode: google.maps.TravelMode.DRIVING,
+                                unitSystem: google.maps.UnitSystem.METRIC,
+                            }, (r, s) => {
+                                if (s !== 'OK') return rej(new Error(s));
+                                const elem = r.rows[0].elements[0];
+                                if (elem.status !== 'OK') return rej(new Error(elem.status));
+                                res({ km: elem.distance.value / 1000, min: Math.round(elem.duration.value / 60) });
+                            });
+                        });
+                        return result;
+                    } catch (_) { /* fallback a haversine */ }
+                }
+                return { km: haversineKm(RESTAURANT.lat, RESTAURANT.lng, lat, lng), min: null };
+            }
+
+            // ── Geocoding ─────────────────────────────────────────────────
+            async function geocodeAddress(q) {
+                if (_mapsReady && _geocoder) {
+                    return new Promise((res, rej) => {
+                        _geocoder.geocode({ address: q, region: 'MX' }, (results, status) => {
+                            if (status !== 'OK' || !results || !results[0]) return rej(new Error(status));
+                            const loc = results[0].geometry.location;
+                            res({ lat: loc.lat(), lng: loc.lng(), address: results[0].formatted_address });
+                        });
+                    });
+                }
+                // Fallback servidor
+                const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+                const j = await r.json();
+                if (!r.ok || !j.ok || !j.data[0]) throw new Error(j.error || 'Sin resultados');
+                const d = j.data[0];
+                return { lat: Number(d.lat), lng: Number(d.lon), address: d.display_name };
+            }
+            async function reverseGeocode(lat, lng) {
+                if (_mapsReady && _geocoder) {
+                    return new Promise((res, rej) => {
+                        _geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                            if (status !== 'OK' || !results[0]) return rej(new Error(status));
+                            res(results[0].formatted_address);
+                        });
+                    });
+                }
+                const r = await fetch(`/api/reverse-geocode?lat=${lat}&lng=${lng}`);
+                const j = await r.json();
+                if (!r.ok || !j.ok) throw new Error(j.error || 'Error');
+                return (j.data && j.data.display_name) || '';
+            }
+
+            // ── Mapa ──────────────────────────────────────────────────────
+            function ensureMap() {
+                const wrapper = $('map-picker-map-wrapper');
+                const mapDiv  = $('map-picker-map');
+                if (!wrapper || !mapDiv) return;
+                wrapper.classList.remove('hidden');
+
+                if (!_mapsReady || !window.google || !window.google.maps) {
+                    mapDiv.innerHTML = '<div class="w-full h-full flex items-center justify-center text-sm text-gray-500">Mapa no disponible. Usa la dirección de texto.</div>';
+                    return;
+                }
+
+                if (!_map) {
+                    _map = new google.maps.Map(mapDiv, {
+                        center: new google.maps.LatLng(RESTAURANT.lat, RESTAURANT.lng),
+                        zoom: 15, mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+                    });
+                    _map.addListener('click', (e) => e && e.latLng && updatePin(e.latLng.lat(), e.latLng.lng(), true));
+                }
+                if (!_marker) {
+                    _marker = new google.maps.Marker({
+                        map: _map,
+                        position: new google.maps.LatLng(RESTAURANT.lat, RESTAURANT.lng),
+                        draggable: true,
+                    });
+                    _marker.addListener('dragend', () => {
+                        const p = _marker.getPosition();
+                        if (p) updatePin(p.lat(), p.lng(), true);
+                    });
+                }
+            }
+
+            async function updatePin(lat, lng, doReverse) {
+                if (_map && _marker) {
+                    const pos = new google.maps.LatLng(lat, lng);
+                    _marker.setPosition(pos);
+                    _map.panTo(pos);
+                }
+                // calcular distancia/costo
+                const { km, min } = await calcDistKm(lat, lng);
+                const fee = kmToFee(km);
+
+                if (fee === null) {
+                    showResult(`Distancia: <strong>${km.toFixed(1)} km</strong> — <strong>Fuera de cobertura</strong> (máx ${MAX_KM} km).`, 'error');
+                    _pendingSelection = null;
+                    $('map-picker-confirm-btn').disabled = true;
+                    return;
+                }
+
+                const etaTxt = min ? ` • ~${min} min` : '';
+                showResult(`Distancia: <strong>${km.toFixed(1)} km</strong>${etaTxt} &nbsp;|&nbsp; Costo estimado: <strong>$${fee}</strong>`, 'ok');
+
+                let addr = ($('map-picker-address').textContent !== '—') ? $('map-picker-address').textContent : '';
+
+                if (doReverse) {
+                    const seq = ++_revSeq;
+                    $('map-picker-address').textContent = 'Detectando dirección…';
+                    try {
+                        const resolved = await reverseGeocode(lat, lng);
+                        if (seq !== _revSeq) return;
+                        addr = resolved || addr;
+                        $('map-picker-address').textContent = addr || 'Ubicación ajustada';
+                        const inp = $('map-picker-input');
+                        if (inp && resolved) inp.value = resolved;
+                    } catch (_) {
+                        if (_revSeq === seq) $('map-picker-address').textContent = addr || 'Ubicación ajustada';
+                    }
+                }
+
+                _pendingSelection = { lat, lng, address: addr, distKm: km, fee };
+                $('map-picker-confirm-btn').disabled = false;
+            }
+
+            // ── Abrir / Cerrar modal ──────────────────────────────────────
+            function openModal() {
+                const modal = $('map-picker-modal');
+                if (modal) modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                // Si ya había coords previas, reposicionar
+                if (window._manualMapCoords && _map && _marker) {
+                    const pos = new google.maps.LatLng(window._manualMapCoords.lat, window._manualMapCoords.lng);
+                    _marker.setPosition(pos);
+                    _map.setCenter(pos);
+                    _map.setZoom(16);
+                }
+            }
+            function closeModal() {
+                const modal = $('map-picker-modal');
+                if (modal) modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            // ── Inicializar listeners del modal ───────────────────────────
+            function initMapPickerListeners() {
+                // Botón abrir
+                const openBtn = $('open-map-picker-btn');
+                if (openBtn) openBtn.addEventListener('click', () => {
+                    ensureMap();
+                    openModal();
+                });
+
+                // Cerrar (X, cancelar, overlay)
+                $('close-map-picker-btn')  && $('close-map-picker-btn').addEventListener('click', closeModal);
+                $('map-picker-cancel-btn') && $('map-picker-cancel-btn').addEventListener('click', closeModal);
+                $('map-picker-overlay')    && $('map-picker-overlay').addEventListener('click', closeModal);
+
+                // Verificar dirección
+                $('map-picker-verify-btn') && $('map-picker-verify-btn').addEventListener('click', async () => {
+                    const btn = $('map-picker-verify-btn');
+                    const q = ($('map-picker-input').value || '').trim();
+                    if (!q) return;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+                    clearResult();
+                    const fullQ = /minatitl[aá]n/i.test(q) ? q : q + ', Minatitlán, Veracruz';
+                    try {
+                        const geo = await geocodeAddress(fullQ);
+                        $('map-picker-address').textContent = geo.address;
+                        ensureMap();
+                        if (_map) { _map.setCenter(new google.maps.LatLng(geo.lat, geo.lng)); _map.setZoom(16); }
+                        await updatePin(geo.lat, geo.lng, false);
+                        _pendingSelection = { ...(_pendingSelection || {}), lat: geo.lat, lng: geo.lng, address: geo.address };
+                    } catch (e) {
+                        showResult('No se encontró esa dirección. Agrega número y colonia.', 'error');
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-search"></i> Verificar';
+                    }
+                });
+                // Enter en input
+                $('map-picker-input') && $('map-picker-input').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); $('map-picker-verify-btn').click(); }
+                });
+
+                // Confirmar
+                $('map-picker-confirm-btn') && $('map-picker-confirm-btn').addEventListener('click', () => {
+                    if (!_pendingSelection) return;
+                    const { lat, lng, address, distKm, fee } = _pendingSelection;
+
+                    // Rellenar campos del formulario de checkout
+                    const addrField = $('manual-address');
+                    if (addrField && address) addrField.value = address;
+
+                    const costField = $('manual-delivery-cost');
+                    if (costField && fee != null) {
+                        costField.value = fee;
+                        // Disparar evento para que el checkout recalcule el total
+                        costField.dispatchEvent(new Event('input', { bubbles: true }));
+                        costField.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+
+                    // Guardar coords para el orderData
+                    window._manualMapCoords = { lat, lng };
+
+                    // Mostrar badge de confirmación
+                    const badge   = $('map-location-badge');
+                    const summary = $('map-location-summary');
+                    if (badge) badge.classList.remove('hidden');
+                    if (summary) summary.textContent = `${address ? address.slice(0, 60) + (address.length > 60 ? '…' : '') : ''} · ${distKm.toFixed(1)} km · $${fee}`;
+
+                    closeModal();
+
+                    // Forzar re-validación del formulario (script.js.backup lo exporta a window)
+                    if (typeof window.validateCheckoutForm === 'function') window.validateCheckoutForm();
+                });
+
+                // Borrar ubicación
+                $('clear-map-location-btn') && $('clear-map-location-btn').addEventListener('click', () => {
+                    window._manualMapCoords = null;
+                    _pendingSelection = null;
+                    $('map-location-badge').classList.add('hidden');
+                    const addrF = $('manual-address');
+                    if (addrF) { addrF.value = ''; addrF.dispatchEvent(new Event('input', {bubbles:true})); }
+                    const c = $('manual-delivery-cost'); if (c) { c.value = 0; c.dispatchEvent(new Event('input', {bubbles:true})); c.dispatchEvent(new Event('change', {bubbles:true})); }
+                    if (typeof window.validateCheckoutForm === 'function') window.validateCheckoutForm();
+                });
+            }
+
+            // ── Hook al callback de Google Maps ──────────────────────────
+            const _origInit = window.initializeGoogleMaps;
+            window.initializeGoogleMaps = function() {
+                if (typeof _origInit === 'function') _origInit.apply(this, arguments);
+                if (window.google && window.google.maps) {
+                    _mapsReady = true;
+                    _geocoder = new google.maps.Geocoder();
+                    _distSvc  = new google.maps.DistanceMatrixService();
+                }
+            };
+            // Si Maps ya estaba listo antes de que este script corriera
+            if (window.google && window.google.maps) {
+                _mapsReady = true;
+                try { _geocoder = new google.maps.Geocoder(); } catch(_) {}
+                try { _distSvc  = new google.maps.DistanceMatrixService(); } catch(_) {}
+            }
+
+            // Inicializar listeners cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initMapPickerListeners);
+            } else {
+                initMapPickerListeners();
+            }
+        })();
+        </script>
+
+        <!-- Google Maps API Key + Loader -->
+        <script>window.GMAPS_API_KEY = window.GMAPS_API_KEY || 'AIzaSyBBl4jAWjUWqTZN9pZiyf44d6X1bVpKeIU';</script>
+        <script src="js/maps-loader.js"></script>
+
+        <!-- ===== PEDIDO POR ESCRITO CON IA ===== -->
+        <!-- Modal -->
+        <div id="ai-order-modal" class="fixed inset-0 z-[300] hidden" style="background:rgba(0,0,0,.7);backdrop-filter:blur(6px)">
+          <div class="flex flex-col h-full max-w-xl mx-auto">
+            <div class="flex-1 overflow-hidden flex flex-col m-3 mt-10 rounded-3xl shadow-2xl" style="background:#1e1b4b">
+
+              <!-- Header -->
+              <div class="flex items-center justify-between px-5 py-4 border-b border-violet-700">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-xl">&#129302;</div>
+                  <div>
+                    <div class="font-bold text-white text-sm">Asistente IA &mdash; SR &amp; SRA BURGER</div>
+                    <div class="text-xs text-violet-300">Pega o escribe el pedido y lo preparo autom&aacute;ticamente</div>
+                  </div>
+                </div>
+                <button id="ai-modal-close" class="w-8 h-8 rounded-full bg-violet-800 hover:bg-violet-700 flex items-center justify-center text-white text-sm">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <!-- Chat area -->
+              <div id="ai-chat-area" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm" style="scroll-behavior:smooth"></div>
+
+              <!-- Input -->
+              <div class="p-3 border-t border-violet-700 bg-violet-900/60" id="ai-input-section">
+                <div class="flex gap-2">
+                  <textarea id="ai-order-text" rows="3"
+                    placeholder="Ej: 2 hambur guesas clásica, papas gajo, para María, tel 9221234567, envio a Calle Puebla 14&#10;&#10;O pega directamente el mensaje de WhatsApp..."
+                    class="flex-1 bg-violet-800 text-white placeholder-violet-400 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400"></textarea>
+                  <button id="ai-send-btn" class="px-4 rounded-xl font-bold text-white flex flex-col items-center justify-center gap-1 text-xs" style="background:linear-gradient(135deg,#7c3aed,#a855f7);min-width:56px">
+                    <i class="fas fa-paper-plane text-base"></i>
+                    Enviar
+                  </button>
+                </div>
+              </div>
+
+              <!-- Confirm bar (hidden until results) -->
+              <div id="ai-confirm-bar" class="hidden p-3 border-t border-violet-700 flex gap-2">
+                <button id="ai-confirm-btn" class="flex-1 py-3 rounded-xl font-bold text-slate-900 text-sm" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">
+                  <i class="fas fa-cart-plus mr-1"></i> Agregar al carrito
+                </button>
+                <button id="ai-retry-btn" class="px-4 rounded-xl border border-violet-500 text-violet-300 text-sm font-semibold hover:bg-violet-800">
+                  <i class="fas fa-redo"></i>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <script>
+        (function() {
+          const GEMINI_KEY = 'AIzaSyBEK2yXXY2znq664C2A8wFVRLaPL9hf_vg';
+          const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+
+          let _lastParsed = null; // resultado procesado por IA
+
+          // ── Abrir / cerrar modal ─────────────────────────────────────────
+          document.getElementById('ai-order-btn').addEventListener('click', () => {
+            _lastParsed = null;
+            document.getElementById('ai-chat-area').innerHTML = '';
+            document.getElementById('ai-order-text').value = '';
+            document.getElementById('ai-confirm-bar').classList.add('hidden');
+            document.getElementById('ai-input-section').classList.remove('hidden');
+            document.getElementById('ai-order-modal').classList.remove('hidden');
+            addBubble('bot', '&#128075; Hola! Pega aquí el pedido de WhatsApp o escíbelo en texto libre. Yo identificaré los productos del menú y armaré el carrito automáticamente.');
+          });
+
+          document.getElementById('ai-modal-close').addEventListener('click', () => {
+            document.getElementById('ai-order-modal').classList.add('hidden');
+          });
+
+          // ── Chat bubbles ──────────────────────────────────────────────────
+          function addBubble(role, html, extraClass) {
+            const area = document.getElementById('ai-chat-area');
+            const wrap = document.createElement('div');
+            wrap.className = role === 'user'
+              ? 'flex justify-end'
+              : 'flex justify-start';
+            const bubble = document.createElement('div');
+            bubble.className = [
+              'max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow',
+              role === 'user'
+                ? 'bg-violet-600 text-white rounded-tr-sm'
+                : 'bg-white/10 text-white rounded-tl-sm',
+              extraClass || ''
+            ].filter(Boolean).join(' ');
+            bubble.innerHTML = html;
+            wrap.appendChild(bubble);
+            area.appendChild(wrap);
+            area.scrollTop = area.scrollHeight;
+            return bubble;
+          }
+
+          function addTyping() {
+            return addBubble('bot', '<span class="inline-flex gap-1 items-center"><span class="w-2 h-2 rounded-full bg-violet-300 animate-bounce" style="animation-delay:0ms"></span><span class="w-2 h-2 rounded-full bg-violet-300 animate-bounce" style="animation-delay:150ms"></span><span class="w-2 h-2 rounded-full bg-violet-300 animate-bounce" style="animation-delay:300ms"></span></span>');
+          }
+
+          // ── Enviar pedido a Gemini ────────────────────────────────────────
+          document.getElementById('ai-send-btn').addEventListener('click', processOrder);
+          document.getElementById('ai-order-text').addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') processOrder();
+          });
+
+          async function processOrder() {
+            const text = document.getElementById('ai-order-text').value.trim();
+            if (!text) return;
+
+            document.getElementById('ai-order-text').value = '';
+            document.getElementById('ai-confirm-bar').classList.add('hidden');
+            addBubble('user', escHtml(text));
+
+            const typing = addTyping();
+
+            // Obtener menú plano (esperar hasta que esté disponible)
+            const menuFlat = typeof window._srGetMenuFlat === 'function'
+              ? window._srGetMenuFlat()
+              : [];
+
+            const menuJson = JSON.stringify(menuFlat.map(i => ({
+              id: i.id, nombre: i.name, categoria: i.category,
+              precio: i.price, descripcion: i.description
+            })), null, 2);
+
+            const toppings = typeof window._srGetToppings === 'function' ? window._srGetToppings() : [];
+            const menuExtras = typeof window._srGetMenuExtras === 'function' ? window._srGetMenuExtras() : [];
+            const friesPrice = typeof window._srGetFriesPrice === 'function' ? window._srGetFriesPrice() : 25;
+            const onionPrice = typeof window._srGetOnionRingsPrice === 'function' ? window._srGetOnionRingsPrice() : 25;
+
+            const toppingsJson = JSON.stringify(toppings.map(t => ({ nombre: t.name, precio: t.price })));
+            const extrasJson = JSON.stringify(menuExtras.map(e => ({ id: e.id, nombre: e.name, precio: e.price })));
+
+            const prompt = [
+              'Eres un sistema de toma de pedidos para un restaurante de hamburguesas llamado "SR & SRA BURGER".',
+              '',
+              'LISTA COMPLETA DEL MENÚ (JSON):',
+              menuJson,
+              '',
+              'TOPPINGS DISPONIBLES (se agregan dentro del producto, precio adicional):',
+              toppingsJson,
+              '',
+              `ACOMPAÑAMIENTO: papas tipo Gajo o Francesas (+${friesPrice}), aros de cebolla (+${onionPrice})`,
+              '',
+              'EXTRAS DEL MENÚ (productos independientes que se agregan al ítem):',
+              extrasJson,
+              '',
+              'Dado el siguiente texto de pedido (puede ser un mensaje de WhatsApp copiado, texto libre o plantilla estructurada con emojis),',
+              'extrae y devuelve EXCLUSIVAMENTE un objeto JSON válido (sin markdown, sin texto adicional):',
+              '{',
+              '  "items": [',
+              '    {',
+              '      "id": ID_NUMERO,',
+              '      "name": "nombre exacto del menú",',
+              '      "quantity": CANTIDAD,',
+              '      "specifications": "indicaciones SOLO de preparación (ej: sin cebolla, bien cocida, salsa BBQ Picante)",',
+              '      "toppings": ["nombre exacto de topping"],',
+              '      "fries": "Gajo" | "Francesas" | null,',
+              '      "onionRings": true | false,',
+              '      "menuExtras": [ { "id": ID_EXTRA, "quantity": 1 } ],',
+              '      "bonelesGrams": 250 | 500 | 1000 | null',
+              '    }',
+              '  ],',
+
+              '  "customerName": "...",',
+              '  "customerPhone": "...",',
+              '  "address": "...",',
+              '  "deliveryType": "pickup" | "delivery",',
+              '  "deliveryCost": numero_o_null,',
+              '  "paymentMethod": "Efectivo" | "Tarjeta" | "Transferencia" | null,',
+              '  "paymentAmount": numero_o_null,',
+              '  "notes": ""',
+              '}',
+              'Reglas generales:',
+              '- Solo incluye productos que existan en el menú (usa el ID numérico exacto).',
+              '- Si no se menciona teléfono, nombre o dirección, pon "".',
+              '- Si se menciona dirección de entrega o hay campo "Dirección:", deliveryType = "delivery".',
+              '- Si dice "para llevar" sin dirección, deliveryType = "pickup".',
+              '- Si hay dirección explícita y no se dice "para llevar", asume "delivery".',
+              '- Limpia el teléfono: solo dígitos (quita @lid, @c.us, etc.).',
+              '- Si se menciona "Paga con: $X" o "paga con", ese valor es paymentAmount y paymentMethod = "Efectivo".',
+              '- Si se menciona "transferencia", paymentMethod = "Transferencia".',
+              '- Si se menciona "tarjeta", paymentMethod = "Tarjeta".',
+              '- Si se menciona costo de envío ("envío: $X", "costo envío X"), usa ese valor como deliveryCost.',
+              'Reglas para toppings, papas y especificaciones:',
+              '- En "toppings" solo pon nombres que estén en la lista de toppings disponibles.',
+              '- Si el texto contiene "Especificaciones:" o describe ingredientes mezclados, SEPARA así:',
+              '    * "papas gajo" / "papas a la francesa" como acompañamiento del ítem → fries: "Gajo" o "Francesas"',
+              '    * "papas gajo medianas/grandes", "papas francesas medianas/grandes", "salchipapas" → menuExtras (usa ID correcto)',
+              '    * Salsas de boneles ("BBQ Picante", "BBQ Dulce", "Natural", "Parmesano Ranch") → specifications',
+              '    * Otras indicaciones de preparación → specifications',
+              '- specifications debe omitir lo que ya fue capturado en toppings, fries u onionRings.',
+              '- Para productos de la categoría "Boneles" (porciones de pollo): si se menciona peso:',
+              '    * "500 gramos" / "500g" / "medio kilo" → bonelesGrams = 500',
+              '    * "1000 gramos" / "1000g" / "1 kilo" / "1 kg" / "1kg" → bonelesGrams = 1000',
+              '    * "250 gramos" / "250g" → bonelesGrams = 250',
+              '    * Sin mención de peso → bonelesGrams = null',
+              '    * Para Boneles: papas (Gajo/Francesas) = fries, salsa (BBQ DULCE/BBQ PICANTE/RANCH PARMESANO) = specifications',
+              '',
+              'TEXTO DEL PEDIDO:',
+              text
+            ].join('\n');
+
+            let parsed = null;
+            try {
+              const resp = await fetch(GEMINI_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+                })
+              });
+              if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+              const data = await resp.json();
+              let raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              // Quitar markdown si viene envuelto
+              raw = raw.replace(/^```[^\n]*\n?/,'').replace(/```$/,'').trim();
+              parsed = JSON.parse(raw);
+            } catch (e) {
+              if (typing.parentElement) typing.parentElement.remove();
+              addBubble('bot', `&#10060; Ocurrió un error al procesar el pedido: <b>${escHtml(e.message)}</b>. Inténtalo de nuevo.`);
+              return;
+            }
+
+            if (typing.parentElement) typing.parentElement.remove();
+
+            // Mostrar resultado
+            _lastParsed = parsed;
+            renderResults(parsed, menuFlat);
+          }
+
+          function renderResults(parsed, menuFlat) {
+            const items = Array.isArray(parsed.items) ? parsed.items : [];
+            if (!items.length) {
+              addBubble('bot', '&#128533; No pude identificar ningún producto del menú en ese texto. Inténtalo con más detalle.');
+              return;
+            }
+
+            // Mapear nombres para mostrar
+            const lines = items.map(it => {
+              const menu = menuFlat.find(m => Number(m.id) === Number(it.id));
+              const name = menu ? menu.name : it.name;
+              const basePrice = menu ? menu.price : 0;
+              const _tRef = typeof window._srGetToppings === 'function' ? window._srGetToppings() : [];
+              const _eRef = typeof window._srGetMenuExtras === 'function' ? window._srGetMenuExtras() : [];
+              const _fp   = typeof window._srGetFriesPrice === 'function' ? window._srGetFriesPrice() : 25;
+              const _op   = typeof window._srGetOnionRingsPrice === 'function' ? window._srGetOnionRingsPrice() : 25;
+              // Detectar si es Boneles para precio y preview especial
+              const _isBonelesPreview = !!(it.bonelesGrams ||
+                (menu && String(menu.categoria || '').toLowerCase() === 'boneles'));
+              let sub = 0;
+              let bonelesLine = '';
+              if (_isBonelesPreview) {
+                const _BPRICES = { 250: basePrice, 500: 250, 1000: 480 };
+                const _bg = [250, 500, 1000].includes(Number(it.bonelesGrams)) ? Number(it.bonelesGrams) : 250;
+                sub = (_BPRICES[_bg] || basePrice) * (it.quantity || 1);
+                const _sauce = it.specifications || '';
+                const _ftype = it.fries || '';
+                bonelesLine = ` <span class="text-amber-200 text-xs">⚖️ ${_bg}g${_ftype ? ` · ${escHtml(_ftype)}` : ''}${_sauce ? ` · ${escHtml(_sauce)}` : ''}</span>`;
+              } else {
+                let extras = 0;
+                if (Array.isArray(it.toppings)) it.toppings.forEach(tn => { const t = _tRef.find(t => t.name.toLowerCase() === tn.toLowerCase()); extras += t ? t.price : 0; });
+                if (it.fries) extras += _fp;
+                if (it.onionRings) extras += _op;
+                if (Array.isArray(it.menuExtras)) it.menuExtras.forEach(me => { const e = _eRef.find(e => e.id === me.id); extras += e ? e.price * (me.quantity || 1) : 0; });
+                sub = (basePrice + extras) * (it.quantity || 1);
+              }
+              const spec = (!_isBonelesPreview && it.specifications) ? ` <span class="text-violet-300">(${escHtml(it.specifications)})</span>` : '';
+              const toppingLine = (!_isBonelesPreview && it.toppings && it.toppings.length) ? ` <span class="text-violet-300 text-xs">+ ${it.toppings.map(escHtml).join(', ')}</span>` : '';
+              const friesLine = (!_isBonelesPreview && it.fries) ? ` <span class="text-violet-300 text-xs">🍟 Papas ${escHtml(it.fries)}</span>` : '';
+              const onionLine = it.onionRings ? ` <span class="text-violet-300 text-xs">🧅 Aros</span>` : '';
+              const extrasLine = it.menuExtras && it.menuExtras.length ? ` <span class="text-violet-300 text-xs">${it.menuExtras.length} extra(s)</span>` : '';
+              return `<div class="flex justify-between gap-2"><span><b>${it.quantity}x</b> ${escHtml(name)}${bonelesLine}${spec}${toppingLine}${friesLine}${onionLine}${extrasLine}</span><span class="text-amber-300 font-semibold">$${sub}</span></div>`;
+            }).join('');
+
+            const clientLines = [
+              parsed.customerName ? `<div>&#128100; <b>${escHtml(parsed.customerName)}</b></div>` : '',
+              parsed.customerPhone ? `<div>&#128222; ${escHtml(parsed.customerPhone)}</div>` : '',
+              parsed.address ? `<div>&#127968; ${escHtml(parsed.address)}</div>` : '',
+              parsed.deliveryType === 'delivery' ? '<div>&#128663; Envío a domicilio</div>' : '<div>&#127978; Recoge en local</div>',
+              parsed.paymentAmount ? `<div>&#128181; Paga con $${parsed.paymentAmount}</div>` : '',
+              parsed.notes ? `<div>&#128203; ${escHtml(parsed.notes)}</div>` : ''
+            ].filter(Boolean).join('');
+
+            addBubble('bot',
+              `<div class="space-y-1 text-sm">`+
+              `<div class="font-bold text-amber-300 mb-2">&#127859; Pedido identificado:</div>`+
+              lines +
+              (clientLines ? `<div class="mt-2 pt-2 border-t border-white/10 text-violet-200 space-y-0.5">${clientLines}</div>` : '') +
+              `<div class="mt-2 pt-1 text-xs text-violet-400">&#10004; Confirma para agregar al carrito</div>`+
+              `</div>`
+            );
+
+            document.getElementById('ai-confirm-bar').classList.remove('hidden');
+          }
+
+          // ── Confirmar: volcar al carrito ──────────────────────────────────
+          document.getElementById('ai-confirm-btn').addEventListener('click', () => {
+            if (!_lastParsed) return;
+            const items = Array.isArray(_lastParsed.items) ? _lastParsed.items : [];
+            if (!items.length) return;
+
+            const _toppingsRef = typeof window._srGetToppings === 'function' ? window._srGetToppings() : [];
+            const _extrasRef   = typeof window._srGetMenuExtras === 'function' ? window._srGetMenuExtras() : [];
+            const _friesPrice  = typeof window._srGetFriesPrice === 'function' ? window._srGetFriesPrice() : 25;
+            const _onionPrice  = typeof window._srGetOnionRingsPrice === 'function' ? window._srGetOnionRingsPrice() : 25;
+
+            let added = 0;
+            items.forEach(it => {
+              const menuItem = typeof window._srFindItemById === 'function'
+                ? window._srFindItemById(it.id)
+                : null;
+              if (!menuItem) return;
+
+              // Detectar si es un ítem de la categoría Boneles (porciones de pollo)
+              const _withCat = typeof window._srFindItemByIdWithCategory === 'function'
+                ? window._srFindItemByIdWithCategory(it.id)
+                : null;
+              const _cat = _withCat ? String(_withCat.category || '').trim() : '';
+              const isBoneles = _cat.toLowerCase() === 'boneles';
+
+              if (isBoneles) {
+                // ── Lógica especial para Boneles (porciones) ──────────────────
+                const BONELES_PRICES = { 250: menuItem.price, 500: 250, 1000: 480 };
+                const grams   = [250, 500, 1000].includes(Number(it.bonelesGrams)) ? Number(it.bonelesGrams) : 250;
+                const bPrice  = typeof BONELES_PRICES[grams] === 'number' ? BONELES_PRICES[grams] : (menuItem.price || 0);
+                const friesT  = it.fries || 'Gajo';
+                const sauce   = it.specifications || 'BBQ DULCE';
+                const bonelesCustomizations = [
+                  { name: `Porción: ${grams}g`, price: 0 },
+                  { name: `Papas: ${friesT}`, price: 0 },
+                  { name: `Salsa: ${sauce}`, price: 0 }
+                ];
+                const qty = Math.max(1, parseInt(it.quantity) || 1);
+                for (let q = 0; q < qty; q++) {
+                  const cartItem = {
+                    id             : Date.now() * 100 + q,
+                    baseItem       : menuItem,
+                    customizations : bonelesCustomizations,
+                    fries          : null,
+                    onionRings     : null,
+                    menuExtras     : [],
+                    freeFriesIncluded: null,
+                    specifications : '',
+                    price          : bPrice,
+                    quantity       : 1,
+                    boneles        : { grams, friesType: friesT, sauce }
+                  };
+                  if (typeof window._srAddCartItem === 'function') {
+                    window._srAddCartItem(cartItem);
+                    added++;
+                  }
+                }
+                return; // skip normal logic
+              }
+
+              // Resolver toppings → customizations con precio
+              const customizations = [];
+              if (Array.isArray(it.toppings)) {
+                it.toppings.forEach(tName => {
+                  const tRef = _toppingsRef.find(t => t.name.toLowerCase() === tName.toLowerCase());
+                  if (tRef) customizations.push({ name: tRef.name, price: tRef.price });
+                  else customizations.push({ name: tName, price: 0 });
+                });
+              }
+              if (it.specifications) customizations.push({ name: it.specifications, price: 0 });
+
+              // Resolver papas
+              const fries = it.fries ? { type: it.fries, price: _friesPrice } : null;
+
+              // Resolver aros de cebolla
+              const onionRings = it.onionRings ? { price: _onionPrice } : null;
+
+              // Resolver extras del menú
+              const menuExtras = [];
+              if (Array.isArray(it.menuExtras)) {
+                it.menuExtras.forEach(me => {
+                  const eRef = _extrasRef.find(e => e.id === me.id);
+                  if (eRef) menuExtras.push({ id: eRef.id, name: eRef.name, price: eRef.price, quantity: me.quantity || 1 });
+                });
+              }
+
+              // Calcular precio total del ítem
+              const toppingsCost = customizations.reduce((s, c) => s + (c.price || 0), 0);
+              const friesCost    = fries ? _friesPrice : 0;
+              const onionCost    = onionRings ? _onionPrice : 0;
+              const extrasCost   = menuExtras.reduce((s, e) => s + (e.price || 0) * (e.quantity || 1), 0);
+              const itemPrice    = (typeof menuItem.price === 'number' ? menuItem.price : 0)
+                                   + toppingsCost + friesCost + onionCost + extrasCost;
+
+              const qty = Math.max(1, parseInt(it.quantity) || 1);
+              for (let q = 0; q < qty; q++) {
+                const cartItem = {
+                  id             : Date.now() * 100 + q,
+                  baseItem       : menuItem,
+                  customizations,
+                  fries,
+                  onionRings,
+                  menuExtras,
+                  freeFriesIncluded: null,
+                  specifications : it.specifications || '',
+                  price          : itemPrice,
+                  quantity       : 1
+                };
+                if (typeof window._srAddCartItem === 'function') {
+                  window._srAddCartItem(cartItem);
+                  added++;
+                }
+              }
+            });
+
+            // Pre-rellenar campos del cliente y pago
+            try {
+              const nEl  = document.getElementById('customer-name');
+              const pEl  = document.getElementById('customer-phone');
+              const aEl  = document.getElementById('manual-address');
+              const dcEl = document.getElementById('manual-delivery-cost');
+              const caEl = document.getElementById('cash-amount');
+
+              if (_lastParsed.customerName  && nEl)  nEl.value  = _lastParsed.customerName;
+              if (_lastParsed.customerPhone && pEl)  pEl.value  = _lastParsed.customerPhone;
+              if (_lastParsed.address       && aEl)  aEl.value  = _lastParsed.address;
+
+              // Tipo de entrega
+              const dtVal = _lastParsed.deliveryType;
+              if (dtVal === 'delivery' || dtVal === 'pickup') {
+                const rd = document.querySelector(`input[name="delivery-type"][value="${dtVal}"]`);
+                if (rd) { rd.checked = true; rd.dispatchEvent(new Event('change', { bubbles: true })); }
+              }
+
+              // Costo de envío
+              if (_lastParsed.deliveryCost != null && dcEl) {
+                dcEl.value = _lastParsed.deliveryCost;
+                dcEl.dispatchEvent(new Event('input', { bubbles: true }));
+                dcEl.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+
+              // Método de pago
+              const pm = _lastParsed.paymentMethod;
+              if (pm) {
+                const pr = document.querySelector(`input[name="payment"][value="${pm}"]`);
+                if (pr) { pr.checked = true; pr.dispatchEvent(new Event('change', { bubbles: true })); }
+              }
+
+              // Monto en efectivo ("paga con $X")
+              if (_lastParsed.paymentAmount != null && caEl) {
+                caEl.value = _lastParsed.paymentAmount;
+                caEl.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            } catch (_) {}
+
+            const hasInfo = !!(_lastParsed.customerName || _lastParsed.customerPhone || _lastParsed.address);
+            addBubble('bot', `&#9989; <b>${added} producto(s)</b> agregados al carrito.${
+              hasInfo ? ' <span class="text-violet-300">Datos del cliente pre-rellenados.</span>' : ''
+            } Toca "Ver carrito" o finaliza el pedido.`);
+            document.getElementById('ai-confirm-bar').classList.add('hidden');
+
+            // Abrir carrito automáticamente para que el usuario revise
+            if (typeof openCart === 'function') setTimeout(() => openCart(), 350);
+
+            _lastParsed = null;
+          });
+
+          document.getElementById('ai-retry-btn').addEventListener('click', () => {
+            _lastParsed = null;
+            document.getElementById('ai-confirm-bar').classList.add('hidden');
+            addBubble('bot', 'Listo, escíbeme el pedido nuevamente.');
+          });
+
+          function escHtml(s) {
+            return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+          }
+        })();
+        </script>
+        <!-- ===== FIN PEDIDO POR ESCRITO CON IA ===== -->
+
+        <!-- shim: botón lápiz en carrito → modal de personalización real -->
+        <script>
+        window._srOpenCartItemEditor = function(id) {
+            if (typeof window._srOpenCustomizationModal === 'function') {
+                window._srOpenCustomizationModal(id);
+            }
+        };
         </script>
 
 </body>

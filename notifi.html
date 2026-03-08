@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notificaciones WhatsApp — SR & SRA BURGER</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    window.tailwind && (window.tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { fontFamily: { poppins: ['Poppins','sans-serif'], inter: ['Inter','sans-serif'] } } }
+    });
+  </script>
+
+  <!-- Fuentes -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Dark mode init (antes del render) -->
+  <script>
+    (function() {
+      const t = localStorage.getItem('sr_theme');
+      if (t === 'light') document.documentElement.classList.remove('dark');
+      else document.documentElement.classList.add('dark');
+    })();
+  </script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    h1, h2, h3, .font-poppins { font-family: 'Poppins', sans-serif; }
+
+    /* Glass card */
+    .card {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+    html.dark .card {
+      background: rgba(15,23,42,0.85);
+      border-color: rgba(255,255,255,0.07);
+    }
+
+    /* Status dot */
+    .dot-connected   { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,.25); }
+    .dot-connecting  { background: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,.25); animation: pulse-dot 1.2s infinite; }
+    .dot-disconnected{ background: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,.20); }
+
+    @keyframes pulse-dot {
+      0%,100% { box-shadow: 0 0 0 4px rgba(245,158,11,.25); }
+      50%      { box-shadow: 0 0 0 9px rgba(245,158,11,.05); }
+    }
+
+    /* QR container */
+    #qr-img { image-rendering: pixelated; }
+
+    /* Group row */
+    .group-row {
+      cursor: pointer;
+      transition: background 160ms ease, transform 160ms ease;
+    }
+    .group-row:hover { background: rgba(22,163,74,.08); }
+    .group-row.selected {
+      background: rgba(22,163,74,.15);
+      border-color: rgba(22,163,74,.6);
+    }
+
+    /* Log */
+    #log-list { max-height: 220px; overflow-y: auto; }
+    #log-list li { animation: slide-in .25s ease; }
+    @keyframes slide-in { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+
+    /* Btn */
+    .btn-green {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff;
+      font-weight: 700;
+      transition: all 200ms ease;
+    }
+    .btn-green:hover   { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(22,163,74,.35); }
+    .btn-green:active  { transform: scale(.97); }
+    .btn-green:disabled{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    .btn-outline {
+      border: 1.5px solid currentColor;
+      font-weight: 600;
+      transition: background 160ms ease;
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.08); }
+
+    /* Spinner */
+    .spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-gray-100">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="sticky top-0 z-50 bg-gray-950/70 backdrop-blur border-b border-white/5 shadow-lg">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center shadow">
+          <i class="fas fa-hamburger text-white text-sm"></i>
+        </div>
+        <div>
+          <p class="font-poppins font-bold text-sm leading-tight">SR & SRA BURGER</p>
+          <p class="text-xs text-gray-400">Notificaciones WhatsApp</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Estado rápido -->
+        <div id="header-status" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold">
+          <span id="header-dot" class="w-2 h-2 rounded-full dot-disconnected"></span>
+          <span id="header-text">Desconectado</span>
+        </div>
+
+        <a href="admin.html" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition text-gray-400 hover:text-white" title="Volver">
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <button id="theme-btn" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition text-gray-400 hover:text-white" title="Tema">
+          <i class="fas fa-moon dark:hidden"></i>
+          <i class="fas fa-sun hidden dark:inline"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+    <!-- Título -->
+    <div>
+      <h1 class="font-poppins text-2xl sm:text-3xl font-bold">Notificaciones de Pedidos</h1>
+      <p class="text-gray-400 text-sm mt-1">Conecta WhatsApp y elige un grupo para recibir cada pedido automáticamente.</p>
+    </div>
+
+    <!-- ── Fila superior: Estado + QR ───────────────────────────────────── -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <!-- Tarjeta de estado -->
+      <div class="card rounded-3xl p-6 flex flex-col gap-5">
+        <div class="flex items-center justify-between">
+          <h2 class="font-poppins font-bold text-lg">Estado de conexión</h2>
+          <button id="logout-btn" class="hidden btn-outline text-red-400 border-red-400/40 px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5" title="Cerrar sesión de WhatsApp">
+            <i class="fas fa-sign-out-alt"></i> Desconectar
+          </button>
+        </div>
+
+        <!-- Indicador grande -->
+        <div class="flex flex-col items-center text-center py-4 gap-3">
+          <div id="status-icon" class="w-20 h-20 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-4xl shadow-inner transition-all duration-300">
+            <i class="fas fa-circle-notch text-gray-400 spinner" id="status-spinner"></i>
+          </div>
+          <div>
+            <p id="status-title" class="font-bold text-lg">Iniciando…</p>
+            <p id="status-sub" class="text-xs text-gray-400 mt-0.5"></p>
+          </div>
+        </div>
+
+        <!-- Info del número conectado -->
+        <div id="phone-info" class="hidden bg-green-500/10 border border-green-500/25 rounded-2xl p-4 text-center">
+          <p class="text-xs text-green-400 font-semibold uppercase tracking-wider mb-1">Número conectado</p>
+          <p id="phone-number" class="font-poppins font-bold text-xl text-green-300"></p>
+        </div>
+
+        <!-- Grupos activos -->
+        <div class="rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-white/8 p-4 space-y-3">
+          <p class="text-xs text-gray-400 uppercase font-semibold tracking-wider">Grupos configurados</p>
+          <!-- Cocina -->
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-yellow-500/20 flex items-center justify-center shrink-0">
+              <i class="fas fa-utensils text-yellow-400 text-xs"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Cocina / Pedidos</p>
+              <p id="active-group-name" class="font-bold text-yellow-300 text-sm truncate">Sin configurar</p>
+            </div>
+          </div>
+          <!-- Repartidores -->
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+              <i class="fas fa-motorcycle text-blue-400 text-xs"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Repartidores</p>
+              <p id="active-delivery-group-name" class="font-bold text-blue-300 text-sm truncate">Sin configurar</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de prueba -->
+        <div class="flex flex-col gap-2">
+          <button id="test-btn" class="btn-green rounded-2xl py-3 px-4 flex items-center justify-center gap-2 w-full hidden" disabled>
+            <i class="fab fa-whatsapp text-lg"></i>
+            Enviar prueba a Cocina
+          </button>
+          <button id="test-delivery-btn"
+            class="rounded-2xl py-3 px-4 flex items-center justify-center gap-2 w-full hidden font-bold transition-all duration-200"
+            style="border:1.5px solid rgba(59,130,246,.45); color:#93c5fd; background:transparent;"
+            onmouseover="if(!this.disabled)this.style.background='rgba(59,130,246,.12)'"
+            onmouseout="this.style.background='transparent'"
+            disabled>
+            <i class="fas fa-motorcycle text-lg"></i>
+            Enviar prueba a Repartidores
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjeta del QR -->
+      <div id="qr-card" class="card rounded-3xl p-6 flex flex-col gap-4 items-center text-center">
+        <!-- Estado: esperando QR -->
+        <div id="qr-waiting" class="flex flex-col items-center gap-3 py-6">
+          <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <i class="fas fa-circle-notch text-gray-400 text-2xl spinner"></i>
+          </div>
+          <p class="text-sm text-gray-400">Cargando código QR…</p>
+        </div>
+
+        <!-- QR disponible -->
+        <div id="qr-ready" class="hidden flex-col items-center gap-3 w-full">
+          <div class="bg-white p-3 rounded-2xl shadow-lg inline-block">
+            <img id="qr-img" src="" alt="QR WhatsApp" class="w-52 h-52 sm:w-60 sm:h-60">
+          </div>
+          <div class="space-y-1">
+            <p class="font-bold text-sm">Escanea con WhatsApp</p>
+            <p class="text-xs text-gray-400">Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo</p>
+          </div>
+          <!-- Countdown barra -->
+          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden mt-1">
+            <div id="qr-countdown" class="h-1 bg-green-500 rounded-full transition-all duration-1000" style="width:100%"></div>
+          </div>
+          <p class="text-xs text-gray-500">El QR expira en ~20 seg — se actualizará automáticamente</p>
+        </div>
+
+        <!-- Ya conectado -->
+        <div id="qr-connected" class="hidden flex-col items-center gap-3 py-6">
+          <div class="w-16 h-16 rounded-full bg-green-500/20 border-2 border-green-500/50 flex items-center justify-center">
+            <i class="fab fa-whatsapp text-green-400 text-3xl"></i>
+          </div>
+          <p class="font-bold text-green-400">¡WhatsApp conectado!</p>
+          <p class="text-xs text-gray-400">Selecciona un grupo abajo para enviar los pedidos.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Selector de grupos ────────────────────────────────────────────── -->
+    <div id="groups-section" class="card rounded-3xl p-6 space-y-4">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="font-poppins font-bold text-lg">Elegir grupo destino</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Selecciona a qué grupo asignar cada rol y haz clic en un grupo.</p>
+        </div>
+        <button id="refresh-groups-btn" class="btn-outline text-gray-300 border-white/15 px-3 py-2 rounded-xl text-sm flex items-center gap-1.5">
+          <i class="fas fa-rotate-right"></i> Actualizar lista
+        </button>
+      </div>
+
+      <!-- Tabs de rol -->
+      <div class="flex gap-1 bg-gray-800/50 border border-white/8 rounded-2xl p-1 self-start w-full sm:w-auto">
+        <button id="tab-orders"
+          class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all
+                 bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+          <i class="fas fa-utensils"></i>Cocina / Pedidos
+        </button>
+        <button id="tab-delivery"
+          class="tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all
+                 text-gray-400 hover:text-blue-300 hover:bg-blue-500/10">
+          <i class="fas fa-motorcycle"></i>Repartidores
+        </button>
+      </div>
+
+      <!-- Indicador de asignación activa -->
+      <div id="tab-hint" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/25 text-xs text-yellow-300">
+        <i class="fas fa-hand-pointer"></i>
+        <span id="tab-hint-text">Haz clic en un grupo para asignarlo como <strong>Cocina / Pedidos</strong></span>
+      </div>
+
+      <!-- Buscador -->
+      <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+        <input id="group-search" type="text" placeholder="Buscar grupo…"
+          class="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-gray-800/60 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/40 placeholder-gray-500">
+      </div>
+
+      <!-- Lista -->
+      <div id="groups-placeholder" class="text-center py-10 text-gray-400 text-sm">
+        <i class="fas fa-lock text-2xl mb-3 opacity-30 block"></i>
+        Conéctate a WhatsApp para ver tus grupos.
+      </div>
+
+      <ul id="groups-list" class="hidden space-y-2 max-h-80 overflow-y-auto pr-1">
+        <!-- Grupos dinámicos -->
+      </ul>
+
+      <div id="groups-empty" class="hidden text-center py-6 text-gray-400 text-sm">
+        No se encontraron grupos.
+      </div>
+
+      <div id="groups-loading" class="hidden text-center py-6">
+        <i class="fas fa-circle-notch text-green-400 text-xl spinner"></i>
+        <p class="text-sm text-gray-400 mt-2">Cargando grupos…</p>
+      </div>
+    </div>
+
+    <!-- ── Log de notificaciones enviadas ────────────────────────────────── -->
+    <div class="card rounded-3xl p-6 space-y-3">
+      <div class="flex items-center justify-between">
+        <h2 class="font-poppins font-bold text-lg">Registro de notificaciones</h2>
+        <button id="clear-log-btn" class="btn-outline text-gray-400 border-white/10 px-3 py-1.5 rounded-xl text-xs">
+          <i class="fas fa-trash-alt mr-1"></i>Limpiar
+        </button>
+      </div>
+      <ul id="log-list" class="space-y-2 text-sm">
+        <li id="log-empty" class="text-gray-500 text-center py-4">Sin notificaciones aún.</li>
+      </ul>
+    </div>
+
+  </main>
+
+  <!-- ── Scripts ─────────────────────────────────────────────────────────── -->
+  <script>
+  (() => {
+    // ── Tema ──────────────────────────────────────────────────────────────
+    document.getElementById('theme-btn').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sr_theme', isDark ? 'dark' : 'light');
+    });
+
+    // ── Estado ────────────────────────────────────────────────────────────
+    let currentState = 'init'; // 'init' | 'qr' | 'connected' | 'disconnected'
+    let allGroups    = [];
+    let savedGroupId           = null;   // Cocina / Pedidos
+    let savedGroupName         = null;
+    let savedDeliveryGroupId   = null;   // Repartidores
+    let savedDeliveryGroupName = null;
+    let activeTab = 'orders'; // 'orders' | 'delivery'
+
+    const headerDot    = document.getElementById('header-dot');
+    const headerText   = document.getElementById('header-text');
+    const statusIcon   = document.getElementById('status-icon');
+    const statusTitle  = document.getElementById('status-title');
+    const statusSub    = document.getElementById('status-sub');
+    const phoneInfo    = document.getElementById('phone-info');
+    const phoneNumber  = document.getElementById('phone-number');
+    const activeGroup         = document.getElementById('active-group-name');
+    const activeDeliveryGroup = document.getElementById('active-delivery-group-name');
+    const testBtn         = document.getElementById('test-btn');
+    const testDeliveryBtn  = document.getElementById('test-delivery-btn');
+    const logoutBtn        = document.getElementById('logout-btn');
+    const qrWaiting    = document.getElementById('qr-waiting');
+    const qrReady      = document.getElementById('qr-ready');
+    const qrConnected  = document.getElementById('qr-connected');
+    const qrImg        = document.getElementById('qr-img');
+    const groupsPlaceholder = document.getElementById('groups-placeholder');
+    const groupsList   = document.getElementById('groups-list');
+    const groupsEmpty  = document.getElementById('groups-empty');
+    const groupsLoading= document.getElementById('groups-loading');
+    const groupSearch  = document.getElementById('group-search');
+
+    function setQrState(mode) {
+      // mode: 'waiting' | 'ready' | 'connected'
+      qrWaiting.style.display   = mode === 'waiting'   ? 'flex' : 'none';
+      qrReady.style.display     = mode === 'ready'     ? 'flex' : 'none';
+      qrConnected.style.display = mode === 'connected' ? 'flex' : 'none';
+    }
+    setQrState('waiting');
+
+    function applyConnectedUI(phone) {
+      // Header
+      headerDot.className  = 'w-2 h-2 rounded-full dot-connected';
+      headerText.textContent = 'Conectado';
+
+      // Status card
+      statusIcon.innerHTML = '<i class="fab fa-whatsapp text-green-400"></i>';
+      statusIcon.classList.replace('bg-gray-100','bg-green-500/20');
+      statusTitle.textContent = '¡Conectado!';
+      statusSub.textContent   = 'WhatsApp Web activo';
+
+      if (phone) {
+        phoneNumber.textContent  = '+' + phone;
+        phoneInfo.classList.remove('hidden');
+      }
+
+      testBtn.classList.remove('hidden');
+      testBtn.disabled = !savedGroupId;
+      testDeliveryBtn.classList.remove('hidden');
+      testDeliveryBtn.disabled = !savedDeliveryGroupId;
+      logoutBtn.classList.remove('hidden');
+
+      // Si ya tenemos config (loadConfig corrió antes que SSE), habilitar botones
+      syncTestButtons();
+
+      // QR
+      setQrState('connected');
+    }
+
+    function applyQrUI(dataUrl) {
+      headerDot.className    = 'w-2 h-2 rounded-full dot-connecting';
+      headerText.textContent  = 'Esperando escaneo';
+      statusIcon.innerHTML    = '<i class="fas fa-qrcode text-yellow-400 text-3xl"></i>';
+      statusIcon.classList.replace('bg-green-500/20','bg-yellow-500/10');
+      statusTitle.textContent = 'Escanea el QR';
+      statusSub.textContent   = 'Aún no conectado';
+      phoneInfo.classList.add('hidden');
+      testBtn.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+
+      if (dataUrl) {
+        qrImg.src = dataUrl;
+        setQrState('ready');
+        startQrCountdown();
+      }
+    }
+
+    function applyDisconnectedUI() {
+      headerDot.className    = 'w-2 h-2 rounded-full dot-disconnected';
+      headerText.textContent  = 'Desconectado';
+      statusIcon.innerHTML    = '<i class="fas fa-circle-notch text-gray-400 text-2xl spinner" id="status-spinner"></i>';
+      statusTitle.textContent = 'Desconectado';
+      statusSub.textContent   = 'Esperando conexión…';
+      phoneInfo.classList.add('hidden');
+      testBtn.classList.add('hidden');
+      testDeliveryBtn.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+      groupsList.classList.add('hidden');
+      groupsPlaceholder.classList.remove('hidden');
+      setQrState('waiting');
+    }
+
+    function applyReconnectingUI() {
+      // Reconexion automática: solo actualizar header, NO limpiar grupos ni ocultar botones
+      headerDot.className    = 'w-2 h-2 rounded-full dot-connecting';
+      headerText.textContent = 'Reconectando…';
+      // Si ya estabamos conectados, mantener icono y sub-texto con aviso de reconexion
+      if (currentState === 'connected') {
+        statusSub.textContent = 'Reconectando automáticamente…';
+      }
+    }
+
+    // QR countdown bar
+    let _qrTimer = null;
+    function startQrCountdown() {
+      const bar = document.getElementById('qr-countdown');
+      if (_qrTimer) clearInterval(_qrTimer);
+      let pct = 100;
+      const step = 100 / 20; // 20 segundos
+      _qrTimer = setInterval(() => {
+        pct = Math.max(0, pct - step);
+        bar.style.width = pct + '%';
+        if (pct <= 0) clearInterval(_qrTimer);
+      }, 1000);
+    }
+
+    // ── Cargar config guardada ────────────────────────────────────────────
+    // Sincronizar estado habilitado de los botones de prueba
+    function syncTestButtons() {
+      if (!testBtn || testBtn.classList.contains('hidden')) return;
+      testBtn.disabled         = !savedGroupId;
+      testDeliveryBtn.disabled = !savedDeliveryGroupId;
+    }
+
+    async function loadConfig() {
+      try {
+        const r = await fetch('/api/whatsapp/config');
+        const j = await r.json();
+        if (j.ok && j.config) {
+          const c = j.config;
+          // Cocina
+          if (c.groupId) {
+            savedGroupId   = c.groupId;
+            savedGroupName = c.groupName || c.groupId;
+            activeGroup.textContent = savedGroupName;
+          }
+          // Repartidores
+          if (c.deliveryGroupId) {
+            savedDeliveryGroupId   = c.deliveryGroupId;
+            savedDeliveryGroupName = c.deliveryGroupName || c.deliveryGroupId;
+            activeDeliveryGroup.textContent = savedDeliveryGroupName;
+          }
+          syncTestButtons();
+        }
+      } catch (_) {}
+    }
+
+    // ── SSE: eventos en tiempo real ───────────────────────────────────────
+    function connectSSE() {
+      const es = new EventSource('/api/whatsapp/events');
+
+      es.addEventListener('qr', (e) => {
+        const { qrDataUrl } = JSON.parse(e.data);
+        currentState = 'qr';
+        applyQrUI(qrDataUrl);
+      });
+
+      es.addEventListener('connected', (e) => {
+        const { phoneNumber: phone } = JSON.parse(e.data);
+        currentState = 'connected';
+        applyConnectedUI(phone);
+        loadGroups();
+      });
+
+      es.addEventListener('disconnected', () => {
+        currentState = 'disconnected';
+        applyDisconnectedUI();
+      });
+
+      es.addEventListener('reconnecting', () => {
+        // Solo actualizar indicador de cabecera, no destruir la UI
+        applyReconnectingUI();
+      });
+
+      es.onerror = () => {
+        // Si el servidor cae, intentar reconectar SSE en 5s
+        es.close();
+        setTimeout(connectSSE, 5000);
+      };
+    }
+
+    connectSSE();
+    loadConfig();
+
+    // ── Cargar grupos ─────────────────────────────────────────────────────
+    async function loadGroups() {
+      groupsPlaceholder.classList.add('hidden');
+      groupsEmpty.classList.add('hidden');
+      groupsList.classList.add('hidden');
+      groupsLoading.classList.remove('hidden');
+
+      try {
+        const r = await fetch('/api/whatsapp/groups');
+        const j = await r.json();
+        groupsLoading.classList.add('hidden');
+
+        if (!j.ok || !j.groups?.length) {
+          groupsEmpty.classList.remove('hidden');
+          return;
+        }
+
+        allGroups = j.groups;
+        renderGroups(allGroups);
+      } catch (_) {
+        groupsLoading.classList.add('hidden');
+        groupsEmpty.classList.remove('hidden');
+      }
+    }
+
+    function renderGroups(list) {
+      groupsList.innerHTML = '';
+      if (!list.length) {
+        groupsList.classList.add('hidden');
+        groupsEmpty.classList.remove('hidden');
+        return;
+      }
+
+      groupsEmpty.classList.add('hidden');
+      groupsList.classList.remove('hidden');
+
+      list.forEach(g => {
+        const isOrders   = g.id === savedGroupId;
+        const isDelivery = g.id === savedDeliveryGroupId;
+        const isActive   = activeTab === 'orders' ? isOrders : isDelivery;
+
+        let badges = '';
+        if (isOrders)   badges += '<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"><i class="fas fa-utensils text-[8px]"></i> Cocina</span>';
+        if (isDelivery) badges += '<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30"><i class="fas fa-motorcycle text-[8px]"></i> Repartidores</span>';
+        if (!isOrders && !isDelivery) badges += '<span class="shrink-0 text-xs text-gray-500 group-row-hint">Seleccionar</span>';
+
+        const li = document.createElement('li');
+        li.className = `group-row flex items-center justify-between gap-3 p-3 rounded-2xl border
+          border-gray-200 dark:border-white/8 ${isActive ? 'selected' : ''}`;
+        li.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0">
+              <i class="fas fa-users text-green-400 text-sm"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="font-semibold text-sm truncate">${escapeHtml(g.name)}</p>
+              <p class="text-xs text-gray-400">${g.count} participantes</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">${badges}</div>
+        `;
+        li.addEventListener('click', () => selectGroup(g.id, g.name));
+        groupsList.appendChild(li);
+      });
+    }
+
+    async function selectGroup(id, name) {
+      try {
+        const r = await fetch('/api/whatsapp/set-group', {
+          method : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body   : JSON.stringify({ groupId: id, groupName: name, type: activeTab }),
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error);
+
+        if (activeTab === 'delivery') {
+          savedDeliveryGroupId   = id;
+          savedDeliveryGroupName = name;
+          activeDeliveryGroup.textContent = name;
+          addLog('🛥', `Grupo repartidores: ${name}`, 'text-blue-400');
+        } else {
+          savedGroupId   = id;
+          savedGroupName = name;
+          activeGroup.textContent = name;
+          addLog('✅', `Grupo cocina: ${name}`, 'text-green-400');
+        }
+        syncTestButtons();
+
+        renderGroups(
+          groupSearch.value
+            ? allGroups.filter(g => g.name.toLowerCase().includes(groupSearch.value.toLowerCase()))
+            : allGroups
+        );
+      } catch (e) {
+        addLog('❌', `Error al guardar grupo: ${e.message}`, 'text-red-400');
+      }
+    }
+
+    // Buscador
+    groupSearch.addEventListener('input', () => {
+      const q = groupSearch.value.toLowerCase();
+      renderGroups(allGroups.filter(g => g.name.toLowerCase().includes(q)));
+    });
+
+    // Refrescar grupos
+    document.getElementById('refresh-groups-btn').addEventListener('click', () => {
+      if (currentState === 'connected') loadGroups();
+    });
+
+    // ── Tabs de rol ───────────────────────────────────────────────────
+    const tabOrders    = document.getElementById('tab-orders');
+    const tabDelivery  = document.getElementById('tab-delivery');
+    const tabHint      = document.getElementById('tab-hint-text');
+
+    function setTab(tab) {
+      activeTab = tab;
+      if (tab === 'orders') {
+        tabOrders.className   = 'tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all bg-yellow-500/20 text-yellow-300 border border-yellow-500/30';
+        tabDelivery.className = 'tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all text-gray-400 hover:text-blue-300 hover:bg-blue-500/10';
+        tabHint.innerHTML     = 'Haz clic en un grupo para asignarlo como <strong>Cocina / Pedidos</strong>';
+        document.getElementById('tab-hint').className = 'flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/25 text-xs text-yellow-300';
+      } else {
+        tabDelivery.className = 'tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all bg-blue-500/20 text-blue-300 border border-blue-500/30';
+        tabOrders.className   = 'tab-btn flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all text-gray-400 hover:text-yellow-300 hover:bg-yellow-500/10';
+        tabHint.innerHTML     = 'Haz clic en un grupo para asignarlo como <strong>Repartidores</strong>';
+        document.getElementById('tab-hint').className = 'flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/25 text-xs text-blue-300';
+      }
+      // Re-render para actualizar qué fila se resalta
+      if (allGroups.length) renderGroups(allGroups);
+    }
+
+    tabOrders.addEventListener('click',   () => setTab('orders'));
+    tabDelivery.addEventListener('click', () => setTab('delivery'));
+
+    // ── Mensaje de prueba ─────────────────────────────────────────────────
+    testBtn.addEventListener('click', async () => {
+      testBtn.disabled = true;
+      testBtn.innerHTML = '<i class="fas fa-circle-notch spinner mr-2"></i>Enviando…';
+      try {
+        const r = await fetch('/api/whatsapp/send-test', { method: 'POST' });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error);
+        addLog('📤', 'Mensaje de prueba enviado al grupo Cocina', 'text-blue-400');
+      } catch (e) {
+        addLog('❌', `Error al enviar prueba: ${e.message}`, 'text-red-400');
+      } finally {
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<i class="fab fa-whatsapp text-lg mr-2"></i>Enviar prueba a Cocina';
+      }
+    });
+
+    testDeliveryBtn.addEventListener('click', async () => {
+      testDeliveryBtn.disabled = true;
+      testDeliveryBtn.innerHTML = '<i class="fas fa-circle-notch spinner mr-2"></i>Enviando…';
+      try {
+        const r = await fetch('/api/whatsapp/send-test-delivery', { method: 'POST' });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error);
+        addLog('🛵', 'Mensaje de prueba enviado al grupo Repartidores', 'text-blue-400');
+      } catch (e) {
+        addLog('❌', `Error al enviar prueba repartidores: ${e.message}`, 'text-red-400');
+      } finally {
+        testDeliveryBtn.disabled = false;
+        testDeliveryBtn.innerHTML = '<i class="fas fa-motorcycle text-lg mr-2"></i>Enviar prueba a Repartidores';
+      }
+    });
+
+    // ── Logout ────────────────────────────────────────────────────────────
+    logoutBtn.addEventListener('click', async () => {
+      if (!confirm('¿Cerrar sesión de WhatsApp? Tendrás que escanear el QR de nuevo.')) return;
+      await fetch('/api/whatsapp/logout', { method: 'DELETE' });
+      addLog('🚪', 'Sesión de WhatsApp cerrada', 'text-yellow-400');
+    });
+
+    // ── Log ───────────────────────────────────────────────────────────────
+    function addLog(icon, msg, colorClass = 'text-gray-300') {
+      const empty = document.getElementById('log-empty');
+      if (empty) empty.style.display = 'none';
+
+      const li = document.createElement('li');
+      li.className = `flex items-start gap-2 p-2.5 rounded-xl bg-white/4 border border-white/5`;
+      const now = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      li.innerHTML = `
+        <span class="text-base leading-5 shrink-0">${icon}</span>
+        <div class="min-w-0 flex-1">
+          <p class="${colorClass} font-medium text-sm leading-snug">${escapeHtml(msg)}</p>
+          <p class="text-[11px] text-gray-500 mt-0.5">${now}</p>
+        </div>
+      `;
+      const list = document.getElementById('log-list');
+      list.insertBefore(li, list.firstChild);
+    }
+
+    document.getElementById('clear-log-btn').addEventListener('click', () => {
+      const list = document.getElementById('log-list');
+      list.innerHTML = '<li id="log-empty" class="text-gray-500 text-center py-4">Sin notificaciones aún.</li>';
+    });
+
+    // ── Utilidades ────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+    }
+
+    // Exponer addLog globalmente para que controldeenvios.html lo llame si está en la misma ventana
+    window._notifiAddLog = addLog;
+
+  })();
+  </script>
+
+</body>
+</html>

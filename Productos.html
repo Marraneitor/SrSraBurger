@@ -175,9 +175,13 @@
         (Array.isArray(catalog) ? catalog : []).forEach((ing) => {
           if (!ing) return;
           const id = safeText(ing.id).trim();
-          const name = safeText(ing.name).trim();
-          if (id) byId.set(id, ing);
-          if (name) byName.set(normText(name), ing);
+          // Normalizar: soportar tanto 'name' (inglés) como 'nombre' (español)
+          const name = safeText(ing.name || ing.nombre).trim();
+          const unit = safeText(ing.unit || ing.unidad).trim();
+          // Enriquecer con campos normalizados para consistencia
+          const normalized = { ...ing, name, unit };
+          if (id) byId.set(id, normalized);
+          if (name) byName.set(normText(name), normalized);
         });
         return { byId, byName };
       }
@@ -433,7 +437,8 @@
             if (!ingId || qty == null || qty <= 0) return;
             const ing = catalogIndex.byId.get(ingId);
             if (!ing) return;
-            lines.push({ ingredientId: ing.id, name: ing.name, unit: ing.unit, qty });
+            // ing ya está normalizado por getIngredientIndex (soporta nombre/name, unidad/unit)
+            lines.push({ ingredientId: ing.id, name: ing.name || ing.nombre || '', unit: ing.unit || ing.unidad || '', qty });
           });
           return { section, ingredients: lines };
         }
@@ -468,7 +473,9 @@
             firebaseSettings = next;
             productsRecipes = next[FIREBASE_RECIPES_KEY] || {};
             productionCosts = next.productionCosts || {};
-            setStatus('Receta guardada.', 'success');
+            console.log('✅ Receta guardada en Firebase para producto:', product.id);
+            console.log('📊 Total de recetas guardadas:', Object.keys(productsRecipes).length);
+            setStatus('Receta guardada en Firebase ✓', 'success');
           } catch (e) {
             console.error(e);
             setStatus('No se pudo guardar la receta en Firebase.', 'error');
@@ -814,7 +821,7 @@
           }
           const settings = await window.firebaseManager.getSettings();
           firebaseSettings = settings || {};
-          productionCosts = (firebaseSettings && firebaseSettings.productionCosts) || {};
+          productionCosts = firebaseSettings.productionCosts || {};
           ingredientsCatalog = Array.isArray(firebaseSettings[FIREBASE_ING_KEY]) ? firebaseSettings[FIREBASE_ING_KEY] : [];
           // fallback a localStorage usado por ingredientes.html
           if (!ingredientsCatalog.length) {
@@ -826,7 +833,9 @@
               ingredientsCatalog = [];
             }
           }
-          productsRecipes = (firebaseSettings && firebaseSettings[FIREBASE_RECIPES_KEY]) || {};
+          // Cargar recetas desde Firebase - usar objeto vacío solo si no existe
+          productsRecipes = firebaseSettings[FIREBASE_RECIPES_KEY] || {};
+          console.log('✅ Recetas cargadas desde Firebase:', Object.keys(productsRecipes).length, 'productos con receta');
 
           setStatus('Listo. Puedes importar recetas o editar por producto.', 'success');
           render('all');
@@ -892,8 +901,12 @@
                 await window.firebaseManager.saveSettings(next);
                 firebaseSettings = next;
                 productsRecipes = nextRecipes;
+                console.log('✅ Recetas importadas y guardadas en Firebase');
+                console.log('📦 Productos importados:', imported);
+                console.log('⏭️ Productos ignorados:', ignored);
+                console.log('📊 Total de recetas en sistema:', Object.keys(productsRecipes).length);
 
-                setStatus(`Importación lista. Recetas importadas: ${imported} · Ignoradas por nombre: ${ignored}`, 'success');
+                setStatus(`Importación lista. Recetas importadas: ${imported} · Ignoradas: ${ignored} · Total en sistema: ${Object.keys(productsRecipes).length}`, 'success');
                 render(document.getElementById('category-filter')?.value || 'all');
               } catch (e) {
                 console.error(e);
@@ -940,7 +953,12 @@
                 firebaseSettings = s || {};
                 productionCosts = firebaseSettings.productionCosts || {};
                 ingredientsCatalog = Array.isArray(firebaseSettings[FIREBASE_ING_KEY]) ? firebaseSettings[FIREBASE_ING_KEY] : ingredientsCatalog;
-                productsRecipes = firebaseSettings[FIREBASE_RECIPES_KEY] || productsRecipes;
+                // Actualizar recetas desde Firebase - siempre usar el valor más reciente
+                const newRecipes = firebaseSettings[FIREBASE_RECIPES_KEY];
+                if (newRecipes !== undefined) {
+                  productsRecipes = newRecipes || {};
+                  console.log('🔄 Recetas actualizadas desde Firebase:', Object.keys(productsRecipes).length, 'productos');
+                }
                 render(document.getElementById('category-filter')?.value || 'all');
               } catch (_) {}
             });

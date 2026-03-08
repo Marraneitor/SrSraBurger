@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Configuración White-Label</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>⚙️</text></svg>">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Variables CSS -->
+    <link rel="stylesheet" href="styles/variables.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #F8F9FA 0%, #E9ECEF 100%);
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+        
+        .input-group input,
+        .input-group textarea,
+        .input-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .input-group input:focus,
+        .input-group textarea:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .color-picker-wrapper input[type="color"] {
+            width: 60px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .btn-save {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-reset {
+            background: #EF4444;
+            color: white;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-reset:hover {
+            background: #DC2626;
+        }
+        
+        .preview-box {
+            background: white;
+            border: 2px dashed #D1D5DB;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.saved {
+            background: #10B981;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.unsaved {
+            background: #F59E0B;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #6B7280;
+        }
+        
+        .tab-button.active {
+            color: #3B82F6;
+            border-bottom-color: #3B82F6;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 mb-8 text-white shadow-xl">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h1 class="text-4xl font-black font-poppins mb-2">
+                        <i class="fas fa-cog mr-3"></i>
+                        Configuración White-Label
+                    </h1>
+                    <p class="text-blue-100 text-lg">
+                        Personaliza tu restaurante sin tocar código
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="status-indicator saved"></span>
+                    <span id="save-status" class="font-semibold">Todos los cambios guardados</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="section-card mb-0">
+            <div class="flex gap-2 border-b overflow-x-auto">
+                <button class="tab-button active" data-tab="general">
+                    <i class="fas fa-store mr-2"></i>General
+                </button>
+                <button class="tab-button" data-tab="colors">
+                    <i class="fas fa-palette mr-2"></i>Colores
+                </button>
+                <button class="tab-button" data-tab="contact">
+                    <i class="fas fa-phone mr-2"></i>Contacto
+                </button>
+                <button class="tab-button" data-tab="social">
+                    <i class="fas fa-share-alt mr-2"></i>Redes Sociales
+                </button>
+                <button class="tab-button" data-tab="hours">
+                    <i class="fas fa-clock mr-2"></i>Horarios
+                </button>
+                <button class="tab-button" data-tab="delivery">
+                    <i class="fas fa-truck mr-2"></i>Envíos
+                </button>
+                <button class="tab-button" data-tab="promos">
+                    <i class="fas fa-tags mr-2"></i>Promociones
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <form id="config-form">
+            <!-- General Tab -->
+            <div class="tab-content active" data-tab="general">
+                <div class="section-card">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-store text-blue-600 mr-3"></i>
+                        Información General
+                    </h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label for="restaurant-id">ID del Restaurante (Firebase)*</label>
+                            <input type="text" id="restaurant-id" placeholder="Ej: mi-restaurante" required>
+                            <p class="text-xs text-gray-500 mt-1">Solo letras minúsculas, números y guiones</p>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="restaurant-name">Nombre del Restaurante*</label>
+                            <input type="text" id="restaurant-name" placeholder="Ej: Mi Restaurante" required>
+                        </div>
+                        
+                        <div class="input-group md:col-span-2">
+                            <label for="restaurant-tagline">Eslogan</label>
+                            <input type="text" id="restaurant-tagline" placeholder="Ej: ¡La mejor comida de la ciudad!">
+                        </div>
+                        
+                        <div class="input-group md:col-span-2">
+                            <label for="restaurant-description">Descripción</label>
+                            <textarea id="restaurant-description" rows="4" placeholder="Describe tu restaurante..."></textarea>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="logo-type">Tipo de Logo</label>
+                            <select id="logo-type">
+                                <option value="emoji">Emoji</option>
+                                <option value="url">URL de Imagen</option>
+                                <option value="svg">Código SVG</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="logo-value">Logo</label>
+                            <input type="text" id="logo-value" placeholder="🍔 o URL de imagen">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors Tab -->
+            <div class="tab-content" data-tab="colors">
+                <div class="section-card">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-palette text-purple-600 mr-3"></i>
+                        Colores de Marca
+                    </h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label for="color-primary">Color Primario</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="color-primary" value="#16A34A">
+                                <input type="text" id="color-primary-hex" value="#16A34A" class="flex-1">
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="color-primary-dark">Color Primario Oscuro</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="color-primary-dark" value="#15803D">
+                                <input type="text" id="color-primary-dark-hex" value="#15803D" class="flex-1">
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="color-secondary">Color Secundario</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="color-secondary" value="#0B1220">
+                                <input type="text" id="color-secondary-hex" value="#0B1220" class="flex-1">
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="color-accent">Color de Acento</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="color-accent" value="#FFC72C">
+                                <input type="text" id="color-accent-hex" value="#FFC72C" class="flex-1">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-box mt-6">
+                        <h3 class="text-xl font-bold mb-4">Vista Previa</h3>
+                        <div class="flex gap-4 justify-center flex-wrap">
+                            <button type="button" id="preview-btn" class="px-8 py-3 rounded-full font-bold text-white shadow-lg">
+                                Botón de Ejemplo
+                            </button>
+                            <div id="preview-card" class="px-6 py-4 rounded-lg shadow-md">
+                                <p class="font-semibold">Tarjeta de Ejemplo</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Tab -->
+            <div class="tab-content" data-tab="contact">
+                <div class="section-card">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-phone text-green-600 mr-3"></i>
+                        Información de Contacto
+                    </h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="input-group">
+                            <label for="contact-phone">Teléfono*</label>
+                            <input type="tel" id="contact-phone" placeholder="+52 999 999 9999" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="contact-whatsapp">WhatsApp*</label>
+                            <input type="tel" id="contact-whatsapp" placeholder="+52 999 999 9999" required>
+                        </div>
+                        
+                        <div class="input-group md:col-span-2">
+                            <label for="contact-email">Email (Opcional)</label>
+                            <input type="email" id="contact-email" placeholder="contacto@mirestaurante.com">
+                        </div>
+                        
+                        <div class="input-group md:col-span-2">
+                            <h3 class="font-bold text-lg mb-4 mt-4">Dirección del Local</h3>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-street">Calle y Número*</label>
+                            <input type="text" id="address-street" placeholder="Ej: Av. Principal 123" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-neighborhood">Colonia/Barrio</label>
+                            <input type="text" id="address-neighborhood" placeholder="Ej: Centro">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-city">Ciudad*</label>
+                            <input type="text" id="address-city" placeholder="Ej: Ciudad de México" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-state">Estado/Provincia*</label>
+                            <input type="text" id="address-state" placeholder="Ej: CDMX" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-zipcode">Código Postal</label>
+                            <input type="text" id="address-zipcode" placeholder="Ej: 06000">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-country">País</label>
+                            <input type="text" id="address-country" placeholder="Ej: México" value="México">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-lat">Latitud (Coordenadas)</label>
+                            <input type="number" step="0.000001" id="address-lat" placeholder="19.432608">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="address-lng">Longitud (Coordenadas)</label>
+                            <input type="number" step="0.000001" id="address-lng" placeholder="-99.133209">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Social Tab -->
+            <div class="tab-content" data-tab="social">
+                <div class="section-card">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-share-alt text-pink-600 mr-3"></i>
+                        Redes Sociales
+                    </h2>
+                    
+                    <div class="space-y-6">
+                        <!-- Facebook -->
+                        <div class="border-l-4 border-blue-500 pl-4">
+                            <div class="flex items-center gap-3 mb-3">
+                                <i class="fab fa-facebook text-2xl text-blue-600"></i>
+                                <h3 class="font-bold text-lg">Facebook</h3>
+                                <label class="flex items-center gap-2 ml-auto">
+                                    <input type="checkbox" id="social-facebook-enabled" class="w-5 h-5">
+                                    <span class="text-sm">Habilitar</span>
+                                </label>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="input-group">
+                                    <label for="social-facebook-url">URL de Facebook</label>
+                                    <input type="url" id="social-facebook-url" placeholder="https://facebook.com/...">
+                                </div>
+                                <div class="input-group">
+                                    <label for="social-facebook-username">Nombre de Usuario</label>
+                                    <input type="text" id="social-facebook-username" placeholder="@mirestaurante">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Instagram -->
+                        <div class="border-l-4 border-pink-500 pl-4">
+                            <div class="flex items-center gap-3 mb-3">
+                                <i class="fab fa-instagram text-2xl text-pink-600"></i>
+                                <h3 class="font-bold text-lg">Instagram</h3>
+                                <label class="flex items-center gap-2 ml-auto">
+                                    <input type="checkbox" id="social-instagram-enabled" class="w-5 h-5">
+                                    <span class="text-sm">Habilitar</span>
+                                </label>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="input-group">
+                                    <label for="social-instagram-url">URL de Instagram</label>
+                                    <input type="url" id="social-instagram-url" placeholder="https://instagram.com/...">
+                                </div>
+                                <div class="input-group">
+                                    <label for="social-instagram-username">Usuario</label>
+                                    <input type="text" id="social-instagram-username" placeholder="@mirestaurante">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- TikTok -->
+                        <div class="border-l-4 border-gray-800 pl-4">
+                            <div class="flex items-center gap-3 mb-3">
+                                <i class="fab fa-tiktok text-2xl"></i>
+                                <h3 class="font-bold text-lg">TikTok</h3>
+                                <label class="flex items-center gap-2 ml-auto">
+                                    <input type="checkbox" id="social-tiktok-enabled" class="w-5 h-5">
+                                    <span class="text-sm">Habilitar</span>
+                                </label>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="input-group">
+                                    <label for="social-tiktok-url">URL de TikTok</label>
+                                    <input type="url" id="social-tiktok-url" placeholder="https://tiktok.com/@...">
+                                </div>
+                                <div class="input-group">
+                                    <label for="social-tiktok-username">Usuario</label>
+                                    <input type="text" id="social-tiktok-username" placeholder="@mirestaurante">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Twitter -->
+                        <div class="border-l-4 border-blue-400 pl-4">
+                            <div class="flex items-center gap-3 mb-3">
+                                <i class="fab fa-twitter text-2xl text-blue-400"></i>
+                                <h3 class="font-bold text-lg">Twitter/X</h3>
+                                <label class="flex items-center gap-2 ml-auto">
+                                    <input type="checkbox" id="social-twitter-enabled" class="w-5 h-5">
+                                    <span class="text-sm">Habilitar</span>
+                                </label>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="input-group">
+                                    <label for="social-twitter-url">URL de Twitter</label>
+                                    <input type="url" id="social-twitter-url" placeholder="https://twitter.com/...">
+                                </div>
+                                <div class="input-group">
+                                    <label for="social-twitter-username">Usuario</label>
+                                    <input type="text" id="social-twitter-username" placeholder="@mirestaurante">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hours Tab -->
+            <div class="tab-content" data-tab="hours">
+                <div class="section-card">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-clock text-blue-600 mr-3"></i>
+                        Horarios de Atención
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="input-group">
+                            <label for="hours-display">Texto Visible (Simplificado)</label>
+                            <input type="text" id="hours-display" placeholder="Ej: Lunes a Domingo de 3:00 PM a 12:00 AM">
+                        </div>
+                        
+                        <hr class="my-6">
+                        
+                        <h3 class="font-bold text-lg mb-4">Horarios Detallados por Día</h3>
+                        
+                        <!-- Repetir para cada día -->
+                        <div class="grid md:grid-cols-4 gap-4 items-end border-b pb-4" data-day="monday">
+                            <div class="input-group">
+                                <label>Lunes</label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="day-closed w-5 h-5" data-day="monday">
+                                    <span class="text-sm">Cerrado</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label>Apertura</label>
+                                <input type="time" class="day-open" data-day="monday" value="15:00">
+                            </div>
+                            <div class="input-group">
+                                <label>Cierre</label>
+                                <input type="time" class="day-close" data-day="monday" value="00:00">
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-4 gap-4 items-end border-b pb-4" data-day="tuesday">
+                            <div class="input-group">
+                                <label>Martes</label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="day-closed w-5 h-5" data-day="tuesday">
+                                    <span class="text-sm">Cerrado</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label>Apertura</label>
+                                <input type="time" class="day-open" data-day="tuesday" value="15:00">
+                            </div>
+                            <div class="input-group">
+                                <label>Cierre</label>
+                                <input type="time" class="day-close" data-day="tuesday" value="00:00">
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-4 gap-4 items-end border-b pb-4" data-day="wednesday">
+                            <div class="input-group">
+                                <label>Miércoles</label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="day-closed w-5 h-5" data-day="wednesday">
+                                    <span class="text-sm">Cerrado</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label>Apertura</label>
+                                <input type="time" class="day-open" data-day="wednesday" value="15:00">
+                            </div>
+                            <div class="input-group">
+                                <label>Cierre</label>
+                                <input type="time" class="day-close" data-day="wednesday" value="00:00">
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-4 gap-4 items-end border-b pb-4" data-day="thursday">
+                            <div class="input-group">
+                                <label>Jueves</label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="day-closed w-5 h-5" data-day="thursday">
+                                    <span class="text-sm">Cerrado</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label>Apertura</label>
+                                <input type="time" class="day-open" data-day="thursday" value="15:00">
+                            </div>
+                            <div class="input-group">
+                                <label>Cierre</label>
+                                <input type="time" class="day-close" data-day="thursday" value="00:00">
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-4 gap-4 items-end border-b pb-4" data-day="friday">
+                            <div class="input-group">
+                                <label>Viernes</label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="day-closed w-5 h-5" data-day="friday">
+                                    <span class="text-sm">Cerrado</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label>Apertura</label>
+                                <input type="time" class="day-open" data-day="friday" value="15:00">
+                            </div>
+                            <div class="input-group">
+                                <label>Cierre</label>
+                                <input type="time" class="day-close" data-day="friday" value="00:00">
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-4 gap-4 items-end border-b pb-4" data-day="saturday">
+                            <div class="input-group">
+                                <label>Sábado</label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="day-closed w-5 h-5" data-day="saturday">
+                                    <span class="text-sm">Cerrado</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label>Apertura</label>
+                                <input type="time" class="day-open" data-day="saturday" value="15:00">
+                            </div>
+                            <div class="input-group">
+                                <label>Cierre</label>
+                                <input type="time" class="day-close" data-day="saturday" value="00:00">
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-4 gap-4 items-end border-b pb-4" data-day="sunday">
+                            <div class="input-group">
+                                <label>Domingo</label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="day-closed w-5 h-5" data-day="sunday">
+                                    <span class="text-sm">Cerrado</span>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label>Apertura</label>
+                                <input type="time" class="day-open" data-day="sunday" value="15:00">
+                            </div>
+                            <div class="input-group">
+                                <label>Cierre</label>
+                                <input type="time" class="day-close" data-day="sunday" value="00:00">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivery Tab -->
+            <div class="tab-content" data-tab="delivery">
+                <div class="section-card">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-truck text-green-600 mr-3"></i>
+                        Configuración de Envíos
+                    </h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="input-group md:col-span-2">
+                            <label class="flex items-center gap-3">
+                                <input type="checkbox" id="delivery-enabled" class="w-5 h-5" checked>
+                                <span class="font-bold">¿Ofreces servicio a domicilio?</span>
+                            </label>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="delivery-max-radius">Radio Máximo de Entrega (km)</label>
+                            <input type="number" id="delivery-max-radius" value="12" min="1" max="50">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="delivery-cost-per-km">Costo por Kilómetro ($)</label>
+                            <input type="number" id="delivery-cost-per-km" value="8" min="0" step="0.5">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="delivery-free-min">Monto Mínimo para Envío Gratis ($)</label>
+                            <input type="number" id="delivery-free-min" value="0" min="0" step="10">
+                            <p class="text-xs text-gray-500 mt-1">0 = sin envío gratis</p>
+                        </div>
+                        
+                        <div class="input-group md:col-span-2">
+                            <h3 class="font-bold text-lg mb-4 mt-4">Tiempos Estimados de Entrega</h3>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Zona 1 - Cercana (minutos)</label>
+                            <div class="flex gap-3">
+                                <input type="number" id="delivery-time-zone1-min" value="25" min="5" placeholder="Mín">
+                                <input type="number" id="delivery-time-zone1-max" value="35" min="5" placeholder="Máx">
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Zona 2 - Lejana (minutos)</label>
+                            <div class="flex gap-3">
+                                <input type="number" id="delivery-time-zone2-min" value="35" min="5" placeholder="Mín">
+                                <input type="number" id="delivery-time-zone2-max" value="45" min="5" placeholder="Máx">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Promotions Tab -->
+            <div class="tab-content" data-tab="promos">
+                <div class="section-card">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center">
+                        <i class="fas fa-tags text-red-600 mr-3"></i>
+                        Promociones y Días Especiales
+                    </h2>
+                    
+                    <div class="input-group mb-6">
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" id="promos-enabled" class="w-5 h-5" checked>
+                            <span class="font-bold">¿Activar sistema de promociones?</span>
+                        </label>
+                    </div>
+                    
+                    <div id="promos-container" class="space-y-6">
+                        <!-- Las promociones se cargarán dinámicamente -->
+                    </div>
+                    
+                    <button type="button" id="add-promo-btn" class="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>Agregar Promoción
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Action Buttons -->
+        <div class="section-card">
+            <div class="flex gap-4 flex-wrap justify-between items-center">
+                <div class="flex gap-3 flex-wrap">
+                    <button type="button" id="save-btn" class="btn-save">
+                        <i class="fas fa-save mr-2"></i>Guardar Configuración
+                    </button>
+                    <button type="button" id="export-btn" class="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+                        <i class="fas fa-download mr-2"></i>Exportar JSON
+                    </button>
+                    <button type="button" id="import-btn" class="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700">
+                        <i class="fas fa-upload mr-2"></i>Importar JSON
+                    </button>
+                </div>
+                <button type="button" id="reset-btn" class="btn-reset">
+                    <i class="fas fa-undo mr-2"></i>Restaurar Predeterminados
+                </button>
+            </div>
+        </div>
+
+        <!-- Back Link -->
+        <div class="text-center mt-8">
+            <a href="pedido-manual.html" class="text-blue-600 hover:text-blue-800 font-semibold">
+                <i class="fas fa-arrow-left mr-2"></i>Volver a la aplicación
+            </a>
+        </div>
+    </div>
+
+    <!-- Input file oculto para importar -->
+    <input type="file" id="import-file-input" accept=".json" style="display:none">
+
+    <!-- Script -->
+    <script type="module">
+        import { RESTAURANT_CONFIG } from './config/business-config.js';
+
+        // Estado de la aplicación
+        let config = JSON.parse(JSON.stringify(RESTAURANT_CONFIG)); // Deep copy
+        let hasUnsavedChanges = false;
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfigToForm();
+            setupTabs();
+            setupColorPickers();
+            setupEventListeners();
+            setupPromotions();
+        });
+
+        // Cargar configuración al formulario
+        function loadConfigToForm() {
+            // General
+            document.getElementById('restaurant-id').value = config.id || '';
+            document.getElementById('restaurant-name').value = config.name || '';
+            document.getElementById('restaurant-tagline').value = config.tagline || '';
+            document.getElementById('restaurant-description').value = config.description || '';
+            document.getElementById('logo-type').value = config.logo?.type || 'emoji';
+            document.getElementById('logo-value').value = config.logo?.value || '';
+
+            // Colors
+            document.getElementById('color-primary').value = config.colors?.primary || '#16A34A';
+            document.getElementById('color-primary-hex').value = config.colors?.primary || '#16A34A';
+            document.getElementById('color-primary-dark').value = config.colors?.primaryDark || '#15803D';
+            document.getElementById('color-primary-dark-hex').value = config.colors?.primaryDark || '#15803D';
+            document.getElementById('color-secondary').value = config.colors?.secondary || '#0B1220';
+            document.getElementById('color-secondary-hex').value = config.colors?.secondary || '#0B1220';
+            document.getElementById('color-accent').value = config.colors?.accent || '#FFC72C';
+            document.getElementById('color-accent-hex').value = config.colors?.accent || '#FFC72C';
+
+            // Contact
+            document.getElementById('contact-phone').value = config.contact?.phone || '';
+            document.getElementById('contact-whatsapp').value = config.contact?.whatsapp || '';
+            document.getElementById('contact-email').value = config.contact?.email || '';
+            document.getElementById('address-street').value = config.contact?.address?.street || '';
+            document.getElementById('address-neighborhood').value = config.contact?.address?.neighborhood || '';
+            document.getElementById('address-city').value = config.contact?.address?.city || '';
+            document.getElementById('address-state').value = config.contact?.address?.state || '';
+            document.getElementById('address-zipcode').value = config.contact?.address?.zipCode || '';
+            document.getElementById('address-country').value = config.contact?.address?.country || 'México';
+            document.getElementById('address-lat').value = config.contact?.address?.coordinates?.lat || '';
+            document.getElementById('address-lng').value = config.contact?.address?.coordinates?.lng || '';
+
+            // Social
+            document.getElementById('social-facebook-enabled').checked = config.social?.facebook?.enabled || false;
+            document.getElementById('social-facebook-url').value = config.social?.facebook?.url || '';
+            document.getElementById('social-facebook-username').value = config.social?.facebook?.username || '';
+            document.getElementById('social-instagram-enabled').checked = config.social?.instagram?.enabled || false;
+            document.getElementById('social-instagram-url').value = config.social?.instagram?.url || '';
+            document.getElementById('social-instagram-username').value = config.social?.instagram?.username || '';
+            document.getElementById('social-tiktok-enabled').checked = config.social?.tiktok?.enabled || false;
+            document.getElementById('social-tiktok-url').value = config.social?.tiktok?.url || '';
+            document.getElementById('social-tiktok-username').value = config.social?.tiktok?.username || '';
+            document.getElementById('social-twitter-enabled').checked = config.social?.twitter?.enabled || false;
+            document.getElementById('social-twitter-url').value = config.social?.twitter?.url || '';
+            document.getElementById('social-twitter-username').value = config.social?.twitter?.username || '';
+
+            // Hours
+            document.getElementById('hours-display').value = config.hours?.displayFormat || '';
+            
+            // Delivery
+            document.getElementById('delivery-enabled').checked = config.delivery?.enabled || false;
+            document.getElementById('delivery-max-radius').value = config.delivery?.maxRadiusKm || 12;
+            document.getElementById('delivery-cost-per-km').value = config.delivery?.costPerKm || 8;
+            document.getElementById('delivery-free-min').value = config.delivery?.freeDeliveryMinAmount || 0;
+            document.getElementById('delivery-time-zone1-min').value = config.delivery?.estimatedTime?.zone1?.min || 25;
+            document.getElementById('delivery-time-zone1-max').value = config.delivery?.estimatedTime?.zone1?.max || 35;
+            document.getElementById('delivery-time-zone2-min').value = config.delivery?.estimatedTime?.zone2?.min || 35;
+            document.getElementById('delivery-time-zone2-max').value = config.delivery?.estimatedTime?.zone2?.max || 45;
+
+            // Promos
+            document.getElementById('promos-enabled').checked = config.promotions?.enabled || false;
+        }
+
+        // Guardar formulario a configuración
+        function saveFormToConfig() {
+            config.id = document.getElementById('restaurant-id').value;
+            config.name = document.getElementById('restaurant-name').value;
+            config.tagline = document.getElementById('restaurant-tagline').value;
+            config.description = document.getElementById('restaurant-description').value;
+            config.logo = {
+                type: document.getElementById('logo-type').value,
+                value: document.getElementById('logo-value').value,
+                alt: `${config.name} Logo`
+            };
+
+            config.colors = {
+                primary: document.getElementById('color-primary').value,
+                primaryDark: document.getElementById('color-primary-dark').value,
+                secondary: document.getElementById('color-secondary').value,
+                accent: document.getElementById('color-accent').value,
+                ...config.colors
+            };
+
+            config.contact = {
+                phone: document.getElementById('contact-phone').value,
+                whatsapp: document.getElementById('contact-whatsapp').value,
+                email: document.getElementById('contact-email').value,
+                address: {
+                    street: document.getElementById('address-street').value,
+                    neighborhood: document.getElementById('address-neighborhood').value,
+                    city: document.getElementById('address-city').value,
+                    state: document.getElementById('address-state').value,
+                    zipCode: document.getElementById('address-zipcode').value,
+                    country: document.getElementById('address-country').value,
+                    fullAddress: `${document.getElementById('address-street').value}, ${document.getElementById('address-neighborhood').value}, ${document.getElementById('address-city').value}, ${document.getElementById('address-state').value}`,
+                    coordinates: {
+                        lat: parseFloat(document.getElementById('address-lat').value) || 0,
+                        lng: parseFloat(document.getElementById('address-lng').value) || 0
+                    }
+                }
+            };
+
+            config.social = {
+                facebook: {
+                    enabled: document.getElementById('social-facebook-enabled').checked,
+                    url: document.getElementById('social-facebook-url').value,
+                    username: document.getElementById('social-facebook-username').value
+                },
+                instagram: {
+                    enabled: document.getElementById('social-instagram-enabled').checked,
+                    url: document.getElementById('social-instagram-url').value,
+                    username: document.getElementById('social-instagram-username').value
+                },
+                tiktok: {
+                    enabled: document.getElementById('social-tiktok-enabled').checked,
+                    url: document.getElementById('social-tiktok-url').value,
+                    username: document.getElementById('social-tiktok-username').value
+                },
+                twitter: {
+                    enabled: document.getElementById('social-twitter-enabled').checked,
+                    url: document.getElementById('social-twitter-url').value,
+                    username: document.getElementById('social-twitter-username').value
+                }
+            };
+
+            config.hours = {
+                ...config.hours,
+                displayFormat: document.getElementById('hours-display').value
+            };
+
+            config.delivery = {
+                enabled: document.getElementById('delivery-enabled').checked,
+                maxRadiusKm: parseInt(document.getElementById('delivery-max-radius').value),
+                costPerKm: parseFloat(document.getElementById('delivery-cost-per-km').value),
+                freeDeliveryMinAmount: parseFloat(document.getElementById('delivery-free-min').value),
+                estimatedTime: {
+                    zone1: {
+                        min: parseInt(document.getElementById('delivery-time-zone1-min').value),
+                        max: parseInt(document.getElementById('delivery-time-zone1-max').value)
+                    },
+                    zone2: {
+                        min: parseInt(document.getElementById('delivery-time-zone2-min').value),
+                        max: parseInt(document.getElementById('delivery-time-zone2-max').value)
+                    }
+                }
+            };
+
+            config.promotions = {
+                ...config.promotions,
+                enabled: document.getElementById('promos-enabled').checked
+            };
+        }
+
+        // Setup tabs
+        function setupTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.dataset.tab;
+                    
+                    // Remove active from all
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active to selected
+                    button.classList.add('active');
+                    document.querySelector(`[data-tab="${tabName}"].tab-content`).classList.add('active');
+                });
+            });
+        }
+
+        // Setup color pickers
+        function setupColorPickers() {
+            const colorInputs = ['color-primary', 'color-primary-dark', 'color-secondary', 'color-accent'];
+            
+            colorInputs.forEach(id => {
+                const colorPicker = document.getElementById(id);
+                const textInput = document.getElementById(id + '-hex');
+                
+                colorPicker.addEventListener('input', (e) => {
+                    textInput.value = e.target.value;
+                    updatePreview();
+                    markUnsaved();
+                });
+                
+                textInput.addEventListener('input', (e) => {
+                    if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                        colorPicker.value = e.target.value;
+                        updatePreview();
+                        markUnsaved();
+                    }
+                });
+            });
+        }
+
+        // Update color preview
+        function updatePreview() {
+            const primary = document.getElementById('color-primary').value;
+            const primaryDark = document.getElementById('color-primary-dark').value;
+            const previewBtn = document.getElementById('preview-btn');
+            const previewCard = document.getElementById('preview-card');
+            
+            previewBtn.style.background = `linear-gradient(135deg, ${primary} 0%, ${primaryDark} 100%)`;
+            previewCard.style.borderLeft = `4px solid ${primary}`;
+            previewCard.style.color = primary;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mark unsaved on any input change
+            document.getElementById('config-form').addEventListener('input', markUnsaved);
+            
+            // Save button
+            document.getElementById('save-btn').addEventListener('click', saveConfiguration);
+            
+            // Reset button
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                if (confirm('¿Estás seguro de restaurar la configuración predeterminada? Perderás todos los cambios no guardados.')) {
+                    config = JSON.parse(JSON.stringify(RESTAURANT_CONFIG));
+                    loadConfigToForm();
+                    markSaved();
+                }
+            });
+            
+            // Export button
+            document.getElementById('export-btn').addEventListener('click', exportConfiguration);
+            
+            // Import button
+            document.getElementById('import-btn').addEventListener('click', () => {
+                document.getElementById('import-file-input').click();
+            });
+            
+            document.getElementById('import-file-input').addEventListener('change', importConfiguration);
+        }
+
+        // Mark as unsaved
+        function markUnsaved() {
+            hasUnsavedChanges = true;
+            const indicator = document.querySelector('.status-indicator');
+            const status = document.getElementById('save-status');
+            indicator.classList.remove('saved');
+            indicator.classList.add('unsaved');
+            status.textContent = 'Cambios sin guardar';
+        }
+
+        // Mark as saved
+        function markSaved() {
+            hasUnsavedChanges = false;
+            const indicator = document.querySelector('.status-indicator');
+            const status = document.getElementById('save-status');
+            indicator.classList.remove('unsaved');
+            indicator.classList.add('saved');
+            status.textContent = 'Todos los cambios guardados';
+        }
+
+        // Save configuration
+        function saveConfiguration() {
+            saveFormToConfig();
+            
+            // Save to localStorage
+            localStorage.setItem('RESTAURANT_CONFIG', JSON.stringify(config));
+            
+            // Update CSS variables
+            updateCSSVariables();
+            
+            // Show success message
+            markSaved();
+            alert('✅ Configuración guardada correctamente!\n\nLos cambios se aplicarán la próxima vez que cargues la aplicación.');
+        }
+
+        // Update CSS variables in real-time
+        function updateCSSVariables() {
+            const root = document.documentElement;
+            root.style.setProperty('--primary-color', config.colors.primary);
+            root.style.setProperty('--primary-color-dark', config.colors.primaryDark);
+            root.style.setProperty('--secondary-color', config.colors.secondary);
+            root.style.setProperty('--accent-color', config.colors.accent);
+        }
+
+        // Export configuration
+        function exportConfiguration() {
+            saveFormToConfig();
+            const dataStr = JSON.stringify(config, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${config.id}-config.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Import configuration
+        function importConfiguration(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const imported = JSON.parse(event.target.result);
+                    config = imported;
+                    loadConfigToForm();
+                    markUnsaved();
+                    alert('✅ Configuración importada correctamente!');
+                } catch (error) {
+                    alert('❌ Error al importar el archivo. Asegúrate de que sea un JSON válido.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Setup promotions
+        function setupPromotions() {
+            const container = document.getElementById('promos-container');
+            const addBtn = document.getElementById('add-promo-btn');
+            
+            // Load existing promos
+            if (config.promotions?.specialDays) {
+                config.promotions.specialDays.forEach((promo, index) => {
+                    addPromoToDOM(promo, index);
+                });
+            }
+            
+            addBtn.addEventListener('click', () => {
+                const newPromo = {
+                    day: 'monday',
+                    name: 'Nueva Promoción',
+                    title: '',
+                    description: '',
+                    icon: '🎉',
+                    badge: 'PROMO',
+                    color: 'blue'
+                };
+                config.promotions.specialDays.push(newPromo);
+                addPromoToDOM(newPromo, config.promotions.specialDays.length - 1);
+                markUnsaved();
+            });
+        }
+
+        function addPromoToDOM(promo, index) {
+            const container = document.getElementById('promos-container');
+            const div = document.createElement('div');
+            div.className = 'border-2 border-dashed border-gray-300 rounded-lg p-6';
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-bold text-lg">Promoción ${index + 1}</h3>
+                    <button type="button" class="text-red-600 hover:text-red-800 font-bold remove-promo" data-index="${index}">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label>Día</label>
+                        <select class="promo-day" data-index="${index}">
+                            <option value="monday" ${promo.day === 'monday' ? 'selected' : ''}>Lunes</option>
+                            <option value="tuesday" ${promo.day === 'tuesday' ? 'selected' : ''}>Martes</option>
+                            <option value="wednesday" ${promo.day === 'wednesday' ? 'selected' : ''}>Miércoles</option>
+                            <option value="thursday" ${promo.day === 'thursday' ? 'selected' : ''}>Jueves</option>
+                            <option value="friday" ${promo.day === 'friday' ? 'selected' : ''}>Viernes</option>
+                            <option value="saturday" ${promo.day === 'saturday' ? 'selected' : ''}>Sábado</option>
+                            <option value="sunday" ${promo.day === 'sunday' ? 'selected' : ''}>Domingo</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Nombre</label>
+                        <input type="text" class="promo-name" data-index="${index}" value="${promo.name}">
+                    </div>
+                    <div class="input-group md:col-span-2">
+                        <label>Título</label>
+                        <input type="text" class="promo-title" data-index="${index}" value="${promo.title}">
+                    </div>
+                    <div class="input-group md:col-span-2">
+                        <label>Descripción</label>
+                        <textarea class="promo-description" data-index="${index}" rows="2">${promo.description}</textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Ícono (Emoji)</label>
+                        <input type="text" class="promo-icon" data-index="${index}" value="${promo.icon}">
+                    </div>
+                    <div class="input-group">
+                        <label>Etiqueta</label>
+                        <input type="text" class="promo-badge" data-index="${index}" value="${promo.badge}">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            
+            // Add event listeners
+            div.querySelector('.remove-promo').addEventListener('click', function() {
+                const idx = parseInt(this.dataset.index);
+                config.promotions.specialDays.splice(idx, 1);
+                container.innerHTML = '';
+                config.promotions.specialDays.forEach((p, i) => addPromoToDOM(p, i));
+                markUnsaved();
+            });
+            
+            div.querySelectorAll('input, select, textarea').forEach(input => {
+                input.addEventListener('input', function() {
+                    const idx = parseInt(this.dataset.index);
+                    const field = this.className.replace('promo-', '');
+                    config.promotions.specialDays[idx][field] = this.value;
+                    markUnsaved();
+                });
+            });
+        }
+
+        // Warn before leaving with unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>

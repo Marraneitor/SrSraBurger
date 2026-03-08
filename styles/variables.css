@@ -1,0 +1,372 @@
+/**
+ * =============================================
+ * VARIABLES CSS WHITE-LABEL
+ * =============================================
+ * 
+ * Todas las variables de diseño centralizadas.
+ * Estos valores se sincronizan con business-config.js
+ * y pueden ser modificados desde configuracion.html
+ */
+
+:root {
+  /* ===== COLORES PRINCIPALES ===== */
+  --primary-color: #16A34A;
+  --primary-color-dark: #15803D;
+  --secondary-color: #0B1220;
+  --accent-color: #FFC72C;
+  
+  /* ===== COLORES DE TEXTO (Light Mode) ===== */
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-tertiary: #94A3B8;
+  
+  /* ===== FONDOS (Light Mode) ===== */
+  --bg-light: #FFFFFF;
+  --bg-section: #F8F9FA;
+  --bg-card: #FFFFFF;
+  --bg-overlay: rgba(255, 255, 255, 0.95);
+  
+  /* ===== BORDES ===== */
+  --border-light: #E2E8F0;
+  --border-medium: #CBD5E1;
+  --border-dark: #94A3B8;
+  
+  /* ===== SOMBRAS ===== */
+  --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --shadow-medium: 0 12px 35px rgba(15, 23, 42, 0.12);
+  --shadow-hover: 0 18px 45px rgba(15, 23, 42, 0.14);
+  --shadow-strong: 0 20px 50px rgba(15, 23, 42, 0.18);
+  
+  /* ===== BORDER RADIUS ===== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+  
+  /* ===== TRANSICIONES ===== */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Spring / bounce (tipo iOS nativo) */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+  --ease-sharp: cubic-bezier(0.4, 0, 0.6, 1);
+
+  /* Duraciones app-like */
+  --duration-instant: 80ms;
+  --duration-snap: 130ms;
+  --duration-fast: 180ms;
+  --duration-normal: 260ms;
+  --duration-enter: 320ms;
+  --duration-exit: 200ms;
+
+  /* Transiciones completas con easing */
+  --transition-spring: 280ms var(--ease-spring);
+  --transition-enter: var(--duration-enter) var(--ease-decelerate);
+  --transition-exit: var(--duration-exit) var(--ease-accelerate);
+  
+  /* ===== ESPACIADO ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* ===== TIPOGRAFÍA ===== */
+  --font-primary: 'Inter', sans-serif;
+  --font-heading: 'Poppins', sans-serif;
+  
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-base: 1rem;    /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+  --font-size-2xl: 1.5rem;   /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+  --font-size-4xl: 2.25rem;  /* 36px */
+  
+  --font-weight-normal: 400;
+  --font-weight-medium: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+  
+  /* ===== Z-INDEX LAYERS ===== */
+  --z-base: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-tooltip: 70;
+  --z-notification: 80;
+  
+  /* ===== GRADIENTES ===== */
+  --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
+  --gradient-hero: linear-gradient(135deg, rgba(218, 41, 28, 0.4) 0%, rgba(255, 199, 44, 0.3) 100%);
+  --gradient-dark: linear-gradient(135deg, var(--secondary-color) 0%, #0F172A 100%);
+  
+  /* ===== EFECTOS DE GLASS ===== */
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-blur: 20px;
+}
+
+/* ===== DARK MODE ===== */
+html.dark {
+  /* Colores de texto en modo oscuro */
+  --text-primary: #F9FAFB;
+  --text-secondary: #E5E7EB;
+  --text-tertiary: #CBD5E1;
+  
+  /* Fondos en modo oscuro */
+  --bg-light: #0B1220;
+  --bg-section: #0F172A;
+  --bg-card: rgba(15, 23, 42, 0.96);
+  --bg-overlay: rgba(2, 6, 23, 0.78);
+  
+  /* Bordes en modo oscuro */
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-dark: rgba(255, 255, 255, 0.18);
+  
+  /* Sombras en modo oscuro */
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-medium: 0 12px 35px rgba(0, 0, 0, 0.40);
+  --shadow-hover: 0 18px 45px rgba(0, 0, 0, 0.45);
+  --shadow-strong: 0 20px 50px rgba(0, 0, 0, 0.50);
+  
+  /* Glass effect en modo oscuro */
+  --glass-bg: rgba(2, 6, 23, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* ===== COLORES SEMÁNTICOS ===== */
+:root {
+  /* Success */
+  --color-success: #10B981;
+  --color-success-dark: #059669;
+  --color-success-light: #D1FAE5;
+  
+  /* Error */
+  --color-error: #EF4444;
+  --color-error-dark: #DC2626;
+  --color-error-light: #FEE2E2;
+  
+  /* Warning */
+  --color-warning: #F59E0B;
+  --color-warning-dark: #D97706;
+  --color-warning-light: #FEF3C7;
+  
+  /* Info */
+  --color-info: #3B82F6;
+  --color-info-dark: #2563EB;
+  --color-info-light: #DBEAFE;
+}
+
+/* ===== UTILIDADES CSS ===== */
+
+/* Aplicar colores primarios */
+.bg-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+.border-primary {
+  border-color: var(--primary-color) !important;
+}
+
+/* Botón principal con variables */
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+  transition: var(--transition-base);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Card moderna con variables */
+.card-modern {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--border-light);
+  transition: var(--transition-base);
+}
+
+.card-modern:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Glass effect con variables */
+.glass-effect {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+/* Gradiente de texto */
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Clases de animación */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  :root {
+    --font-size-3xl: 1.5rem;   /* 24px en móvil */
+    --font-size-4xl: 1.875rem; /* 30px en móvil */
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+  }
+}
+
+/* ===== SCROLLBAR PERSONALIZADO (app-like, fino) ===== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(22, 163, 74, 0.35);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(22, 163, 74, 0.35) transparent;
+}
+
+/* ===== TOKENS APP-LIKE ===== */
+:root {
+  /* Superficies elevadas (z-depth visual) */
+  --surface-0: transparent;
+  --surface-1: rgba(255, 255, 255, 1);
+  --surface-2: rgba(248, 249, 250, 1);
+  --surface-3: rgba(241, 245, 249, 1);
+  --surface-overlay: rgba(15, 23, 42, 0.55);
+
+  /* Elevaciones (sombras tipo Material/iOS) */
+  --elevation-0: none;
+  --elevation-1: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+  --elevation-2: 0 4px 12px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04);
+  --elevation-3: 0 10px 28px rgba(15,23,42,0.10), 0 4px 10px rgba(15,23,42,0.06);
+  --elevation-4: 0 20px 48px rgba(15,23,42,0.14), 0 8px 16px rgba(15,23,42,0.08);
+  --elevation-5: 0 32px 72px rgba(15,23,42,0.20), 0 12px 24px rgba(15,23,42,0.10);
+
+  /* Tap / press feedback */
+  --press-scale: 0.96;
+  --press-duration: 110ms;
+  --hover-lift: translateY(-3px);
+  --hover-lift-sm: translateY(-1px);
+  --hover-lift-lg: translateY(-5px);
+
+  /* Espaciado de pantalla (safe areas móvil) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+html.dark {
+  --surface-0: transparent;
+  --surface-1: rgba(15, 23, 42, 1);
+  --surface-2: rgba(17, 24, 39, 1);
+  --surface-3: rgba(30, 41, 59, 1);
+  --surface-overlay: rgba(0, 0, 0, 0.72);
+
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.18);
+  --elevation-2: 0 4px 12px rgba(0,0,0,0.32), 0 2px 4px rgba(0,0,0,0.20);
+  --elevation-3: 0 10px 28px rgba(0,0,0,0.42), 0 4px 10px rgba(0,0,0,0.25);
+  --elevation-4: 0 20px 48px rgba(0,0,0,0.50), 0 8px 16px rgba(0,0,0,0.30);
+  --elevation-5: 0 32px 72px rgba(0,0,0,0.60), 0 12px 24px rgba(0,0,0,0.35);
+}

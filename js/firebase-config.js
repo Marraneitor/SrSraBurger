@@ -143,6 +143,279 @@ class FirebaseOrderManager {
         }
     }
 
+    // Descontar ingredientes del inventario basado en recetas de productos
+    async deductInventoryFromOrder(items, orderId) {
+        if (!Array.isArray(items) || items.length === 0) return;
+
+        try {
+            console.log('🔄 Iniciando descuento de inventario para pedido:', orderId);
+            
+            // Obtener recetas y catálogo de ingredientes desde Firebase Settings
+            const settingsRef = doc(db, 'settings', 'main');
+            const settingsSnap = await getDoc(settingsRef);
+            console.log('📡 Consultando Firebase settings/main...');
+            
+            if (!settingsSnap.exists()) {
+                console.warn('⚠️ No se encontraron configuraciones en Firebase');
+                return;
+            }
+
+            const settings = settingsSnap.data();
+            const recipes = settings?.productsRecipes || {};
+            const ingredientsCatalog = settings?.ingredientsCatalog || [];
+
+            if (Object.keys(recipes).length === 0) {
+                console.warn('⚠️ No hay recetas configuradas. Configúralas en Productos.html');
+                try { if (window.showNotification) window.showNotification('⚠️ Sin recetas configuradas — inventario no descontado. Ve a Productos.html', 'warning'); } catch (_) {}
+                return;
+            }
+
+            console.log(`📚 Recetas cargadas: ${Object.keys(recipes).length} productos con receta`);
+            console.log(`🥬 Ingredientes en catálogo: ${ingredientsCatalog.length}`);
+
+            // Construir índice de ingredientes por ID y nombre
+            const ingredientIndex = new Map();
+            ingredientsCatalog.forEach(ing => {
+                const id = String(ing.id || '').trim();
+                const name = String(ing.nombre || ing.name || '').trim();
+                if (id) ingredientIndex.set(id, { ...ing, name });
+                if (name) {
+                    const normalizedName = name.toLowerCase();
+                    ingredientIndex.set(normalizedName, { ...ing, name });
+                }
+            });
+
+            // Calcular ingredientes a descontar
+            const ingredientsToDeduct = new Map();
+
+            // Helper: suma ingredientes de una receta a la Map de acumulación
+            const acumularIngredientes = (recipe, quantity) => {
+                if (!recipe || !Array.isArray(recipe.ingredients)) return;
+                for (const ing of recipe.ingredients) {
+                    const ingredientId = String(ing.ingredientId || '').trim();
+                    const ingredientName = String(ing.name || '').trim();
+                    const qtyPerProduct = Number(ing.qty || ing.quantity || 0);
+                    if (qtyPerProduct <= 0) continue;
+                    const totalQty = qtyPerProduct * quantity;
+                    let catalogIng = null;
+                    if (ingredientId) catalogIng = ingredientIndex.get(ingredientId);
+                    if (!catalogIng && ingredientName) catalogIng = ingredientIndex.get(ingredientName.toLowerCase());
+                    let inventoryKey = '';
+                    if (catalogIng) {
+                        inventoryKey = catalogIng.name.toLowerCase().replace(/\s+/g, '_');
+                    } else if (ingredientName) {
+                        inventoryKey = ingredientName.toLowerCase().replace(/\s+/g, '_');
+                    }
+                    if (inventoryKey) {
+                        const current = ingredientsToDeduct.get(inventoryKey) || { qty: 0, name: catalogIng?.name || ingredientName };
+                        current.qty += totalQty;
+                        ingredientsToDeduct.set(inventoryKey, current);
+                        console.log(`  - ${current.name}: +${totalQty} = ${current.qty}`);
+                    }
+                }
+            };
+
+            for (const item of items) {
+                const productId = String(item.id || item.productId || '').trim();
+                const quantity = Number(item.quantity || 1);
+                const productName = item.name || item.productName || 'Producto';
+                
+                if (!productId || quantity <= 0) continue;
+
+                const recipe = recipes[productId];
+                if (recipe && Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0) {
+                    // El producto tiene receta directa (incluye combos con receta completa configurada)
+                    console.log(`📝 Procesando: ${productName} x${quantity}`);
+                    acumularIngredientes(recipe, quantity);
+                } else {
+                    // Sin receta directa → intentar descomponer sub-ítems (combos)
+                    console.warn(`⚠️ Producto "${productName}" (ID: ${productId}) sin receta. Buscando sub-ítems...`);
+                    let subItemsProcessed = 0;
+
+                    // Opciones de burgers dentro del combo
+                    const choices = Array.isArray(item.choices) ? item.choices : [];
+                    for (const choice of choices) {
+                        const burgerId = String(choice?.burger?.id || choice?.burger?.productId || choice?.id || '').trim();
+                        const burgerRecipe = burgerId ? recipes[burgerId] : null;
+                        if (burgerRecipe && Array.isArray(burgerRecipe.ingredients) && burgerRecipe.ingredients.length > 0) {
+                            console.log(`  📝 Sub-ítem burger ${burgerId} x${quantity}`);
+                            acumularIngredientes(burgerRecipe, quantity);
+                            subItemsProcessed++;
+                        }
+                        // Papas dentro del combo choice
+                        const friesId = String(choice?.fries?.id || choice?.fries?.productId || '').trim();
+                        const friesRecipe = friesId ? recipes[friesId] : null;
+                        if (friesRecipe && Array.isArray(friesRecipe.ingredients) && friesRecipe.ingredients.length > 0) {
+                            acumularIngredientes(friesRecipe, quantity);
+                            subItemsProcessed++;
+                        }
+                    }
+
+                    // Hotdogs dentro del combo
+                    const hotdogs = Array.isArray(item.hotdogs) ? item.hotdogs : [];
+                    for (const hd of hotdogs) {
+                        const hdId = String(hd?.hotdog?.id || hd?.hotdog?.productId || hd?.id || '').trim();
+                        const hdRecipe = hdId ? recipes[hdId] : null;
+                        if (hdRecipe && Array.isArray(hdRecipe.ingredients) && hdRecipe.ingredients.length > 0) {
+                            console.log(`  📝 Sub-ítem hotdog ${hdId} x${quantity}`);
+                            acumularIngredientes(hdRecipe, quantity);
+                            subItemsProcessed++;
+                        }
+                        // Papas del hotdog
+                        const hdFriesId = String(hd?.fries?.id || hd?.fries?.productId || '').trim();
+                        const hdFriesRecipe = hdFriesId ? recipes[hdFriesId] : null;
+                        if (hdFriesRecipe) { acumularIngredientes(hdFriesRecipe, quantity); subItemsProcessed++; }
+                    }
+
+                    // Items genéricos incluidos (includedItems)
+                    const includedItems = Array.isArray(item.includedItems) ? item.includedItems : [];
+                    for (const inc of includedItems) {
+                        const incId = String(inc?.id || inc?.productId || '').trim();
+                        const incRecipe = incId ? recipes[incId] : null;
+                        if (incRecipe && Array.isArray(incRecipe.ingredients) && incRecipe.ingredients.length > 0) {
+                            acumularIngredientes(incRecipe, quantity);
+                            subItemsProcessed++;
+                        }
+                    }
+
+                    if (subItemsProcessed === 0) {
+                        console.warn(`  ❌ No se encontraron sub-ítems con receta para "${productName}". Configura la receta en Productos.html`);
+                    }
+                }
+            }
+
+            if (ingredientsToDeduct.size === 0) {
+                console.log('✓ No hay ingredientes que descontar para este pedido');
+                try { if (window.showNotification) window.showNotification('ℹ️ Productos sin receta — inventario no modificado. Configura recetas en Productos.html', 'warning'); } catch (_) {}
+                return;
+            }
+
+            console.log(`📦 Total de ingredientes a descontar: ${ingredientsToDeduct.size}`);
+
+            // Descontar del inventario en Firebase usando transacción
+            const inventoryRef = doc(db, 'inventario', 'stock');
+            
+            await runTransaction(db, async (transaction) => {
+                const inventorySnap = await transaction.get(inventoryRef);
+                
+                if (!inventorySnap.exists()) {
+                    console.warn('⚠️ El inventario no existe en Firebase. Crea ingredientes en inventario.html');
+                    return;
+                }
+
+                const inventoryData = inventorySnap.data();
+                const currentItems = inventoryData.items || {};
+                let itemsUpdated = 0;
+                let itemsNotFound = 0;
+                const inventoryKeys = Object.keys(currentItems);
+                
+                // Log de diagnóstico — keys disponibles vs keys buscadas
+                console.log(`🔍 Keys en inventario (${inventoryKeys.length}):`, inventoryKeys.sort().join(', '));
+                console.log(`🔍 Keys a descontar:`, Array.from(ingredientsToDeduct.keys()).join(', '));
+                
+                // Descontar cada ingrediente
+                for (const [key, data] of ingredientsToDeduct) {
+                    if (currentItems[key]) {
+                        const currentQty = Number(currentItems[key].cantidad || 0);
+                        const newQty = Math.max(0, currentQty - data.qty);
+                        currentItems[key].cantidad = newQty;
+                        itemsUpdated++;
+                        
+                        console.log(`📉 ${currentItems[key].nombre || key}: ${currentQty} → ${newQty} (-${data.qty})`);
+                    } else {
+                        itemsNotFound++;
+                        // Diagnóstico: buscar key similar para detectar mismatch
+                        const similar = inventoryKeys.filter(k => k.includes(key.split('_')[0]) || key.includes(k.split('_')[0]));
+                        console.warn(`❌ Ingrediente "${data.name}" (key buscada: "${key}") no encontrado en inventario${similar.length ? `. Keys similares: ${similar.join(', ')}` : ''}`);
+                    }
+                }
+
+                if (itemsUpdated > 0) {
+                    transaction.update(inventoryRef, {
+                        items: currentItems,
+                        lastUpdated: serverTimestamp()
+                    });
+                    console.log(`✅ ${itemsUpdated} ingredientes descontados del inventario`);
+                    try { if (window.showNotification) window.showNotification(`📦 Inventario descontado: ${itemsUpdated} ingrediente${itemsUpdated > 1 ? 's' : ''}`, 'success'); } catch (_) {}
+                }
+
+                if (itemsNotFound > 0) {
+                    console.warn(`⚠️ ${itemsNotFound} ingrediente${itemsNotFound > 1 ? 's' : ''} no encontrado${itemsNotFound > 1 ? 's' : ''}. Revisa la consola (F12) para detalles.`);
+                    try { if (window.showNotification) window.showNotification(`⚠️ ${itemsNotFound} ingrediente(s) no encontrados en inventario. Abre F12 → Consola.`, 'warning'); } catch (_) {}
+                }
+            });
+
+            // Registrar en el log de actividad
+            try {
+                const logsCollection = collection(db, 'inventario_logs');
+                const productNames = items.map(it => it.name || it.productName || 'Producto').join(', ');
+                await addDoc(logsCollection, {
+                    message: `Venta automática: ${productNames}`,
+                    type: 'sale',
+                    timestamp: serverTimestamp(),
+                    orderId: orderId
+                });
+                console.log('📝 Registro agregado al log de actividad');
+            } catch (logError) {
+                console.warn('⚠️ No se pudo registrar en log:', logError);
+            }
+
+            // Incrementar contador de ventas
+            try {
+                const salesRef = doc(db, 'inventario', 'sales_stats');
+                const today = new Date().toDateString();
+                
+                console.log('📊 Actualizando contador de ventas para:', today);
+                
+                await runTransaction(db, async (transaction) => {
+                    const salesSnap = await transaction.get(salesRef);
+                    const salesData = salesSnap.exists() ? salesSnap.data() : {};
+                    const currentCount = Number(salesData[today] || 0);
+                    
+                    console.log(`  Contador actual: ${currentCount} → ${currentCount + 1}`);
+                    
+                    // Usar set con merge para crear el documento si no existe
+                    transaction.set(salesRef, {
+                        ...salesData,
+                        [today]: currentCount + 1
+                    }, { merge: true });
+                });
+                console.log('✅ Contador de ventas actualizado correctamente');
+            } catch (salesError) {
+                console.error('❌ Error al actualizar contador de ventas:', salesError);
+            }
+
+            console.log('✅ Inventario descontado automáticamente del pedido', orderId);
+
+            // Marcar el pedido como procesado para evitar doble descuento
+            if (orderId) {
+                try {
+                    const orderRef = doc(db, 'orders', orderId);
+                    const orderSnap = await getDoc(orderRef);
+                    if (orderSnap.exists()) {
+                        await updateDoc(orderRef, {
+                            inventoryProcessed: true,
+                            inventoryProcessedAt: new Date().toISOString()
+                        });
+                    } else {
+                        // Puede haber sido archivado al historial
+                        const histRef = doc(db, 'orders_history', orderId);
+                        await updateDoc(histRef, {
+                            inventoryProcessed: true,
+                            inventoryProcessedAt: new Date().toISOString()
+                        }).catch(() => {});
+                    }
+                } catch (markErr) {
+                    console.warn('⚠️ No se pudo marcar inventoryProcessed en el pedido:', markErr);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error al descontar inventario:', error);
+            try { if (window.showNotification) window.showNotification('❌ Error al descontar inventario. Revisa la consola (F12).', 'error'); } catch (_) {}
+            // No lanzar error para no bloquear la creación del pedido
+        }
+    }
+
     // Agregar nuevo pedido
     async addOrder(orderData) {
         try {
@@ -199,6 +472,9 @@ class FirebaseOrderManager {
             } catch (e) {
                 console.warn('⚠️ No se pudieron acreditar puntos al crear el pedido:', e);
             }
+
+            // El descuento de inventario se realiza al ENTREGAR el pedido, no al crearlo.
+            // Ver: updateOrder con status 'delivered'
 
             return { id: docRef.id, orderNumber };
         } catch (error) {
@@ -327,6 +603,43 @@ class FirebaseOrderManager {
             const orderRef = doc(db, 'orders', orderId);
             await updateDoc(orderRef, updateData);
             console.log('Pedido actualizado correctamente');
+
+            // ── Auto-descuento de inventario al entregar ──
+            if (String(updateData.status || '').toLowerCase() === 'delivered') {
+                try {
+                    // Leer el pedido para obtener items e inventoryProcessed
+                    let snap = await getDoc(orderRef);
+                    let orderData = snap.exists() ? snap.data() : null;
+
+                    // Fallback: buscar en orders_history si ya fue archivado
+                    if (!orderData) {
+                        const histRef = doc(db, 'orders_history', orderId);
+                        const histSnap = await getDoc(histRef);
+                        if (histSnap.exists()) {
+                            orderData = histSnap.data();
+                            console.log('ℹ️ Pedido encontrado en orders_history para descontar inventario');
+                        }
+                    }
+
+                    if (orderData && !orderData.inventoryProcessed) {
+                        const items = orderData.items || [];
+                        console.log(`📦 Pedido entregado — descontando inventario (${items.length} items):`, orderId);
+                        if (items.length === 0) {
+                            console.warn('⚠️ El pedido no tiene items para descontar');
+                        }
+                        await this.deductInventoryFromOrder(items, orderId);
+                    } else if (orderData?.inventoryProcessed) {
+                        console.log('ℹ️ Inventario ya descontado para pedido:', orderId);
+                    } else {
+                        console.warn('⚠️ No se encontró el pedido para descontar inventario:', orderId);
+                    }
+                } catch (invErr) {
+                    console.error('❌ Error al descontar inventario al entregar:', invErr);
+                    try {
+                        if (window.showNotification) window.showNotification('⚠️ Inventario no pudo descontarse. Revisa la consola.', 'warning');
+                    } catch (_) {}
+                }
+            }
         } catch (error) {
             console.error('Error actualizando pedido: ', error);
             throw error;

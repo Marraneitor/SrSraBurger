@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Inventario en Tiempo Real - SR & SRA BURGER</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles/sr-ui.css" />
+  <script src="js/sr-shell.js" defer></script>
+  
+  <!-- Firebase SDK y Manager -->
+  <script type="module">
+    // Cargar firebase-config primero para inicializar firebaseManager
+    import './js/firebase-config.js';
+  </script>
+  
+  <style>
+    :root {
+      --color-primary: #F59E0B;
+      --color-secondary: #EF4444;
+      --color-success: #10B981;
+      --color-warning: #F59E0B;
+      --color-danger: #EF4444;
+      --color-dark: #0F172A;
+      --color-dark-card: #1E293B;
+      --color-text: #E2E8F0;
+      --color-text-secondary: #94A3B8;
+      --font-main: 'Inter', sans-serif;
+      --font-display: 'Montserrat', sans-serif;
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.3);
+      --radius-md: 16px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      color: var(--color-text);
+    }
+
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-md);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      border: 1px solid rgba(245, 158, 11, 0.1);
+      box-shadow: var(--shadow-md);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(245, 158, 11, 0.3);
+      box-shadow: var(--shadow-lg), var(--shadow-glow);
+    }
+
+    .stat-card {
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid rgba(100, 116, 139, 0.2);
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 900;
+      font-family: var(--font-display);
+    }
+
+    .btn {
+      padding: 0.625rem 1.25rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.875rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-primary), #D97706);
+      color: white;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+    }
+
+    .btn-success {
+      background: var(--color-success);
+      color: white;
+    }
+
+    .btn-danger {
+      background: var(--color-danger);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: rgba(71, 85, 105, 0.5);
+      color: var(--color-text);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 1rem;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      border-bottom: 2px solid rgba(245, 158, 11, 0.2);
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+      color: var(--color-text);
+    }
+
+    tr:hover td {
+      background: rgba(15, 23, 42, 0.3);
+    }
+
+    .stock-low {
+      color: var(--color-danger);
+      font-weight: 700;
+    }
+
+    .stock-ok {
+      color: var(--color-success);
+    }
+
+    .stock-medium {
+      color: var(--color-warning);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--color-dark-card);
+      border-radius: var(--radius-md);
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      box-shadow: var(--shadow-lg);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      border-radius: 8px;
+      color: var(--color-text);
+      font-size: 0.9375rem;
+      transition: all 0.3s ease;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #FCA5A5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #FCD34D;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6EE7B7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .alert {
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      animation: slideIn 0.3s ease;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6EE7B7;
+    }
+
+    .alert-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .history-item {
+      padding: 0.75rem;
+      background: rgba(15, 23, 42, 0.3);
+      border-radius: 8px;
+      border-left: 3px solid var(--color-primary);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: var(--shadow-glow);">
+            <i class="fas fa-warehouse"></i>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: var(--color-text-secondary); font-weight: 600;">SR & SRA BURGER</div>
+            <div style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 900; color: var(--color-text);">
+              Inventario en Tiempo Real
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 0.75rem;">
+          <a href="ingredientes.html" class="btn btn-secondary">
+            <i class="fas fa-boxes-stacked"></i> Ingredientes
+          </a>
+          <button onclick="sincronizarConCatalogo()" class="btn btn-primary" title="Sincronizar con catálogo de ingredientes">
+            <i class="fas fa-sync"></i> Sincronizar
+          </button>
+          <a href="admin.html" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Admin
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container" style="padding: 2rem 1.5rem 4rem;">
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
+    <!-- Dashboard Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-box"></i> Total Items
+        </div>
+        <div class="stat-value" id="totalItems" style="color: #93C5FD;">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-exclamation-triangle"></i> Stock Bajo
+        </div>
+        <div class="stat-value" id="lowStockCount" style="color: #FCA5A5;">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-check-circle"></i> Stock OK
+        </div>
+        <div class="stat-value" id="okStockCount" style="color: #6EE7B7;">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-shopping-cart"></i> Ventas Hoy
+        </div>
+        <div class="stat-value" id="salesToday" style="color: #FCD34D;">0</div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+      <!-- Inventory Table -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <div>
+            <h2 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--color-text);">
+              <i class="fas fa-clipboard-list"></i> Inventario Actual
+            </h2>
+            <p style="font-size: 0.875rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
+              Stock en tiempo real vinculado a ventas
+            </p>
+          </div>
+          <button class="btn btn-primary" onclick="openAddStockModal()">
+            <i class="fas fa-plus"></i> Agregar Stock
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table id="inventoryTable">
+            <thead>
+              <tr>
+                <th>Ingrediente</th>
+                <th>Stock Actual</th>
+                <th>Unidad</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div>
+        <!-- Quick Actions -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 1rem; color: var(--color-text);">
+            <i class="fas fa-bolt"></i> Acciones Rápidas
+          </h3>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <button class="btn btn-success" onclick="testSale('hamburguesa_sencilla')" style="width: 100%;">
+              <i class="fas fa-burger"></i> Vender Hamburguesa
+            </button>
+            <button class="btn btn-success" onclick="testSale('boneless')" style="width: 100%;">
+              <i class="fas fa-drumstick-bite"></i> Vender Boneless
+            </button>
+            <button class="btn btn-success" onclick="testSale('papas')" style="width: 100%;">
+              <i class="fas fa-french-fries"></i> Vender Papas
+            </button>
+            <button class="btn btn-danger" onclick="resetInventory()" style="width: 100%;">
+              <i class="fas fa-refresh"></i> Reset Inventario
+            </button>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+          <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 1rem; color: var(--color-text);">
+            <i class="fas fa-history"></i> Actividad Reciente
+          </h3>
+          <div id="activityLog" style="max-height: 400px; overflow-y: auto;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Add Stock -->
+  <div id="addStockModal" class="modal">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: var(--color-text);">
+          <i class="fas fa-plus-circle"></i> Agregar Stock
+        </h3>
+        <button class="btn-icon btn-secondary" onclick="closeAddStockModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: var(--color-text); margin-bottom: 0.5rem;">
+          Ingrediente
+        </label>
+        <select id="ingredientSelect">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; font-size: 0.875rem; font-weight: 600; color: var(--color-text); margin-bottom: 0.5rem;">
+          Cantidad a Agregar
+        </label>
+        <input type="number" id="quantityInput" placeholder="Ej: 100" min="1" />
+      </div>
+
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="btn btn-primary" onclick="addStock()" style="flex: 1;">
+          <i class="fas fa-check"></i> Confirmar
+        </button>
+        <button class="btn btn-secondary" onclick="closeAddStockModal()" style="flex: 1;">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // ===== FIREBASE IMPORTS =====
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
+    import { 
+      getFirestore, 
+      doc, 
+      getDoc, 
+      setDoc, 
+      onSnapshot,
+      collection,
+      addDoc,
+      query,
+      orderBy,
+      limit,
+      serverTimestamp,
+      runTransaction
+    } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
+
+    // ===== FIREBASE CONFIG =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyCf7-6oLHjpNgU1zr4qdTrOKuXGe1ht2Zs",
+      authDomain: "sr-sra-burger.firebaseapp.com",
+      projectId: "sr-sra-burger",
+      storageBucket: "sr-sra-burger.firebasestorage.app",
+      messagingSenderId: "542059080203",
+      appId: "1:542059080203:web:2e15f179a1475b1a77f50e"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ===== SISTEMA DE RECETAS =====
+    const RECETAS = {
+      hamburguesa_sencilla: {
+        nombre: 'Hamburguesa Sencilla',
+        ingredientes: {
+          pan: 1,
+          carne: 1,
+          lechuga: 20,
+          jitomate: 15,
+          queso: 1,
+          cebolla: 10
+        }
+      },
+      hamburguesa_doble: {
+        nombre: 'Hamburguesa Doble',
+        ingredientes: {
+          pan: 1,
+          carne: 2,
+          lechuga: 25,
+          jitomate: 20,
+          queso: 2,
+          cebolla: 15,
+          tocino: 2
+        }
+      },
+      boneless: {
+        nombre: 'Boneless (10 pzas)',
+        ingredientes: {
+          pollo: 250,
+          harina: 50,
+          aceite: 100
+        }
+      },
+      papas: {
+        nombre: 'Papas Fritas',
+        ingredientes: {
+          papa: 200,
+          aceite: 50,
+          sal: 5
+        }
+      }
+    };
+
+    // ===== CONFIGURACIÓN DE STOCK MÍNIMO POR DEFECTO =====
+    const STOCK_MINIMO_DEFAULT = {
+      'g': 200,
+      'kg': 0.5,
+      'ml': 200,
+      'L': 0.5,
+      'unidad': 5,
+      'pz': 5,
+      'u': 5,
+      'grs': 200,
+      'default': 10
+    };
+
+    // Función para calcular stock mínimo basado en unidad
+    function calcularStockMinimo(unidad, cantidad) {
+      const unidadLower = String(unidad || '').toLowerCase();
+      
+      if (unidadLower.includes('kg')) return Math.max(1, Math.floor(cantidad * 0.2));
+      if (unidadLower.includes('g') || unidadLower === 'grs') return Math.max(100, Math.floor(cantidad * 0.15));
+      if (unidadLower.includes('l')) return Math.max(1, Math.floor(cantidad * 0.2));
+      if (unidadLower.includes('ml')) return Math.max(100, Math.floor(cantidad * 0.15));
+      if (unidadLower.includes('unidad') || unidadLower === 'pz' || unidadLower === 'u') {
+        return Math.max(5, Math.floor(cantidad * 0.2));
+      }
+      
+      return Math.max(10, Math.floor(cantidad * 0.2));
+    }
+
+    // ===== FUNCIONES DE FIREBASE =====
+    let inventarioCache = null;
+    let unsubscribeInventario = null;
+    let ingredientesCatalogo = [];
+
+    // Cargar catálogo de ingredientes desde Firebase (ingredientes.html)
+    async function cargarIngredientesCatalogo() {
+      try {
+        // Intentar cargar desde Firebase Settings
+        if (window.firebaseManager && window.firebaseManager.getSettings) {
+          const settings = await window.firebaseManager.getSettings();
+          const catalog = settings?.ingredientsCatalog;
+          
+          if (Array.isArray(catalog) && catalog.length > 0) {
+            ingredientesCatalogo = catalog;
+            console.log(`✅ ${catalog.length} ingredientes cargados desde Firebase Settings`);
+            return;
+          }
+        }
+        
+        // Fallback: intentar desde localStorage (ingredientes.html)
+        const localIngredientes = localStorage.getItem('sr_ingredients_v1');
+        if (localIngredientes) {
+          try {
+            const parsed = JSON.parse(localIngredientes);
+            if (Array.isArray(parsed)) {
+              ingredientesCatalogo = parsed;
+              console.log(`✅ ${parsed.length} ingredientes cargados desde localStorage`);
+              return;
+            }
+          } catch (e) {
+            console.error('Error al parsear ingredientes locales:', e);
+          }
+        }
+        
+        console.warn('⚠️ No se encontraron ingredientes en Firebase ni localStorage');
+      } catch (error) {
+        console.error('Error al cargar ingredientes:', error);
+      }
+    }
+
+    // Crear estructura de inventario desde ingredientes
+    function crearInventarioDesdeIngredientes() {
+      const inventario = {};
+      
+      ingredientesCatalogo.forEach(ing => {
+        const nombre = ing.nombre || ing.name;
+        const unidad = ing.unidad || ing.unit || 'unidad';
+        
+        if (!nombre) return;
+        
+        // Usar nombre normalizado como key (sin espacios, minúsculas)
+        const key = nombre.toLowerCase().replace(/\s+/g, '_');
+        
+        // Calcular cantidad inicial basada en unidades por paquete
+        const unidadesPaquete = ing.unidadesPaquete || ing.unitsPerPack || 10;
+        const cantidadInicial = Math.floor(unidadesPaquete * 2); // 2 paquetes iniciales
+        
+        inventario[key] = {
+          nombre: nombre,
+          cantidad: cantidadInicial,
+          unidad: unidad,
+          minimo: calcularStockMinimo(unidad, cantidadInicial),
+          ingredienteId: ing.id
+        };
+      });
+      
+      return inventario;
+    }
+
+    // Inicializar inventario en Firebase si no existe
+    async function initInventarioFirebase() {
+      const docRef = doc(db, 'inventario', 'stock');
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        // Cargar ingredientes del catálogo
+        await cargarIngredientesCatalogo();
+        
+        let inventarioInicial;
+        
+        if (ingredientesCatalogo.length > 0) {
+          // Crear inventario desde ingredientes reales
+          inventarioInicial = crearInventarioDesdeIngredientes();
+          console.log(`✅ Inventario creado con ${Object.keys(inventarioInicial).length} ingredientes del catálogo`);
+        } else {
+          // Si no hay ingredientes, crear estructura vacía
+          inventarioInicial = {};
+          console.warn('⚠️ Inventario vacío creado (no hay ingredientes en el catálogo)');
+        }
+        
+        await setDoc(docRef, {
+          items: inventarioInicial,
+          lastUpdated: serverTimestamp(),
+          createdFrom: 'ingredientes_catalog',
+          createdAt: serverTimestamp()
+        });
+        
+        showAlert('✅ Inventario inicializado con ingredientes del catálogo', 'success');
+      } else {
+        // Inventario ya existe, cargar ingredientes del catálogo para referencia
+        await cargarIngredientesCatalogo();
+        console.log('✅ Inventario existente cargado');
+      }
+    }
+
+    // Obtener inventario desde Firebase (sincronización en tiempo real)
+    function subscribeToInventario() {
+      const docRef = doc(db, 'inventario', 'stock');
+      
+      unsubscribeInventario = onSnapshot(docRef, (doc) => {
+        if (doc.exists()) {
+          inventarioCache = doc.data().items;
+          renderInventario();
+          updateStats();
+          console.log('🔄 Inventario sincronizado desde Firebase');
+        }
+      }, (error) => {
+        console.error('Error al escuchar inventario:', error);
+        showAlert('Error de conexión con Firebase', 'danger');
+      });
+    }
+
+    function getInventario() {
+      return inventarioCache || INVENTARIO_INICIAL;
+    }
+
+    async function saveInventario(inventario) {
+      try {
+        const docRef = doc(db, 'inventario', 'stock');
+        await setDoc(docRef, {
+          items: inventario,
+          lastUpdated: serverTimestamp()
+        });
+        console.log('✅ Inventario guardado en Firebase');
+      } catch (error) {
+        console.error('Error al guardar inventario:', error);
+        showAlert('Error al guardar en Firebase', 'danger');
+      }
+    }
+
+    // Registrar actividad en Firebase
+    async function addActivityLog(message, type = 'info') {
+      try {
+        await addDoc(collection(db, 'inventario_logs'), {
+          message,
+          type,
+          timestamp: serverTimestamp()
+        });
+        console.log('📝 Actividad registrada');
+      } catch (error) {
+        console.error('Error al registrar actividad:', error);
+      }
+    }
+
+    // Obtener logs de actividad desde Firebase
+    async function loadActivityLog() {
+    async   try {
+        const q = query(
+          collection(db, 'inventario_logs'),
+          orderBy('timestamp', 'desc'),
+          limit(20)
+        );
+        
+        onSnapshot(q, (snapshot) => {
+          const logs = [];
+          snapshot.forEach((doc) => {
+            logs.push({ id: doc.id, ...doc.data() });
+          });
+          renderActivityLogFromFirebase(logs);
+        });
+      } catch (error) {
+        console.error('Error al cargar logs:', error);
+      }
+    }
+
+    function renderActivityLogFromFirebase(logs) {
+      const container = document.getElementById('activityLog');
+      
+      if (logs.length === 0) {
+        container.innerHTML = '<p style="color: var(--color-text-secondary); font-size: 0.875rem; text-align: center;">No hay actividad reciente</p>';
+        return;
+      }
+
+      container.innerHTML = logs.map(entry => {
+        const date = entry.timestamp?.toDate ? entry.timestamp.toDate() : new Date();
+        const timeStr = date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      await saveInventario(inventario);
+      showAlert(`Venta registrada: ${receta.nombre} ✓`, 'success');
+      await addActivityLog(`Venta: ${receta.nombre}`, 'sale');
+      await incrementSalesCounter(
+          color = 'var(--color-primary)';
+        }
+
+        return `
+          <div class="history-item">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fas fa-${icon}" style="color: ${color};"></i>
+              <span style="flex: 1;">${entry.message}</span>
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${timeStr}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Obtener ventas del día desde Firebase
+    async function getTodaySales() {
+      try {
+        const docRef = doc(db, 'inventario', 'sales_stats');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const today = new Date().toDateString();
+          return data[today] || 0;
+        }
+        return 0;
+      } catch (error) {
+        console.error('Error al obtener ventas:', error);
+        return 0;
+      }
+    }
+
+    // Incrementar contador de ventas
+    async function incrementSalesCounter() {
+      try {
+        const docRef = doc(db, 'inventario', 'sales_stats');
+        const today = new Date().toDateString();
+        
+        await runTransaction(db, async (transaction) => {
+          const doc = await transaction.get(docRef);
+          const currentData = doc.exists() ? doc.data() : {};
+          const currentCount = currentData[today] || 0;
+          
+          transaction.set(docRef, {
+            ...currentData,
+            [today]: currentCount + 1
+          });
+      if (!inventario || Object.keys(inventario).length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+              <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+              <p>No hay ingredientes en el inventario.</p>
+              <p style="font-size: 0.875rem; margin-top: 0.5rem;">
+                Primero agrega ingredientes en <a href="ingredientes.html" style="color: var(--color-primary); text-decoration: underline;">ingredientes.html</a>
+              </p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      // Ordenar por nombre
+      const sorted = Object.entries(inventario).sort((a, b) => {
+        const nombreA = a[1].nombre || a[0];
+        const nombreB = b[1].nombre || b[0];
+        return nombreA.localeCompare(nombreB);
+      });
+
+      for (const [key, data] of sorted) {
+        const { nombre, cantidad, unidad, minimo } = data;
+        const displayNombre = nombre || key.replace(/_/g, ' ');
+        
+        let estadoClass = 'stock-ok';
+        let estadoBadge = 'badge-success';
+        let estadoText = 'Stock OK';
+        let estadoIcon = 'check-circle';
+        
+        if (cantidad <= minimo) {
+          estadoClass = 'stock-low';
+          estadoBadge = 'badge-danger';
+          estadoText = 'Stock Bajo';
+          estadoIcon = 'exclamation-triangle';
+        } else if (cantidad <= minimo * 2) {
+          estadoClass = 'stock-medium';
+          estadoBadge = 'badge-warning';
+          estadoText = 'Stock Medio';
+          estadoIcon = 'exclamation-circle';
+        }
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td style="font-weight: 600;">${displayNombre.charAt(0).toUpperCase() + displayNombre.slice(1)}</td>
+          <td class="${estadoClass}" style="font-weight: 800; font-size: 1.125rem;">${cantidad}</td>
+          <td style="color: var(--color-text-secondary);">${unidad}</td>
+          <td>
+            <span class="badge ${estadoBadge}">
+              <i class="fas fa-${estadoIcon}"></i> ${estadoText}
+            </span>
+          </td>
+          <td>
+            <button class="btn-icon btn-success" onclick="quickAddStock('${key
+      localStorage.setItem('activity_log_srburger', JSON.stringify(log));
+      renderActivityLog();
+    }
+
+    // ===== FUNCIÓN PRINCIPAL: REGISTRAR VENTA =====
+    function registrarVenta(producto) {
+      const receta = RECETAS[producto];
+      if (!receta) {
+        showAlert('Producto no encontrado en recetas', 'danger');
+        return false;
+      }
+
+      const inventario = getInventario();
+      const faltantes = [];
+
+      // Verificar stock suficiente
+      for (const [ingrediente, cantidad] of Object.entries(receta.ingredientes)) {
+        if (!inventario[ingrediente]) {
+          faltantes.push(`${ingrediente} (no existe en inventario)`);
+        } else if (inventario[ingrediente].cantidad < cantidad) {
+          faltantes.push(`${ingrediente} (necesitas ${cantidad}, tienes ${inventario[ingrediente].cantidad})`);
+        }
+      }
+
+      // Si hay faltantes, mostrar alerta
+      if (faltantes.length > 0) {
+        showAlert(`Stock insuficiente: ${faltantes.join(', ')}`, 'danger');
+        return false;
+      }
+
+      // Descontar ingredientes
+      for (const [ingrediente, cantidad] of Object.entries(receta.ingredientes)) {
+        inventario[ingrediente].cantidad -= cantidad;
+      }
+
+      saveInventario(inventario);
+      showAlert(`Venta registrada: ${receta.nombre} ✓`, 'success');
+      addActivityLog(`Venta: ${receta.nombre}`, 'sale');
+      
+      // Increment sales counter
+      const today = new Date().toDateString();
+      const sales = JSON.parse(localStorage.getItem('sales_today_srburger') || '{}');
+      sales[today] = (sales[today] || 0) + 1;
+      localStorage.setItem('sales_today_srburger', JSON.stringify(sales));
+      updateStats();
+
+      return true;
+    }
+
+    // ===== UI FUNCTIONS =====
+    function renderInventario() {
+      const inventario = getInventario();
+      const tbody = document.getElementById('inventoryBody');
+      tbody.innerHTML = '';
+
+      for (const [nombre, data] of Object.entries(inventario)) {
+        const { cantidad, unidad, minimo } = data;
+        const porcentaje = (cantidad / minimo) * 100;
+        
+        let estadoClass = 'stock-ok';
+        let estadoBadge = 'badge-success';
+        let estadoText = 'Stock OK';
+        let estadoIcon = 'check-circle';
+        
+        if (cantidad <= minimo) {
+          estadoClass = 'stock-low';
+          estadoBadge = 'badge-danger';
+          estadoText = 'Stock Bajo';
+          estadoIcon = 'exclamation-triangle';
+        } else if (cantidad <= minimo * 2) {
+          estadoClass = 'stock-medium';
+          estadoBadge = 'badge-warning';
+          estadoText = 'Stock Medio';
+          estadoIcon = 'exclamation-circle';
+        }
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td style="font-weight: 600;">${nombre.charAt(0).toUpperCase() + nombre.slice(1)}</td>
+          <td class="${estadoClass}" style="font-weight: 800; font-size: 1.125rem;">${cantidad}</td>
+          <td style="color: var(--color-text-secondary);">${unidad}</td>
+          <td>
+            <span class="badge ${estadoBadge}">
+              <i class="fas fa-${estadoIcon}"></i> ${estadoText}
+            </span>
+          </td>
+          <td>
+            <button class="btn-icon btn-success" onclick="quickAddStock('${nombre}')" title="Agregar stock rápido">
+              <i class="fas fa-plus"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      }
+    }
+
+    function renderActivityLog() {
+      const log = getActivityLog();
+      const container = document.getElementById('activityLog');
+      
+      if (log.length === 0) {
+        container.innerHTML = '<p style="color: var(--color-text-secondary); font-size: 0.875rem; text-align: center;">No hay actividad reciente</p>';
+      // Ya no se usa esta función, se usa renderActivityLogFromFirebase
+      loadActivityLog(nt = 0;
+      let okCount = 0;
+
+      for (const [nombre, data] of Object.entries(inventario)) {
+        if (data.cantidad <= data.minimo) {
+          lowCount++;
+        } else {
+          okCount++;
+        }
+      }
+
+      document.getElementById('totalItems').textContent = Object.keys(inventario).length;
+      document.getElementById('lowStockCount').textContent = lowCount;
+      document.getElementById('okStockCount').textContent = okCount;
+
+      // Sales today
+      const today = new Date().toDateString();
+      const sales = JSON.parse(localStorage.getItem('sales_today_srburger') || '{}');
+      document.getElementById('salesToday').textContent = sales[today] || 0;
+    }
+
+    function showAlert(message, type) {
+      const container = document.getElementById('alertContainer');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}" style="font-size: 1.25rem;"></i>
+        <span style="flex: 1;">${message}</span>
+      `;
+      container.appendChild(alert);
+
+      setTimeout(() => {
+        alert.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => alert.remove(), 300);
+    async function updateStats() {
+      const inventario = getInventario();
+      let lowCount = 0;
+      let okCount = 0;
+
+      for (const [nombre, data] of Object.entries(inventario)) {
+        if (data.cantidad <= data.minimo) {
+          lowCount++;
+        } else {
+          okCount++;
+        }
+      }
+
+      document.getElementById('totalItems').textContent = Object.keys(inventario).length;
+      document.getElementById('lowStockCount').textContent = lowCount;
+      document.getElementById('okStockCount').textContent = okCount;
+
+      // Sales today from Firebase
+      const salesToday = await getTodaySales();
+      document.getElementById('salesToday').textContent = salesToday;
+    }
+
+    function showAlert(message, type) {
+      const container = document.getElementById('alertContainer');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}" style="font-size: 1.25rem;"></i>
+        <span style="flex: 1;">${message}</span>
+      `;
+      container.appendChild(alert);
+
+      setTimeout(() => {
+        alert.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => alert.remove(), 300);
+      }, 3000);
+    }
+
+    // ===== MODAL FUNCTIONS =====
+    function openAddStockModal() {
+      const modal = document.getElementById('addStockModal');
+      const select = document.getElementById('ingredientSelect');
+      const inventario = getInventario();
+
+      select.innerHTML = '<option value="">Seleccionar...</option>';
+      
+      // Ordenar por nombre para mejor UX
+      const sorted = Object.entries(inventario).sort((a, b) => {
+        const nombreA = a[1].nombre || a[0];
+        const nombreB = b[1].nombre || b[0];
+        return nombreA.localeCompare(nombreB);
+      });
+      
+      for (const [key, data] of sorted) {
+        const displayNombre = data.nombre || key.replace(/_/g, ' ');
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = displayNombre.charAt(0).toUpperCase() + displayNombre.slice(1);
+        select.appendChild(option);
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeAddStockModal() {
+      document.getElementById('addStockModal').classList.remove('active');
+      document.getElementById('ingredientSelect').value = '';
+      document.getElementById('quantityInput').value = '';
+    }
+
+    async function addStock() {
+      const ingredienteKey = document.getElementById('ingredientSelect').value;
+      const cantidad = parseInt(document.getElementById('quantityInput').value);
+
+      if (!ingredienteKey || !cantidad || cantidad <= 0) {
+        showAlert('Por favor completa todos los campos correctamente', 'danger');
+        return;
+      }
+
+      const inventario = getInventario();
+      const data = inventario[ingredienteKey];
+      
+      if (!data) {
+        showAlert('Ingrediente no encontrado', 'danger');
+        return;
+      }
+      
+      const displayNombre = data.nombre || ingredienteKey.replace(/_/g, ' ');
+      inventario[ingredienteKey].cantidad += cantidad;
+      await saveInventario(inventario);
+      
+      showAlert(`Se agregaron ${cantidad} ${data.unidad} de ${displayNombre}`, 'success');
+      await addActivityLog(`Agregado: ${cantidad} ${data.unidad} de ${displayNombre}`, 'add');
+      
+      closeAddStockModal();
+    }
+
+    async function quickAddStock(ingredienteKey) {
+      const inventario = getInventario();
+      const data = inventario[ingredienteKey];
+      
+      if (!data) {
+        showAlert('Ingrediente no encontrado', 'danger');
+        return;
+      }
+      
+      const displayNombre = data.nombre || ingredienteKey.replace(/_/g, ' ');
+      const cantidad = prompt(`¿Cuánto ${data.unidad} de ${displayNombre} deseas agregar?`);
+      
+      if (cantidad && !isNaN(cantidad) && parseInt(cantidad) > 0) {
+        inventario[ingredienteKey].cantidad += parseInt(cantidad);
+        await saveInventario(inventario);
+        showAlert(`Se agregaron ${cantidad} ${data.unidad} de ${displayNombre}`, 'success');
+        await addActivityLog(`Agregado: ${cantidad} ${data.unidad} de ${displayNombre}`, 'add');
+      }
+    }
+
+    // ===== TEST FUNCTIONS =====
+    async function testSale(producto) {
+      await registrarVenta(producto);
+    }
+
+    // ===== SINCRONIZACIÓN CON CATÁLOGO =====
+    async function sincronizarConCatalogo() {
+      if (!confirm('¿Deseas sincronizar el inventario con el catálogo de ingredientes? Esto agregará nuevos ingredientes pero NO eliminará los existentes.')) {
+        return;
+      }
+      
+      try {
+        showAlert('Sincronizando con catálogo...', 'success');
+        
+        // Recargar catálogo de ingredientes
+        await cargarIngredientesCatalogo();
+        
+        if (ingredientesCatalogo.length === 0) {
+          showAlert('No hay ingredientes en el catálogo para sincronizar', 'danger');
+          return;
+        }
+        
+        // Obtener inventario actual
+        const inventarioActual = getInventario();
+        const keysActuales = new Set(Object.keys(inventarioActual));
+        
+        // Crear nuevos ingredientes desde el catálogo
+        const nuevoInventario = crearInventarioDesdeIngredientes();
+        let agregados = 0;
+        
+        // Merge: agregar solo los que no existen
+        for (const [key, data] of Object.entries(nuevoInventario)) {
+          if (!keysActuales.has(key)) {
+            inventarioActual[key] = data;
+            agregados++;
+          }
+        }
+        
+        if (agregados > 0) {
+          await saveInventario(inventarioActual);
+          showAlert(`✅ Se agregaron ${agregados} nuevos ingredientes al inventario`, 'success');
+          await addActivityLog(`Sincronización: ${agregados} ingredientes nuevos agregados`, 'add');
+        } else {
+          showAlert('✓ El inventario ya está sincronizado con el catálogo', 'success');
+        }
+        
+      } catch (error) {
+        console.error('Error al sincronizar:', error);
+        showAlert('Error al sincronizar con el catálogo', 'danger');
+      }
+    }
+
+    async function resetInventory() {
+      if (confirm('¿Estás seguro de resetear el inventario? Esta acción no se puede deshacer.')) {
+        const { getDocs, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js');
+        
+        // Recargar ingredientes del catálogo
+        await cargarIngredientesCatalogo();
+        const inventarioInicial = ingredientesCatalogo.length > 0 
+          ? crearInventarioDesdeIngredientes() 
+          : {};
+        
+        await setDoc(doc(db, 'inventario', 'stock'), {
+          items: inventarioInicial,
+          lastUpdated: serverTimestamp(),
+          resetAt: serverTimestamp()
+        });
+        
+        // Clear logs
+        const logsSnapshot = await getDocs(collection(db, 'inventario_logs'));
+        const deletePromises = [];
+        logsSnapshot.forEach((docSnapshot) => {
+          deletePromises.push(deleteDoc(doc(db, 'inventario_logs', docSnapshot.id)));
+        });
+        await Promise.all(deletePromises);
+        
+        // Clear sales stats
+        await setDoc(doc(db, 'inventario', 'sales_stats'), {});
+        
+        showAlert('Inventario reseteado correctamente en Firebase', 'success');
+      }
+    }
+
+    // Exponer funciones globalmente para uso desde otras páginas
+    window.registrarVenta = registrarVenta;
+    window.sincronizarConCatalogo = sincronizarConCatalogo;
+        const deletePromises = [];
+        logsSnapshot.forEach((docSnapshot) => {
+          deletePromises.push(deleteDoc(doc(db, 'inventario_logs', docSnapshot.id)));
+        });
+        await Promise.all(deletePromises);async () => {
+      console.log('🚀 Iniciando sistema de inventario con Firebase...');
+      
+      try {
+        // Inicializar inventario en Firebase si no existe
+        await initInventarioFirebase();
+        
+        // Suscribirse a cambios en tiempo real
+        subscribeToInventario();
+        
+        // Cargar activity log
+        loadActivityLog();
+        
+        // Update stats
+        await updateStats();
+        
+        console.log('✅ Sistema de inventario listo');
+      } catch (error) {
+        console.error('❌ Error al inicializar:', error);
+        showAlert('Error al conectar con Firebase', 'danger');
+      }
+    });
+
+    // Cleanup al cerrar
+    window.addEventListener('beforeunload', () => {
+      if (unsubscribeInventario) {
+        unsubscribeInventario();
+      }(doc(db, 'inventario', 'sales_stats'), {});
+        
+        showAlert('Inventario reseteado correctamente en Firebase', 'success');
+      }
+    }
+
+    // Exponer funciones globalmente para uso desde otras páginas
+    window.registrarVenta = registrarVenta;

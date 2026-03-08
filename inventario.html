@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Inventario en Tiempo Real - SR & SRA BURGER</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles/sr-ui.css" />
+  <script src="js/sr-shell.js" defer></script>
+  <script type="module" src="js/firebase-config.js"></script>
+  
+  <style>
+    :root {
+      --color-primary: #F59E0B;
+      --color-secondary: #EF4444;
+      --color-success: #10B981;
+      --color-warning: #F59E0B;
+      --color-danger: #EF4444;
+      --color-dark: #0F172A;
+      --color-dark-card: #1E293B;
+      --color-text: #E2E8F0;
+      --color-text-secondary: #94A3B8;
+      --font-main: 'Inter', sans-serif;
+      --font-display: 'Montserrat', sans-serif;
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.3);
+      --radius-md: 16px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #334155 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      color: var(--color-text);
+    }
+
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-md);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      border: 1px solid rgba(245, 158, 11, 0.1);
+      box-shadow: var(--shadow-md);
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(245, 158, 11, 0.3);
+      box-shadow: var(--shadow-lg), var(--shadow-glow);
+    }
+
+    .stat-card {
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid rgba(100, 116, 139, 0.2);
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 900;
+      font-family: var(--font-display);
+    }
+
+    .btn {
+      padding: 0.625rem 1.25rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.875rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-primary), #D97706);
+      color: white;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+    }
+
+    .btn-success {
+      background: var(--color-success);
+      color: white;
+    }
+
+    .btn-danger {
+      background: var(--color-danger);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: rgba(71, 85, 105, 0.5);
+      color: var(--color-text);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.5);
+      padding: 1rem;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-secondary);
+      border-bottom: 2px solid rgba(245, 158, 11, 0.2);
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(100, 116, 139, 0.1);
+      color: var(--color-text);
+    }
+
+    tr:hover td {
+      background: rgba(15, 23, 42, 0.3);
+    }
+
+    .stock-low {
+      color: var(--color-danger);
+      font-weight: 700;
+    }
+
+    .stock-ok {
+      color: var(--color-success);
+    }
+
+    .stock-medium {
+      color: var(--color-warning);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--color-dark-card);
+      border-radius: var(--radius-md);
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      box-shadow: var(--shadow-lg);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      border-radius: 8px;
+      color: var(--color-text);
+      font-size: 0.9375rem;
+      transition: all 0.3s ease;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #FCA5A5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #FCD34D;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6EE7B7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .alert {
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      animation: slideIn 0.3s ease;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #6EE7B7;
+    }
+
+    .alert-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .history-item {
+      padding: 0.75rem;
+      background: rgba(15, 23, 42, 0.3);
+      border-radius: 8px;
+      border-left: 3px solid var(--color-primary);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: var(--shadow-glow);">
+            <i class="fas fa-warehouse"></i>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: var(--color-text-secondary); font-weight: 600;">SR & SRA BURGER</div>
+            <div style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 900; color: var(--color-text);">
+              Inventario en Tiempo Real
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 0.75rem;">
+          <a href="ingredientes.html" class="btn btn-secondary">
+            <i class="fas fa-boxes-stacked"></i> Ingredientes
+          </a>
+          <button onclick="sincronizarConCatalogo()" class="btn btn-primary" title="Sincronizar con catálogo de ingredientes">
+            <i class="fas fa-sync"></i> Sincronizar
+          </button>
+          <a href="admin.html" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Admin
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="container" style="padding: 2rem 1.5rem 4rem;">
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
+    <!-- Dashboard Stats -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-box"></i> Total Items
+        </div>
+        <div class="stat-value" id="totalItems" style="color: #93C5FD;">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-exclamation-triangle"></i> Stock Bajo
+        </div>
+        <div class="stat-value" id="lowStockCount" style="color: #FCA5A5;">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-check-circle"></i> Stock OK
+        </div>
+        <div class="stat-value" id="okStockCount" style="color: #6EE7B7;">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-shopping-cart"></i> Ventas Hoy
+        </div>
+        <div class="stat-value" id="salesToday" style="color: #FCD34D;">0</div>
+      </div>
+
+      <div class="stat-card">
+        <div style="font-size: 0.75rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          <i class="fas fa-dollar-sign"></i> Valor del Stock
+        </div>
+        <div class="stat-value" id="stockValue" style="color: #A78BFA;">$0.00</div>
+        <div id="stockValueSub" style="font-size:0.7rem;color:var(--color-text-secondary);margin-top:0.25rem;"></div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+      <!-- Inventory Table -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <div>
+            <h2 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--color-text);">
+              <i class="fas fa-clipboard-list"></i> Inventario Actual
+            </h2>
+            <p style="font-size: 0.875rem; color: var(--color-text-secondary); margin-top: 0.25rem;">
+              Stock en tiempo real vinculado a ventas
+            </p>
+          </div>
+          <button class="btn btn-primary" onclick="openAddStockModal()">
+            <i class="fas fa-plus"></i> Agregar Stock
+          </button>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table id="inventoryTable">
+            <thead>
+              <tr>
+                <th>Ingrediente</th>
+                <th>Stock Actual</th>
+                <th>Unidad</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryBody">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 2rem;">
+                  <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--color-primary);"></i>
+                  <p style="margin-top: 1rem;">Cargando inventario...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div>
+        <!-- Quick Actions -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 1rem; color: var(--color-text);">
+            <i class="fas fa-bolt"></i> Acciones Rápidas
+          </h3>
+          
+          <!-- Estado de sincronización automática -->
+          <div style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 10px; padding: 0.85rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 0.65rem;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #10B981; margin-top: 4px; flex-shrink: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6); animation: blink 2s ease-in-out infinite;"></div>
+            <div>
+              <div style="font-size: 0.8rem; font-weight: 700; color: #6EE7B7; margin-bottom: 0.2rem;">Descuento automático activo</div>
+              <div style="font-size: 0.72rem; color: var(--color-text-secondary); line-height: 1.4;">Al marcar un pedido como <strong style="color:#E2E8F0;">Entregado</strong> en Control de Envíos, los ingredientes se descuentan automáticamente.</div>
+            </div>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <button class="btn btn-primary" onclick="procesarVentasHistoricas()" style="width: 100%;" title="Procesar pedidos entregados hoy que aún no hayan descontado inventario">
+              <i class="fas fa-sync-alt"></i> Procesar Pendientes de Hoy
+            </button>
+            <button class="btn btn-secondary" onclick="sincronizarConCatalogo()" style="width: 100%;">
+              <i class="fas fa-layer-group"></i> Sincronizar Ingredientes
+            </button>
+            <button class="btn btn-danger" onclick="resetInventory()" style="width: 100%; margin-top: 0.5rem;">
+              <i class="fas fa-trash-restore"></i> Reset Inventario
+            </button>
+          </div>
+        </div>
+
+        <!-- Insumos del Día -->
+        <div class="card" id="insumosDelDiaCard" style="margin-bottom:1.5rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+            <h3 style="font-weight:800;font-size:1rem;color:var(--color-text);">
+              <i class="fas fa-fire-alt" style="color:#F97316;"></i> Insumos del Día
+            </h3>
+            <button onclick="loadInsumosDelDia()" title="Actualizar" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:0.2rem 0.4rem;border-radius:6px;transition:color 0.2s;" onmouseover="this.style.color='#F97316'" onmouseout="this.style.color='var(--color-text-secondary)'">
+              <i class="fas fa-sync-alt" id="insumosRefreshIcon"></i>
+            </button>
+          </div>
+          <!-- Stats row -->
+          <div id="insumosStats" style="display:flex;gap:0.5rem;margin-bottom:0.85rem;flex-wrap:wrap;"></div>
+          <!-- Descontar button (shown only when pending) -->
+          <div id="insumosDeductBtn" style="display:none;margin-bottom:0.85rem;">
+            <button class="btn btn-primary" onclick="procesarVentasHistoricas()" style="width:100%;font-size:0.82rem;">
+              <i class="fas fa-arrow-down"></i> <span id="insumosDeductLabel">Descontar pendientes</span>
+            </button>
+          </div>
+          <!-- Ingredients list -->
+          <div id="insumosDelDiaList" style="max-height:360px;overflow-y:auto;">
+            <p style="color:var(--color-text-secondary);font-size:0.875rem;text-align:center;padding:1rem 0;"><i class="fas fa-spinner fa-spin"></i> Cargando...</p>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+          <h3 style="font-weight: 800; font-size: 1rem; margin-bottom: 1rem; color: var(--color-text);">
+            <i class="fas fa-history"></i> Actividad Reciente
+          </h3>
+          <div id="activityLog" style="max-height: 400px; overflow-y: auto;">
+            <p style="color: var(--color-text-secondary); font-size: 0.875rem; text-align: center;">Cargando actividad...</p>
+          </div>
+        </div>
+
+        <!-- Registro de Compras -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h3 style="font-weight:800;font-size:1rem;color:var(--color-text);">
+              <i class="fas fa-receipt"></i> Registro de Compras
+            </h3>
+            <span style="font-size:0.7rem;color:var(--color-text-secondary);">Últimas 30</span>
+          </div>
+          <div id="comprasLog" style="max-height:420px;overflow-y:auto;">
+            <p style="color:var(--color-text-secondary);font-size:0.875rem;text-align:center;">Cargando...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Add Stock -->
+  <div id="addStockModal" class="modal">
+    <div class="modal-content" style="max-width:460px;">
+
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+        <div>
+          <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:var(--color-text);" id="modalIngNombre">Agregar Stock</h3>
+          <p id="modalIngRef" style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.2rem;"></p>
+        </div>
+        <button class="btn-icon btn-secondary" onclick="closeAddStockModal()"><i class="fas fa-times"></i></button>
+      </div>
+
+      <!-- Selector de ingrediente (solo visible cuando se abre desde el boton general) -->
+      <div id="modalIngSelectWrap" style="margin-bottom:1rem;display:none;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">Ingrediente</label>
+        <select id="ingredientSelect" onchange="onModalIngChange()"></select>
+      </div>
+
+      <!-- Toggle Paquete / Unidad -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1.25rem;">
+        <button id="btnModoPaquete" onclick="setModoStock('paquete')"
+          style="padding:0.85rem 0.5rem;border-radius:12px;border:2px solid rgba(16,185,129,0.6);background:rgba(16,185,129,0.15);color:#6EE7B7;font-weight:700;font-size:0.85rem;cursor:pointer;transition:all 0.18s;">
+          <i class="fas fa-box" style="display:block;font-size:1.4rem;margin-bottom:0.35rem;"></i>
+          Por Paquete
+        </button>
+        <button id="btnModoUnidad" onclick="setModoStock('unidad')"
+          style="padding:0.85rem 0.5rem;border-radius:12px;border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--color-text-secondary);font-weight:700;font-size:0.85rem;cursor:pointer;transition:all 0.18s;">
+          <i class="fas fa-cube" style="display:block;font-size:1.4rem;margin-bottom:0.35rem;"></i>
+          Por Unidad
+        </button>
+      </div>
+
+      <!-- Zona Paquete -->
+      <div id="zonaPaquete">
+        <!-- Referencia del catalogo -->
+        <div id="refPaqueteBox" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;display:none;">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;margin-bottom:0.5rem;">Referencia del Catálogo</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Unidades/paquete</div>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--color-text);" id="refUnidadesPaq">—</div>
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Precio/paquete</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#FCD34D;" id="refPrecioPaq">—</div>
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Costo/unidad</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#6EE7B7;" id="refCostoUnid">—</div>
+          </div>
+        </div>
+        <!-- Cuantos paquetes -->
+        <div style="margin-bottom:1rem;">
+          <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">¿Cuántos paquetes compraste?</label>
+          <input type="number" id="numPaquetesInput" placeholder="Ej: 2" min="1" step="1" oninput="recalcPaquetes()"
+            style="font-size:1.3rem;font-weight:800;text-align:center;" />
+        </div>
+        <!-- Resultado calculado -->
+        <div id="resumenPaquete" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1.25rem;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.35rem;align-items:center;">
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Unidades a agregar</div>
+            <div style="font-size:1.1rem;font-weight:800;color:#FCD34D;"><span id="resTotalUnidades">0</span> <span id="resUnidad" style="font-size:0.8rem;font-weight:600;"></span></div>
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Costo total</div>
+            <div style="font-size:1.1rem;font-weight:800;color:#6EE7B7;">$<span id="resTotalCosto">0.00</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zona Unidad -->
+      <div id="zonaUnidad" style="display:none;">
+        <div style="margin-bottom:1.25rem;">
+          <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">Cantidad de unidades a agregar</label>
+          <input type="number" id="numUnidadesInput" placeholder="Ej: 10" min="1" step="1"
+            style="font-size:1.3rem;font-weight:800;text-align:center;" />
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display:flex;gap:0.75rem;">
+        <button class="btn btn-primary" onclick="addStock()" style="flex:1;">
+          <i class="fas fa-check"></i> Confirmar
+        </button>
+        <button class="btn btn-secondary" onclick="closeAddStockModal()" style="flex:1;">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal: Merma / Quitar Stock -->
+  <div id="mermaModal" class="modal">
+    <div class="modal-content" style="max-width:460px;">
+
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+        <div>
+          <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;color:#FCA5A5;" id="mermaIngNombre">Registrar Merma</h3>
+          <p id="mermaIngRef" style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.2rem;"></p>
+        </div>
+        <button class="btn-icon btn-secondary" onclick="closeMermaModal()"><i class="fas fa-times"></i></button>
+      </div>
+
+      <!-- Toggle Paquete / Unidad -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1.25rem;">
+        <button id="mermaBtnPaquete" onclick="setModoMerma('paquete')"
+          style="padding:0.85rem 0.5rem;border-radius:12px;border:2px solid rgba(239,68,68,0.6);background:rgba(239,68,68,0.15);color:#FCA5A5;font-weight:700;font-size:0.85rem;cursor:pointer;transition:all 0.18s;">
+          <i class="fas fa-box" style="display:block;font-size:1.4rem;margin-bottom:0.35rem;"></i>
+          Por Paquete
+        </button>
+        <button id="mermaBtnUnidad" onclick="setModoMerma('unidad')"
+          style="padding:0.85rem 0.5rem;border-radius:12px;border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--color-text-secondary);font-weight:700;font-size:0.85rem;cursor:pointer;transition:all 0.18s;">
+          <i class="fas fa-cube" style="display:block;font-size:1.4rem;margin-bottom:0.35rem;"></i>
+          Por Unidad
+        </button>
+      </div>
+
+      <!-- Zona Paquete Merma -->
+      <div id="mermaZonaPaquete">
+        <div id="mermaRefPaqueteBox" style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;display:none;">
+          <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#FCA5A5;margin-bottom:0.5rem;">Referencia del Catálogo</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Unidades/paquete</div>
+            <div style="font-size:0.85rem;font-weight:700;color:var(--color-text);" id="mermaRefUnidadesPaq">—</div>
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Costo/paquete</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#FCD34D;" id="mermaRefPrecioPaq">—</div>
+          </div>
+        </div>
+        <div style="margin-bottom:1rem;">
+          <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">¿Cuántos paquetes se pierden?</label>
+          <input type="number" id="mermaPaquetesInput" placeholder="Ej: 1" min="1" step="1" oninput="recalcMerma()"
+            style="font-size:1.3rem;font-weight:800;text-align:center;" />
+        </div>
+        <div id="mermaResumenPaquete" style="display:none;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.35rem;align-items:center;">
+            <div style="font-size:0.8rem;color:var(--color-text-secondary);">Unidades a quitar</div>
+            <div style="font-size:1.1rem;font-weight:800;color:#FCA5A5;"><span id="mermaResTotalUnidades">0</span> <span id="mermaResUnidad" style="font-size:0.8rem;font-weight:600;"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zona Unidad Merma -->
+      <div id="mermaZonaUnidad" style="display:none;">
+        <div style="margin-bottom:1rem;">
+          <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">Cantidad de unidades a quitar</label>
+          <input type="number" id="mermaUnidadesInput" placeholder="Ej: 5" min="1" step="1"
+            style="font-size:1.3rem;font-weight:800;text-align:center;" />
+        </div>
+      </div>
+
+      <!-- Razón -->
+      <div style="margin-bottom:1.25rem;">
+        <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">Razón <span style="color:#FCA5A5;">*</span></label>
+        <input type="text" id="mermaRazonInput" placeholder="Ej: Caducó, se cayó, mal estado…"
+          style="font-size:0.95rem;font-weight:600;border:1px solid rgba(239,68,68,0.35);" />
+      </div>
+
+      <!-- Buttons -->
+      <div style="display:flex;gap:0.75rem;">
+        <button class="btn" onclick="confirmMerma()" style="flex:1;background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.45);color:#FCA5A5;font-weight:700;">
+          <i class="fas fa-minus-circle"></i> Confirmar merma
+        </button>
+        <button class="btn btn-secondary" onclick="closeMermaModal()" style="flex:1;">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    // ===== FIREBASE IMPORTS =====
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js';
+    import { 
+      getFirestore, 
+      doc, 
+      getDoc, 
+      setDoc, 
+      updateDoc,
+      onSnapshot,
+      collection,
+      addDoc,
+      query,
+      where,
+      orderBy,
+      limit,
+      serverTimestamp,
+      runTransaction,
+      getDocs,
+      deleteDoc,
+      Timestamp
+    } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
+
+    // ===== FIREBASE CONFIG =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyCf7-6oLHjpNgU1zr4qdTrOKuXGe1ht2Zs",
+      authDomain: "sr-sra-burger.firebaseapp.com",
+      projectId: "sr-sra-burger",
+      storageBucket: "sr-sra-burger.firebasestorage.app",
+      messagingSenderId: "542059080203",
+      appId: "1:542059080203:web:2e15f179a1475b1a77f50e"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ===== SISTEMA DE RECETAS =====
+    const RECETAS = {
+      hamburguesa_sencilla: {
+        nombre: 'Hamburguesa Sencilla',
+        ingredientes: {
+          carne_hamburguesa: 1,
+          bimbollo: 1
+        }
+      },
+      boneless: {
+        nombre: 'Boneless',
+        ingredientes: {
+          boneles: 150
+        }
+      },
+      papas: {
+        nombre: 'Papas Fritas',
+        ingredientes: {
+          papas_francesas: 200
+        }
+      }
+    };
+
+    // ===== VARIABLES GLOBALES =====
+    let inventarioCache = null;
+    let unsubscribeInventario = null;
+    let unsubscribeInsumosOrders = null;
+    let unsubscribeInsumosHistory = null;
+    let ingredientesCatalogo = [];
+
+    // Debounce para no recargar insumos en cada micro-cambio
+    let _insumosDebounceTimer = null;
+    function debouncedLoadInsumos(ms = 800) {
+      clearTimeout(_insumosDebounceTimer);
+      _insumosDebounceTimer = setTimeout(() => {
+        if (window.loadInsumosDelDia) window.loadInsumosDelDia();
+      }, ms);
+    }
+
+    // Listener en tiempo real para pedidos de hoy → recarga insumos automáticamente
+    function setupInsumosRealtimeListener() {
+      // Limpiar listeners anteriores si hubiera
+      if (unsubscribeInsumosOrders) { unsubscribeInsumosOrders(); unsubscribeInsumosOrders = null; }
+      if (unsubscribeInsumosHistory) { unsubscribeInsumosHistory(); unsubscribeInsumosHistory = null; }
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayTs = Timestamp.fromDate(todayStart);
+
+      // Escuchar orders de hoy
+      const qOrders = query(
+        collection(db, 'orders'),
+        where('timestamp', '>=', todayTs)
+      );
+      unsubscribeInsumosOrders = onSnapshot(qOrders, () => {
+        debouncedLoadInsumos();
+      }, (err) => console.warn('⚠️ onSnapshot orders:', err));
+
+      // Escuchar orders_history de hoy
+      const qHistory = query(
+        collection(db, 'orders_history'),
+        where('timestamp', '>=', todayTs)
+      );
+      unsubscribeInsumosHistory = onSnapshot(qHistory, () => {
+        debouncedLoadInsumos();
+      }, (err) => console.warn('⚠️ onSnapshot history:', err));
+
+      console.log('👁️ Escuchando cambios en pedidos de hoy — insumos se actualizarán en tiempo real');
+    };
+
+    // ===== FUNCIONES PARA STOCK MÍNIMO =====
+    function calcularStockMinimo(unidad, cantidad) {
+      const unidadLower = String(unidad || '').toLowerCase();
+      
+      if (unidadLower.includes('kg')) return Math.max(1, Math.floor(cantidad * 0.2));
+      if (unidadLower.includes('g')) return Math.max(100, Math.floor(cantidad * 0.15));
+      if (unidadLower.includes('l')) return Math.max(1, Math.floor(cantidad * 0.2));
+      if (unidadLower.includes('ml')) return Math.max(100, Math.floor(cantidad * 0.15));
+      if (unidadLower.includes('unidad') || unidadLower === 'pz' || unidadLower === 'u') {
+        return Math.max(5, Math.floor(cantidad * 0.2));
+      }
+      
+      return Math.max(10, Math.floor(cantidad * 0.2));
+    }
+
+    // ===== FUNCIONES DE FIREBASE =====
+    
+    // Cargar catálogo de ingredientes desde Firebase
+    async function cargarIngredientesCatalogo() {
+      try {
+        console.log('📦 Cargando catálogo de ingredientes...');
+        
+        // Esperar a que firebaseManager esté disponible
+        let attempts = 0;
+        while (!window.firebaseManager && attempts < 30) {
+          await new Promise(r => setTimeout(r, 100));
+          attempts++;
+        }
+        
+        if (window.firebaseManager && window.firebaseManager.getSettings) {
+          const settings = await window.firebaseManager.getSettings();
+          const catalog = settings?.ingredientsCatalog;
+          
+          if (Array.isArray(catalog) && catalog.length > 0) {
+            ingredientesCatalogo = catalog;
+            console.log(`✅ ${catalog.length} ingredientes cargados desde Firebase Settings`);
+            return;
+          }
+        }
+        
+        // Fallback: localStorage
+        const localIngredientes = localStorage.getItem('sr_ingredients_v1');
+        if (localIngredientes) {
+          try {
+            const parsed = JSON.parse(localIngredientes);
+            if (Array.isArray(parsed)) {
+              ingredientesCatalogo = parsed;
+              console.log(`✅ ${parsed.length} ingredientes cargados desde localStorage`);
+              return;
+            }
+          } catch (e) {
+            console.error('Error al parsear ingredientes locales:', e);
+          }
+        }
+        
+        console.warn('⚠️ No se encontraron ingredientes');
+      } catch (error) {
+        console.error('Error al cargar ingredientes:', error);
+      }
+    }
+
+    // Crear inventario desde ingredientes
+    function crearInventarioDesdeIngredientes() {
+      const inventario = {};
+      
+      console.log(`🔨 Creando inventario con ${ingredientesCatalogo.length} ingredientes`);
+      
+      ingredientesCatalogo.forEach(ing => {
+        const nombre = ing.nombre || ing.name;
+        const unidad = ing.unidad || ing.unit || 'unidad';
+        
+        if (!nombre) return;
+        
+        // Normalizar nombre como key
+        const key = nombre.toLowerCase().replace(/\s+/g, '_');
+        
+        const unidadesPaquete = ing.unidadesPaquete || ing.unitsPerPack || 10;
+        const cantidadInicial = Math.floor(unidadesPaquete * 2);
+        
+        inventario[key] = {
+          nombre: nombre,
+          cantidad: cantidadInicial,
+          unidad: unidad,
+          minimo: calcularStockMinimo(unidad, cantidadInicial),
+          ingredienteId: ing.id
+        };
+      });
+      
+      console.log(`✅ Inventario creado con ${Object.keys(inventario).length} items`);
+      return inventario;
+    }
+
+    // Inicializar inventario en Firebase
+    async function initInventarioFirebase() {
+      const docRef = doc(db, 'inventario', 'stock');
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        await cargarIngredientesCatalogo();
+        
+        let inventarioInicial;
+        
+        if (ingredientesCatalogo.length > 0) {
+          inventarioInicial = crearInventarioDesdeIngredientes();
+          showAlert(`✅ Inventario creado con ${Object.keys(inventarioInicial).length} ingredientes`, 'success');
+        } else {
+          inventarioInicial = {};
+          showAlert('⚠️ No hay ingredientes en el catálogo. Agrégalos en ingredientes.html', 'danger');
+        }
+        
+        await setDoc(docRef, {
+          items: inventarioInicial,
+          lastUpdated: serverTimestamp(),
+          createdFrom: 'ingredientes_catalog',
+          createdAt: serverTimestamp()
+        });
+      } else {
+        await cargarIngredientesCatalogo();
+        console.log('✅ Inventario existente cargado');
+      }
+    }
+
+    // Suscribirse a cambios en tiempo real
+    function subscribeToInventario() {
+      const docRef = doc(db, 'inventario', 'stock');
+      
+      unsubscribeInventario = onSnapshot(docRef, (doc) => {
+        if (doc.exists()) {
+          inventarioCache = doc.data().items;
+          renderInventario();
+          updateStats();
+          console.log('🔄 Inventario sincronizado');
+        }
+      }, (error) => {
+        console.error('Error al escuchar inventario:', error);
+        showAlert('Error de conexión con Firebase', 'danger');
+      });
+    }
+
+    function getInventario() {
+      return inventarioCache || {};
+    }
+
+    async function saveInventario(inventario) {
+      try {
+        const docRef = doc(db, 'inventario', 'stock');
+        await setDoc(docRef, {
+          items: inventario,
+          lastUpdated: serverTimestamp()
+        });
+      } catch (error) {
+        console.error('Error al guardar inventario:', error);
+        showAlert('Error al guardar en Firebase', 'danger');
+      }
+    }
+
+    // Logs de actividad
+    async function addActivityLog(message, type = 'info') {
+      try {
+        await addDoc(collection(db, 'inventario_logs'), {
+          message,
+          type,
+          timestamp: serverTimestamp()
+        });
+      } catch (error) {
+        console.error('Error al registrar actividad:', error);
+      }
+    }
+
+    async function loadActivityLog() {
+      try {
+        const q = query(
+          collection(db, 'inventario_logs'),
+          orderBy('timestamp', 'desc'),
+          limit(20)
+        );
+        
+        onSnapshot(q, (snapshot) => {
+          const logs = [];
+          snapshot.forEach((doc) => {
+            logs.push({ id: doc.id, ...doc.data() });
+          });
+          renderActivityLog(logs);
+        });
+      } catch (error) {
+        console.error('Error al cargar logs:', error);
+      }
+    }
+
+    function renderActivityLog(logs) {
+      const container = document.getElementById('activityLog');
+      
+      if (logs.length === 0) {
+        container.innerHTML = '<p style="color: var(--color-text-secondary); font-size: 0.875rem; text-align: center;">No hay actividad reciente</p>';
+        return;
+      }
+
+      container.innerHTML = logs.map(entry => {
+        const date = entry.timestamp?.toDate ? entry.timestamp.toDate() : new Date();
+        const timeStr = date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        
+        let icon = 'circle';
+        let color = 'var(--color-text-secondary)';
+        
+        if (entry.type === 'sale') {
+          if (entry.message && entry.message.includes('automática')) {
+            icon = 'bolt';
+            color = '#6EE7B7';  // verde brillante = auto-descuento
+          } else {
+            icon = 'shopping-cart';
+            color = 'var(--color-success)';
+          }
+        } else if (entry.type === 'add') {
+          icon = 'plus-circle';
+          color = 'var(--color-primary)';
+        }
+
+        return `
+          <div class="history-item">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fas fa-${icon}" style="color: ${color};"></i>
+              <span style="flex: 1;">${entry.message}</span>
+              <span style="font-size: 0.75rem; color: var(--color-text-secondary);">${timeStr}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Ventas
+
+    // ===== REGISTRO DE COMPRAS =====
+    async function loadComprasLog() {
+      try {
+        const q = query(
+          collection(db, 'inventario_compras'),
+          orderBy('timestamp', 'desc'),
+          limit(30)
+        );
+        onSnapshot(q, (snapshot) => {
+          const compras = [];
+          snapshot.forEach((d) => compras.push({ id: d.id, ...d.data() }));
+          renderComprasLog(compras);
+        });
+      } catch (e) {
+        console.error('Error al cargar compras:', e);
+      }
+    }
+
+    function renderComprasLog(compras) {
+      const container = document.getElementById('comprasLog');
+      if (!container) return;
+      if (!compras.length) {
+        container.innerHTML = '<p style="color:var(--color-text-secondary);font-size:0.875rem;text-align:center;">Sin compras registradas aún.</p>';
+        return;
+      }
+      container.innerHTML = compras.map(c => {
+        if (c.ingredienteKey === '__RESET__') {
+          const date = c.timestamp?.toDate ? c.timestamp.toDate() : new Date();
+          const ds = date.toLocaleDateString('es-MX', { day:'2-digit', month:'short' });
+          const ts = date.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+          return `<div style="padding:0.6rem 0;border-bottom:1px solid rgba(239,68,68,0.15);">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <i class="fas fa-trash-restore" style="color:#F87171;"></i>
+              <span style="font-size:0.82rem;color:#FCA5A5;font-weight:700;">RESET INVENTARIO</span>
+              <span style="margin-left:auto;font-size:0.72rem;color:var(--color-text-secondary);">${ds} ${ts}</span>
+            </div>
+          </div>`;
+        }
+        const date = c.timestamp?.toDate ? c.timestamp.toDate() : new Date();
+        const ds = date.toLocaleDateString('es-MX', { day:'2-digit', month:'short' });
+        const ts = date.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+        const nombre = String(c.nombre || c.ingredienteKey || '').replace(/_/g,' ');
+        return `<div style="padding:0.65rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
+            <div>
+              <div style="font-size:0.82rem;font-weight:700;color:var(--color-text);">${nombre.toUpperCase()}</div>
+              <div style="font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.15rem;">
+                +${c.cantidad} ${c.unidad}
+                ${c.costoPaquete > 0 ? `&nbsp;&bull;&nbsp; <span style="color:#FCD34D;">$${Number(c.costoPaquete).toFixed(2)}/paq</span>` : ''}
+                ${c.costoUnidad > 0 ? `&nbsp;&bull;&nbsp; $${Number(c.costoUnidad).toFixed(4)}/u` : ''}
+              </div>
+            </div>
+            <span style="font-size:0.7rem;color:var(--color-text-secondary);white-space:nowrap;">${ds}<br>${ts}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    async function getTodaySales() {
+      try {
+        const docRef = doc(db, 'inventario', 'sales_stats');
+        const docSnap = await getDoc(docRef);
+        
+        const today = new Date().toDateString();
+        console.log('📅 Consultando ventas para:', today);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          console.log('📊 Datos de ventas en Firebase:', data);
+          const count = data[today] || 0;
+          console.log(`  Ventas hoy (${today}):`, count);
+          return count;
+        }
+        
+        // Crear documento si no existe
+        console.log('🔧 Creando documento de ventas en Firebase...');
+        await setDoc(docRef, { [today]: 0 });
+        console.log('✅ Documento de ventas creado');
+        return 0;
+      } catch (error) {
+        console.error('❌ Error al obtener ventas:', error);
+        return 0;
+      }
+    }
+
+    async function incrementSalesCounter() {
+      try {
+        const docRef = doc(db, 'inventario', 'sales_stats');
+        const today = new Date().toDateString();
+        
+        await runTransaction(db, async (transaction) => {
+          const doc = await transaction.get(docRef);
+          const currentData = doc.exists() ? doc.data() : {};
+          const currentCount = currentData[today] || 0;
+          
+          transaction.set(docRef, {
+            ...currentData,
+            [today]: currentCount + 1
+          });
+        });
+      } catch (error) {
+        console.error('Error al incrementar ventas:', error);
+      }
+    }
+
+    // ===== REGISTRAR VENTA =====
+    async function registrarVenta(producto) {
+      const receta = RECETAS[producto];
+      if (!receta) {
+        showAlert('Producto no encontrado en recetas', 'danger');
+        return false;
+      }
+
+      const inventario = getInventario();
+      const faltantes = [];
+
+      // Verificar stock
+      for (const [ingrediente, cantidad] of Object.entries(receta.ingredientes)) {
+        if (!inventario[ingrediente]) {
+          faltantes.push(`${ingrediente} (no existe en inventario)`);
+        } else if (inventario[ingrediente].cantidad < cantidad) {
+          faltantes.push(`${ingrediente} (necesitas ${cantidad}, tienes ${inventario[ingrediente].cantidad})`);
+        }
+      }
+
+      if (faltantes.length > 0) {
+        showAlert(`Stock insuficiente: ${faltantes.join(', ')}`, 'danger');
+        return false;
+      }
+
+      // Descontar ingredientes
+      for (const [ingrediente, cantidad] of Object.entries(receta.ingredientes)) {
+        inventario[ingrediente].cantidad -= cantidad;
+      }
+
+      await saveInventario(inventario);
+      showAlert(`Venta registrada: ${receta.nombre} ✓`, 'success');
+      await addActivityLog(`Venta: ${receta.nombre}`, 'sale');
+      await incrementSalesCounter();
+      await updateStats();
+
+      return true;
+    }
+
+    // ===== UI FUNCTIONS =====
+    function renderInventario() {
+      const inventario = getInventario();
+      const tbody = document.getElementById('inventoryBody');
+      tbody.innerHTML = '';
+
+      if (!inventario || Object.keys(inventario).length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">
+              <i class="fas fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+              <p>No hay ingredientes en el inventario.</p>
+              <p style="font-size: 0.875rem; margin-top: 0.5rem;">
+                Primero agrega ingredientes en <a href="ingredientes.html" style="color: var(--color-primary); text-decoration: underline;">ingredientes.html</a>, luego haz clic en "Sincronizar"
+              </p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const sorted = Object.entries(inventario).sort((a, b) => {
+        const nombreA = a[1].nombre || a[0];
+        const nombreB = b[1].nombre || b[0];
+        return nombreA.localeCompare(nombreB);
+      });
+
+      for (const [key, data] of sorted) {
+        const { nombre, cantidad, unidad, minimo } = data;
+        const displayNombre = nombre || key.replace(/_/g, ' ');
+        
+        let estadoClass = 'stock-ok';
+        let estadoBadge = 'badge-success';
+        let estadoText = 'Stock OK';
+        let estadoIcon = 'check-circle';
+        
+        if (cantidad <= minimo) {
+          estadoClass = 'stock-low';
+          estadoBadge = 'badge-danger';
+          estadoText = 'Stock Bajo';
+          estadoIcon = 'exclamation-triangle';
+        } else if (cantidad <= minimo * 2) {
+          estadoClass = 'stock-medium';
+          estadoBadge = 'badge-warning';
+          estadoText = 'Stock Medio';
+          estadoIcon = 'exclamation-circle';
+        }
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td style="font-weight: 600;">${displayNombre.charAt(0).toUpperCase() + displayNombre.slice(1)}</td>
+          <td class="${estadoClass}" style="font-weight: 800; font-size: 1.125rem;">${cantidad}</td>
+          <td style="color: var(--color-text-secondary);">${unidad}</td>
+          <td>
+            <span class="badge ${estadoBadge}">
+              <i class="fas fa-${estadoIcon}"></i> ${estadoText}
+            </span>
+          </td>
+          <td style="display:flex;gap:0.4rem;align-items:center;">
+            <button class="btn-icon btn-success" onclick="quickAddStock('${key}')" title="Agregar stock">
+              <i class="fas fa-plus"></i>
+            </button>
+            <button class="btn-icon" style="background:rgba(239,68,68,0.15);color:#FCA5A5;border:1px solid rgba(239,68,68,0.3);" onclick="quickRemoveStock('${key}')" title="Registrar merma">
+              <i class="fas fa-minus"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      }
+    }
+
+    async function updateStats() {
+      const inventario = getInventario();
+      let lowCount = 0;
+      let okCount = 0;
+      let totalValor = 0;
+      let itemsConPrecio = 0;
+
+      for (const [key, data] of Object.entries(inventario)) {
+        if (data.cantidad <= data.minimo) {
+          lowCount++;
+        } else {
+          okCount++;
+        }
+        // Calcular valor usando catálogo: precioPaquete / unidadesPaquete
+        const keyName = key.replace(/_/g, ' ').toLowerCase();
+        const invId   = data.ingredienteId || '';
+        const cat = ingredientesCatalogo.find(c => {
+          if (invId && String(c.id || '') === String(invId)) return true;
+          const nm = String(c.nombre || c.name || '').trim().toLowerCase();
+          return nm === keyName;
+        });
+        const ipp = Number(cat?.unitsPerPack || cat?.unidadesPaquete || 0);
+        const ppp = Number(cat?.pricePerPack || cat?.precioPaquete || 0);
+        const cpu = (ipp > 0 && ppp > 0) ? ppp / ipp : Number(data.costoUnidad || 0);
+        if (cpu > 0) {
+          totalValor += cpu * Number(data.cantidad || 0);
+          itemsConPrecio++;
+        }
+      }
+
+      document.getElementById('totalItems').textContent = Object.keys(inventario).length;
+      document.getElementById('lowStockCount').textContent = lowCount;
+      document.getElementById('okStockCount').textContent = okCount;
+
+      // Valor del stock
+      const valorEl = document.getElementById('stockValue');
+      const subEl   = document.getElementById('stockValueSub');
+      if (valorEl) {
+        valorEl.textContent = `$${totalValor.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      if (subEl) {
+        const total = Object.keys(inventario).length;
+        const sinPrecio = total - itemsConPrecio;
+        subEl.textContent = sinPrecio > 0 ? `${sinPrecio} ítem${sinPrecio > 1 ? 's' : ''} sin precio` : 'todos con precio';
+      }
+
+      const salesToday = await getTodaySales();
+      document.getElementById('salesToday').textContent = salesToday;
+    }
+
+    function showAlert(message, type) {
+      // Toast flotante con z-index alto para aparecer encima de modales
+      let toastContainer = document.getElementById('_toastContainer');
+      if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = '_toastContainer';
+        toastContainer.style.cssText = `
+          position:fixed; top:1.25rem; right:1.25rem; z-index:99999;
+          display:flex; flex-direction:column; gap:0.6rem;
+          pointer-events:none; max-width:360px;
+        `;
+        document.body.appendChild(toastContainer);
+      }
+      const toast = document.createElement('div');
+      const isSuccess = type === 'success';
+      toast.style.cssText = `
+        display:flex; align-items:center; gap:0.75rem;
+        padding:0.9rem 1.1rem; border-radius:12px;
+        font-size:0.87rem; font-weight:600; pointer-events:auto;
+        animation:slideIn 0.3s ease;
+        background:${isSuccess ? 'rgba(16,185,129,0.18)' : 'rgba(239,68,68,0.18)'};
+        border:1px solid ${isSuccess ? 'rgba(16,185,129,0.45)' : 'rgba(239,68,68,0.45)'};
+        color:${isSuccess ? '#6EE7B7' : '#FCA5A5'};
+        box-shadow:0 8px 32px rgba(0,0,0,0.35);
+        backdrop-filter:blur(8px);
+      `;
+      toast.innerHTML = `
+        <i class="fas fa-${isSuccess ? 'check-circle' : 'exclamation-triangle'}" style="font-size:1.2rem;flex-shrink:0;"></i>
+        <span style="flex:1;line-height:1.4;">${message}</span>
+      `;
+      toastContainer.appendChild(toast);
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        setTimeout(() => toast.remove(), 320);
+      }, 3500);
+    }
+
+    // ===== MODAL FUNCTIONS =====
+    let _modalModo = 'paquete'; // 'paquete' | 'unidad'
+    let _modalKey  = '';        // ingredienteKey activo
+
+    // Catalog lookup helper
+    function getCatalogData(ingKey) {
+      // Buscar en ingredientesCatalogo por key normalizado o por id guardado en inventario
+      const invData = (inventarioCache || {})[ingKey];
+      const ingId   = invData?.ingredienteId || '';
+      const keyName = ingKey.replace(/_/g, ' ').toLowerCase();
+      const found   = ingredientesCatalogo.find(c => {
+        if (ingId && String(c.id || '') === String(ingId)) return true;
+        const nm = String(c.nombre || c.name || '').trim().toLowerCase();
+        return nm === keyName;
+      });
+      return found || null;
+    }
+
+    window.setModoStock = function(modo) {
+      _modalModo = modo;
+      const btnPaq  = document.getElementById('btnModoPaquete');
+      const btnUni  = document.getElementById('btnModoUnidad');
+      const zonaPaq = document.getElementById('zonaPaquete');
+      const zonaUni = document.getElementById('zonaUnidad');
+
+      if (modo === 'paquete') {
+        btnPaq.style.borderColor  = 'rgba(16,185,129,0.7)';
+        btnPaq.style.background   = 'rgba(16,185,129,0.18)';
+        btnPaq.style.color        = '#6EE7B7';
+        btnUni.style.borderColor  = 'rgba(255,255,255,0.1)';
+        btnUni.style.background   = 'rgba(255,255,255,0.04)';
+        btnUni.style.color        = 'var(--color-text-secondary)';
+        zonaPaq.style.display = 'block';
+        zonaUni.style.display = 'none';
+      } else {
+        btnUni.style.borderColor  = 'rgba(99,102,241,0.7)';
+        btnUni.style.background   = 'rgba(99,102,241,0.15)';
+        btnUni.style.color        = '#A5B4FC';
+        btnPaq.style.borderColor  = 'rgba(255,255,255,0.1)';
+        btnPaq.style.background   = 'rgba(255,255,255,0.04)';
+        btnPaq.style.color        = 'var(--color-text-secondary)';
+        zonaPaq.style.display = 'none';
+        zonaUni.style.display = 'block';
+      }
+      recalcPaquetes();
+    };
+
+    window.recalcPaquetes = function() {
+      const numPaq = parseFloat(document.getElementById('numPaquetesInput')?.value || 0);
+      const resBox = document.getElementById('resumenPaquete');
+      if (!resBox) return;
+      const cat = getCatalogData(_modalKey);
+      const ipp = Number(cat?.unitsPerPack || cat?.unidadesPaquete || 0);
+      const ppp = Number(cat?.pricePerPack || cat?.precioPaquete || 0);
+      if (numPaq > 0 && ipp > 0) {
+        document.getElementById('resTotalUnidades').textContent = numPaq * ipp;
+        const unidad = (inventarioCache || {})[_modalKey]?.unidad || 'unidad';
+        document.getElementById('resUnidad').textContent = unidad;
+        document.getElementById('resTotalCosto').textContent = (numPaq * ppp).toFixed(2);
+        resBox.style.display = 'block';
+      } else {
+        resBox.style.display = 'none';
+      }
+    };
+
+    // legacy alias (some places call recalcCostoUnidad)
+    window.recalcCostoUnidad = recalcPaquetes;
+
+    function _fillCatalogRef(ingKey) {
+      const cat = getCatalogData(ingKey);
+      const refBox  = document.getElementById('refPaqueteBox');
+      const elUnits = document.getElementById('refUnidadesPaq');
+      const elPrecio= document.getElementById('refPrecioPaq');
+      const elCosto = document.getElementById('refCostoUnid');
+      if (!cat || (!cat.unitsPerPack && !cat.unidadesPaquete)) {
+        if (refBox) refBox.style.display = 'none';
+        return;
+      }
+      const ipp = Number(cat.unitsPerPack || cat.unidadesPaquete || 0);
+      const ppp = Number(cat.pricePerPack || cat.precioPaquete || 0);
+      const cpu = ipp > 0 ? ppp / ipp : 0;
+      const unidad = (inventarioCache || {})[ingKey]?.unidad || 'unidad';
+      if (elUnits)  elUnits.textContent  = `${ipp} ${unidad}`;
+      if (elPrecio) elPrecio.textContent = ppp > 0 ? `$${ppp.toFixed(2)}` : '—';
+      if (elCosto)  elCosto.textContent  = cpu > 0 ? `$${cpu.toFixed(4)}` : '—';
+      if (refBox)   refBox.style.display = 'block';
+    }
+
+    window.onModalIngChange = function() {
+      const selWrap = document.getElementById('modalIngSelectWrap');
+      const sel = document.getElementById('ingredientSelect');
+      // Solo sobrescribir _modalKey desde el selector si este está visible (modo sin preselect)
+      if (selWrap && selWrap.style.display !== 'none') {
+        _modalKey = sel ? sel.value : '';
+      }
+      const invData = (_modalKey && inventarioCache) ? inventarioCache[_modalKey] : null;
+      const nombre  = invData?.nombre || _modalKey.replace(/_/g,' ');
+      const nombEl  = document.getElementById('modalIngNombre');
+      const refEl   = document.getElementById('modalIngRef');
+      if (nombEl) nombEl.textContent = nombre ? nombre.toUpperCase() : 'Agregar Stock';
+      // ref line: stock actual
+      if (refEl && invData) {
+        refEl.textContent = `Stock actual: ${invData.cantidad ?? '?'} ${invData.unidad || 'unidad'}`;
+      } else if (refEl) { refEl.textContent = ''; }
+      _fillCatalogRef(_modalKey);
+      recalcPaquetes();
+    };
+
+    window.openAddStockModal = function(preselect) {
+      const modal   = document.getElementById('addStockModal');
+      const selWrap = document.getElementById('modalIngSelectWrap');
+      const sel     = document.getElementById('ingredientSelect');
+      const inventario = getInventario();
+
+      // Reset inputs
+      document.getElementById('numPaquetesInput').value = '';
+      document.getElementById('numUnidadesInput').value = '';
+      document.getElementById('resumenPaquete').style.display = 'none';
+
+      if (preselect) {
+        // Abierto desde botón + de fila: no mostrar selector
+        if (selWrap) selWrap.style.display = 'none';
+        _modalKey = preselect;
+      } else {
+        // Abierto desde botón general: mostrar selector
+        if (selWrap) selWrap.style.display = 'block';
+        sel.innerHTML = '<option value="">Seleccionar...</option>';
+        const sorted = Object.entries(inventario).sort((a, b) =>
+          (a[1].nombre || a[0]).localeCompare(b[1].nombre || b[0]));
+        for (const [key, data] of sorted) {
+          const lbl = (data.nombre || key.replace(/_/g,' '));
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+          sel.appendChild(opt);
+        }
+        _modalKey = '';
+      }
+
+      onModalIngChange();
+      setModoStock('paquete');
+      modal.classList.add('active');
+    };
+
+    window.closeAddStockModal = function() {
+      document.getElementById('addStockModal').classList.remove('active');
+      const sel = document.getElementById('ingredientSelect');
+      if (sel) sel.value = '';
+      _modalKey = '';
+    };
+
+    window.addStock = async function() {
+      if (!_modalKey) {
+        showAlert('Selecciona un ingrediente', 'danger'); return;
+      }
+      const inventario = getInventario();
+      const data = inventario[_modalKey];
+      if (!data) { showAlert('Ingrediente no encontrado', 'danger'); return; }
+
+      let cantidad    = 0;
+      let costoPaquete = 0;
+
+      if (_modalModo === 'paquete') {
+        const numPaq = parseFloat(document.getElementById('numPaquetesInput').value);
+        if (!numPaq || numPaq <= 0) {
+          showAlert('Indica cuántos paquetes compraste', 'danger'); return;
+        }
+        const cat = getCatalogData(_modalKey);
+        const ipp = Number(cat?.unitsPerPack || cat?.unidadesPaquete || 0);
+        const ppp = Number(cat?.pricePerPack || cat?.precioPaquete || 0);
+        if (ipp <= 0) {
+          showAlert('Este ingrediente no tiene unidades/paquete en el catálogo. Usa "Por Unidad".', 'danger'); return;
+        }
+        cantidad     = numPaq * ipp;
+        costoPaquete = numPaq * ppp;
+      } else {
+        const numUni = parseFloat(document.getElementById('numUnidadesInput').value);
+        if (!numUni || numUni <= 0) {
+          showAlert('Indica cuántas unidades vas a agregar', 'danger'); return;
+        }
+        cantidad     = numUni;
+        costoPaquete = 0; // sin costo en modo unidad
+      }
+
+      const displayNombre = data.nombre || _modalKey.replace(/_/g, ' ');
+      const costoUnidad   = cantidad > 0 && costoPaquete > 0 ? costoPaquete / cantidad : 0;
+
+      inventario[_modalKey].cantidad += cantidad;
+      await saveInventario(inventario);
+
+      try {
+        await addDoc(collection(db, 'inventario_compras'), {
+          ingredienteKey : _modalKey,
+          nombre         : displayNombre,
+          cantidad,
+          unidad         : data.unidad || 'unidad',
+          modo           : _modalModo,
+          costoPaquete,
+          costoUnidad    : parseFloat(costoUnidad.toFixed(4)),
+          timestamp      : serverTimestamp()
+        });
+      } catch (e) { console.warn('No se pudo guardar registro de compra:', e); }
+
+      const modoLabel = _modalModo === 'paquete' ? ' (por paquete)' : ' (por unidad)';
+      showAlert(`✅ +${cantidad} ${data.unidad} de ${displayNombre}${modoLabel}`, 'success');
+      await addActivityLog(`Compra: +${cantidad} ${data.unidad} de ${displayNombre} — $${costoPaquete.toFixed(2)}/paq ($${costoUnidad.toFixed(4)}/unidad)`, 'add');
+
+      closeAddStockModal();
+    };
+
+    window.quickAddStock = async function(ingredienteKey) {
+      window.openAddStockModal(ingredienteKey);
+    };
+
+    // ===== MERMA MODAL =====
+    let _mermaModo = 'paquete';
+    let _mermaKey  = '';
+
+    window.setModoMerma = function(modo) {
+      _mermaModo = modo;
+      const btnPaq  = document.getElementById('mermaBtnPaquete');
+      const btnUni  = document.getElementById('mermaBtnUnidad');
+      const zonaPaq = document.getElementById('mermaZonaPaquete');
+      const zonaUni = document.getElementById('mermaZonaUnidad');
+      if (modo === 'paquete') {
+        btnPaq.style.borderColor = 'rgba(239,68,68,0.7)'; btnPaq.style.background = 'rgba(239,68,68,0.18)'; btnPaq.style.color = '#FCA5A5';
+        btnUni.style.borderColor = 'rgba(255,255,255,0.1)'; btnUni.style.background = 'rgba(255,255,255,0.04)'; btnUni.style.color = 'var(--color-text-secondary)';
+        zonaPaq.style.display = 'block'; zonaUni.style.display = 'none';
+      } else {
+        btnUni.style.borderColor = 'rgba(99,102,241,0.7)'; btnUni.style.background = 'rgba(99,102,241,0.15)'; btnUni.style.color = '#A5B4FC';
+        btnPaq.style.borderColor = 'rgba(255,255,255,0.1)'; btnPaq.style.background = 'rgba(255,255,255,0.04)'; btnPaq.style.color = 'var(--color-text-secondary)';
+        zonaPaq.style.display = 'none'; zonaUni.style.display = 'block';
+      }
+      recalcMerma();
+    };
+
+    window.recalcMerma = function() {
+      const numPaq = parseFloat(document.getElementById('mermaPaquetesInput')?.value || 0);
+      const resBox = document.getElementById('mermaResumenPaquete');
+      if (!resBox) return;
+      const cat = getCatalogData(_mermaKey);
+      const ipp = Number(cat?.unitsPerPack || cat?.unidadesPaquete || 0);
+      if (numPaq > 0 && ipp > 0) {
+        document.getElementById('mermaResTotalUnidades').textContent = numPaq * ipp;
+        const unidad = (inventarioCache || {})[_mermaKey]?.unidad || 'unidad';
+        document.getElementById('mermaResUnidad').textContent = unidad;
+        resBox.style.display = 'block';
+      } else {
+        resBox.style.display = 'none';
+      }
+    };
+
+    function _fillMermaRef(ingKey) {
+      const cat = getCatalogData(ingKey);
+      const refBox   = document.getElementById('mermaRefPaqueteBox');
+      const elUnits  = document.getElementById('mermaRefUnidadesPaq');
+      const elPrecio = document.getElementById('mermaRefPrecioPaq');
+      if (!cat || (!cat.unitsPerPack && !cat.unidadesPaquete)) {
+        if (refBox) refBox.style.display = 'none'; return;
+      }
+      const ipp = Number(cat.unitsPerPack || cat.unidadesPaquete || 0);
+      const ppp = Number(cat.pricePerPack || cat.precioPaquete || 0);
+      const unidad = (inventarioCache || {})[ingKey]?.unidad || 'unidad';
+      if (elUnits)  elUnits.textContent  = `${ipp} ${unidad}`;
+      if (elPrecio) elPrecio.textContent = ppp > 0 ? `$${ppp.toFixed(2)}` : '—';
+      if (refBox)   refBox.style.display = 'block';
+    }
+
+    window.quickRemoveStock = function(key) {
+      const modal  = document.getElementById('mermaModal');
+      const invData = (inventarioCache || {})[key];
+      _mermaKey = key;
+      // Reset
+      document.getElementById('mermaPaquetesInput').value = '';
+      document.getElementById('mermaUnidadesInput').value  = '';
+      document.getElementById('mermaRazonInput').value      = '';
+      document.getElementById('mermaResumenPaquete').style.display = 'none';
+      // Header
+      const nombre = invData?.nombre || key.replace(/_/g,' ');
+      document.getElementById('mermaIngNombre').textContent = nombre.toUpperCase();
+      document.getElementById('mermaIngRef').textContent = invData
+        ? `Stock actual: ${invData.cantidad ?? '?'} ${invData.unidad || 'unidad'}`
+        : '';
+      _fillMermaRef(key);
+      setModoMerma('paquete');
+      modal.classList.add('active');
+    };
+
+    window.closeMermaModal = function() {
+      document.getElementById('mermaModal').classList.remove('active');
+      _mermaKey = '';
+    };
+
+    window.confirmMerma = async function() {
+      if (!_mermaKey) { showAlert('Ingrediente no definido', 'danger'); return; }
+      const razon = document.getElementById('mermaRazonInput').value.trim();
+      if (!razon) { showAlert('Escribe la razón de la merma', 'danger'); return; }
+
+      const inventario = getInventario();
+      const data = inventario[_mermaKey];
+      if (!data) { showAlert('Ingrediente no encontrado', 'danger'); return; }
+
+      let cantidad = 0;
+      if (_mermaModo === 'paquete') {
+        const numPaq = parseFloat(document.getElementById('mermaPaquetesInput').value);
+        if (!numPaq || numPaq <= 0) { showAlert('Indica cuántos paquetes se pierden', 'danger'); return; }
+        const cat = getCatalogData(_mermaKey);
+        const ipp = Number(cat?.unitsPerPack || cat?.unidadesPaquete || 0);
+        if (ipp <= 0) { showAlert('Sin unidades/paquete en catálogo. Usa "Por Unidad".', 'danger'); return; }
+        cantidad = numPaq * ipp;
+      } else {
+        const numUni = parseFloat(document.getElementById('mermaUnidadesInput').value);
+        if (!numUni || numUni <= 0) { showAlert('Indica cuántas unidades se pierden', 'danger'); return; }
+        cantidad = numUni;
+      }
+
+      if (cantidad > data.cantidad) {
+        showAlert(`No hay suficiente stock (disponible: ${data.cantidad} ${data.unidad})`, 'danger'); return;
+      }
+
+      const displayNombre = data.nombre || _mermaKey.replace(/_/g, ' ');
+      inventario[_mermaKey].cantidad -= cantidad;
+      await saveInventario(inventario);
+
+      try {
+        await addDoc(collection(db, 'inventario_mermas'), {
+          ingredienteKey : _mermaKey,
+          nombre         : displayNombre,
+          cantidad,
+          unidad         : data.unidad || 'unidad',
+          modo           : _mermaModo,
+          razon,
+          timestamp      : serverTimestamp()
+        });
+      } catch(e) { console.warn('No se pudo guardar merma:', e); }
+
+      await addActivityLog(`Merma: -${cantidad} ${data.unidad} de ${displayNombre} — razón: ${razon}`, 'remove');
+      showAlert(`⚠️ -${cantidad} ${data.unidad} de ${displayNombre} eliminados (${razon})`, 'danger');
+      closeMermaModal();
+    };
+
+    // ===== TEST FUNCTIONS =====
+    window.testSale = async function(producto) {
+      await registrarVenta(producto);
+    }
+
+    window.sincronizarConCatalogo = async function() {
+      if (!confirm('¿Deseas sincronizar el inventario con el catálogo de ingredientes? Esto agregará nuevos ingredientes pero NO eliminará los existentes.')) {
+        return;
+      }
+      
+      try {
+        showAlert('Sincronizando con catálogo...', 'success');
+        
+        await cargarIngredientesCatalogo();
+        
+        if (ingredientesCatalogo.length === 0) {
+          showAlert('No hay ingredientes en el catálogo para sincronizar', 'danger');
+          return;
+        }
+        
+        const inventarioActual = getInventario();
+        const keysActuales = new Set(Object.keys(inventarioActual));
+        
+        const nuevoInventario = crearInventarioDesdeIngredientes();
+        let agregados = 0;
+        
+        for (const [key, data] of Object.entries(nuevoInventario)) {
+          if (!keysActuales.has(key)) {
+            inventarioActual[key] = data;
+            agregados++;
+          }
+        }
+        
+        if (agregados > 0) {
+          await saveInventario(inventarioActual);
+          showAlert(`✅ Se agregaron ${agregados} nuevos ingredientes al inventario`, 'success');
+          await addActivityLog(`Sincronización: ${agregados} ingredientes nuevos agregados`, 'add');
+        } else {
+          showAlert('✓ El inventario ya está sincronizado con el catálogo', 'success');
+        }
+        
+      } catch (error) {
+        console.error('Error al sincronizar:', error);
+        showAlert('Error al sincronizar con el catálogo', 'danger');
+      }
+    }
+
+    window.resetInventory = async function() {
+      if (!confirm('\u26a0️ ¿Resetear inventario?\n\nTodas las cantidades quedarán en 0. Los ingredientes se mantienen pero su stock será cero.\n\nEsta acción no se puede deshacer.')) return;
+
+      try {
+        const inventarioActual = getInventario();
+        const resetItems = {};
+        for (const [key, data] of Object.entries(inventarioActual)) {
+          resetItems[key] = { ...data, cantidad: 0 };
+        }
+
+        await setDoc(doc(db, 'inventario', 'stock'), {
+          items       : resetItems,
+          lastUpdated : serverTimestamp(),
+          resetAt     : serverTimestamp()
+        });
+
+        // Guardar registro del reset en compras
+        try {
+          await addDoc(collection(db, 'inventario_compras'), {
+            ingredienteKey : '__RESET__',
+            nombre         : 'RESET INVENTARIO',
+            cantidad       : 0,
+            unidad         : '',
+            costoPaquete   : 0,
+            costoUnidad    : 0,
+            timestamp      : serverTimestamp()
+          });
+        } catch(_) {}
+
+        await addActivityLog('Reset: inventario puesto en 0 (estructura mantenida)', 'reset');
+        showAlert('✅ Inventario reseteado a 0. Puedes agregar stock manualmente.', 'success');
+      } catch (error) {
+        console.error('Error al resetear:', error);
+        showAlert('Error al resetear el inventario', 'danger');
+      }
+    }
+
+    // Procesar ventas del historial de hoy que no descontaron inventario
+    window.procesarVentasHistoricas = async function() {
+      if (!confirm('¿Deseas procesar las ventas de hoy que aún NO han descontado del inventario?')) {
+        return;
+      }
+
+      try {
+        showAlert('Procesando ventas pendientes...', 'success');
+        console.log('🔄 Procesando ventas del historial de hoy...');
+
+        // Obtener recetas y catálogo - Intentar con firebaseManager primero
+        let settings = null;
+        
+        if (window.firebaseManager && typeof window.firebaseManager.getSettings === 'function') {
+          try {
+            settings = await window.firebaseManager.getSettings();
+          } catch (e) {
+            console.warn('⚠️ No se pudieron cargar settings desde firebaseManager:', e);
+          }
+        }
+        
+        if (!settings) {
+          const settingsRef = doc(db, 'settings', 'main');
+          const settingsSnap = await getDoc(settingsRef);
+          if (settingsSnap.exists()) {
+            settings = settingsSnap.data();
+          }
+        }
+        
+        if (!settings) {
+          showAlert('❌ No se encontraron configuraciones. Ve a ingredientes.html y guarda los ingredientes primero.', 'danger');
+          return;
+        }
+
+        const recipes = settings?.productsRecipes || {};
+        const ingredientsCatalog = settings?.ingredientsCatalog || [];
+
+        if (Object.keys(recipes).length === 0) {
+          showAlert('No hay recetas configuradas', 'danger');
+          return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayDateString = today.toDateString();
+
+        // Buscar en orders y orders_history
+        const historyCollection = collection(db, 'orders_history');
+        const qHistory = query(historyCollection, orderBy('timestamp', 'desc'), limit(200));
+        const ordersCollection2 = collection(db, 'orders');
+        const qOrders = query(ordersCollection2, orderBy('timestamp', 'desc'), limit(100));
+        
+        const [historySnapshot, ordersSnapshot] = await Promise.all([
+          getDocs(qHistory),
+          getDocs(qOrders)
+        ]);
+        
+        const todayOrders = [];
+        
+        const collectTodayOrders = (snapshot) => {
+          snapshot.forEach((docSnap) => {
+            const order = docSnap.data();
+            let orderDate;
+            if (order.timestamp?.toDate) {
+              orderDate = order.timestamp.toDate();
+            } else if (order.timestamp) {
+              orderDate = new Date(order.timestamp);
+            } else return;
+            if (orderDate.toDateString() === todayDateString) {
+              todayOrders.push({ id: docSnap.id, ...order });
+            }
+          });
+        };
+        
+        collectTodayOrders(historySnapshot);
+        collectTodayOrders(ordersSnapshot);
+
+        // Deduplicar por ID
+        const seen = new Set();
+        const uniqueOrders = todayOrders.filter(o => {
+          if (seen.has(o.id)) return false;
+          seen.add(o.id);
+          return true;
+        });
+
+        // Separar ya procesados de pendientes
+        const pendingOrders = uniqueOrders.filter(o => !o.inventoryProcessed);
+        const alreadyProcessed = uniqueOrders.length - pendingOrders.length;
+
+        console.log(`📦 Pedidos de hoy: ${uniqueOrders.length} (${alreadyProcessed} ya procesados, ${pendingOrders.length} pendientes)`);
+
+        if (pendingOrders.length === 0) {
+          showAlert(`✓ Todos los pedidos de hoy ya están descontados del inventario (${alreadyProcessed} pedidos).`, 'success');
+          return;
+        }
+
+        // Construir índice de ingredientes
+        const ingredientIndex = new Map();
+        ingredientsCatalog.forEach(ing => {
+          const id = String(ing.id || '').trim();
+          const name = String(ing.nombre || ing.name || '').trim();
+          if (id) ingredientIndex.set(id, { ...ing, name });
+          if (name) ingredientIndex.set(name.toLowerCase(), { ...ing, name });
+        });
+
+        // Acumular ingredientes a descontar de todos los pedidos pendientes
+        const totalIngredientsToDeduct = new Map();
+
+        const acumular = (recipe, qty) => {
+          if (!recipe || !Array.isArray(recipe.ingredients)) return;
+          for (const ing of recipe.ingredients) {
+            const ingredientId = String(ing.ingredientId || '').trim();
+            const ingredientName = String(ing.name || '').trim();
+            const qtyPer = Number(ing.qty || ing.quantity || 0);
+            if (qtyPer <= 0) continue;
+            const totalQty = qtyPer * qty;
+            let catalogIng = null;
+            if (ingredientId) catalogIng = ingredientIndex.get(ingredientId);
+            if (!catalogIng && ingredientName) catalogIng = ingredientIndex.get(ingredientName.toLowerCase());
+            let inventoryKey = catalogIng
+              ? catalogIng.name.toLowerCase().replace(/\s+/g, '_')
+              : ingredientName.toLowerCase().replace(/\s+/g, '_');
+            if (inventoryKey) {
+              const current = totalIngredientsToDeduct.get(inventoryKey) || { qty: 0, name: catalogIng?.name || ingredientName };
+              current.qty += totalQty;
+              totalIngredientsToDeduct.set(inventoryKey, current);
+            }
+          }
+        };
+
+        for (const order of pendingOrders) {
+          const items = order.items || [];
+          for (const item of items) {
+            const productId = String(item.id || item.productId || '').trim();
+            const quantity = Math.max(1, Number(item.quantity || 1));
+            if (!productId) continue;
+            const recipe = recipes[productId];
+            if (recipe && Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0) {
+              acumular(recipe, quantity);
+            } else {
+              // Combos: intentar sub-ítems
+              for (const choice of (Array.isArray(item.choices) ? item.choices : [])) {
+                const bId = String(choice?.burger?.id || choice?.id || '').trim();
+                if (bId && recipes[bId]) acumular(recipes[bId], quantity);
+              }
+              for (const hd of (Array.isArray(item.hotdogs) ? item.hotdogs : [])) {
+                const hId = String(hd?.hotdog?.id || hd?.id || '').trim();
+                if (hId && recipes[hId]) acumular(recipes[hId], quantity);
+              }
+            }
+          }
+        }
+
+        if (totalIngredientsToDeduct.size === 0) {
+          showAlert(`⚠️ ${pendingOrders.length} pedidos pendientes pero sin recetas configuradas. Configura las recetas en Productos.html.`, 'danger');
+          return;
+        }
+
+        // Descontar del inventario con transacción
+        const inventoryRef = doc(db, 'inventario', 'stock');
+        let itemsUpdated = 0;
+        
+        await runTransaction(db, async (transaction) => {
+          const inventorySnap = await transaction.get(inventoryRef);
+          if (!inventorySnap.exists()) throw new Error('El inventario no existe en Firebase');
+          const currentItems = inventorySnap.data().items || {};
+          
+          for (const [key, data] of totalIngredientsToDeduct) {
+            if (currentItems[key]) {
+              const currentQty = Number(currentItems[key].cantidad || 0);
+              currentItems[key].cantidad = Math.max(0, currentQty - data.qty);
+              itemsUpdated++;
+              console.log(`📉 ${currentItems[key].nombre || key}: ${currentQty} → ${currentItems[key].cantidad} (-${data.qty})`);
+            }
+          }
+          if (itemsUpdated > 0) {
+            transaction.update(inventoryRef, { items: currentItems, lastUpdated: serverTimestamp() });
+          }
+        });
+
+        // Marcar todos los pedidos pendientes como procesados
+        const markPromises = pendingOrders.map(o => {
+          const payload = { inventoryProcessed: true, inventoryProcessedAt: new Date().toISOString() };
+          const oRef = doc(db, 'orders', o.id);
+          return updateDoc(oRef, payload).catch(() => {
+            // Intentar en historial si no existe en orders
+            return updateDoc(doc(db, 'orders_history', o.id), payload).catch(() => {});
+          });
+        });
+        await Promise.all(markPromises);
+
+        // Actualizar contador de ventas
+        const salesRef = doc(db, 'inventario', 'sales_stats');
+        const todayKey = new Date().toDateString();
+        await setDoc(salesRef, { [todayKey]: uniqueOrders.length }, { merge: true });
+        
+        await addActivityLog(`Procesados manualmente ${pendingOrders.length} pedidos pendientes del día`, 'sale');
+
+        showAlert(`✅ ${pendingOrders.length} pedidos procesados, ${itemsUpdated} ingredientes descontados del inventario.`, 'success');
+        // Refrescar tarjeta de insumos del día
+        loadInsumosDelDia();
+        
+      } catch (error) {
+        console.error('❌ Error al procesar ventas históricas:', error);
+        showAlert('Error al procesar ventas: ' + error.message, 'danger');
+      }
+    }
+
+    // ===== INSUMOS DEL DÍA =====
+    window.loadInsumosDelDia = async function() {
+      const icon = document.getElementById('insumosRefreshIcon');
+      const list = document.getElementById('insumosDelDiaList');
+      const statsEl = document.getElementById('insumosStats');
+      const deductBtn = document.getElementById('insumosDeductBtn');
+      const deductLabel = document.getElementById('insumosDeductLabel');
+      if (!list) return;
+
+      if (icon) icon.classList.add('fa-spin');
+      list.innerHTML = '<p style="color:var(--color-text-secondary);font-size:0.875rem;text-align:center;padding:1rem 0;"><i class="fas fa-spinner fa-spin"></i> Calculando...</p>';
+
+      try {
+        // --- Obtener settings ---
+        let settings = null;
+        if (window.firebaseManager && window.firebaseManager.getSettings) {
+          settings = await window.firebaseManager.getSettings().catch(() => null);
+        }
+        if (!settings) {
+          const snap = await getDoc(doc(db, 'settings', 'main'));
+          if (snap.exists()) settings = snap.data();
+        }
+        const recipes = settings?.productsRecipes || {};
+        const catalog = settings?.ingredientsCatalog || [];
+
+        // Índice de ingredientes (soporta nombre y name)
+        const ingIndex = new Map();
+        catalog.forEach(ing => {
+          const id = String(ing.id || '').trim();
+          const name = String(ing.nombre || ing.name || '').trim();
+          if (id) ingIndex.set(id, { ...ing, displayName: name });
+          if (name) ingIndex.set(name.toLowerCase(), { ...ing, displayName: name });
+        });
+
+        // Función acumuladora
+        const acumulate = (recipe, qty, target) => {
+          if (!recipe || !Array.isArray(recipe.ingredients)) return;
+          for (const ing of recipe.ingredients) {
+            const ingId = String(ing.ingredientId || '').trim();
+            const ingName = String(ing.name || '').trim();
+            const qtyPer = Number(ing.qty || ing.quantity || 0);
+            if (qtyPer <= 0) continue;
+            const total = qtyPer * qty;
+            let catalogIng = ingId ? ingIndex.get(ingId) : null;
+            if (!catalogIng && ingName) catalogIng = ingIndex.get(ingName.toLowerCase());
+            const key = catalogIng
+              ? catalogIng.displayName.toLowerCase().replace(/\s+/g, '_')
+              : ingName.toLowerCase().replace(/\s+/g, '_');
+            const displayName = catalogIng?.displayName || ingName;
+            if (!key) continue;
+            const prev = target.get(key) || { qty: 0, name: displayName, unit: ing.unit || catalogIng?.unidad || catalogIng?.unit || '' };
+            prev.qty += total;
+            target.set(key, prev);
+          }
+        };
+
+        // Obtener pedidos de hoy
+        const today = new Date(); today.setHours(0,0,0,0);
+        const todayStr = today.toDateString();
+
+        const [histSnap, ordSnap] = await Promise.all([
+          getDocs(query(collection(db, 'orders_history'), orderBy('timestamp','desc'), limit(200))),
+          getDocs(query(collection(db, 'orders'), orderBy('timestamp','desc'), limit(100)))
+        ]);
+
+        const collect = (snap, arr) => snap.forEach(d => {
+          const data = d.data();
+          let ts = data.timestamp?.toDate ? data.timestamp.toDate() : (data.timestamp ? new Date(data.timestamp) : null);
+          if (ts && ts.toDateString() === todayStr) arr.push({ id: d.id, ...data });
+        });
+
+        const todayOrders = [];
+        collect(histSnap, todayOrders);
+        collect(ordSnap, todayOrders);
+
+        // Deduplicar
+        const seen = new Set();
+        const unique = todayOrders.filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; });
+
+        const processed = unique.filter(o => o.inventoryProcessed);
+        const pending   = unique.filter(o => !o.inventoryProcessed);
+
+        // Calcular ingredientes para cada grupo
+        const appliedMap  = new Map();
+        const pendingMap  = new Map();
+
+        const processGroup = (orders, target) => {
+          for (const order of orders) {
+            for (const item of (order.items || [])) {
+              const pid = String(item.id || item.productId || '').trim();
+              const qty = Math.max(1, Number(item.quantity || 1));
+              if (!pid) continue;
+              const recipe = recipes[pid];
+              if (recipe?.ingredients?.length) {
+                acumulate(recipe, qty, target);
+              } else {
+                for (const ch of (Array.isArray(item.choices) ? item.choices : [])) {
+                  const bid = String(ch?.burger?.id || ch?.id || '').trim();
+                  if (bid && recipes[bid]) acumulate(recipes[bid], qty, target);
+                }
+                for (const hd of (Array.isArray(item.hotdogs) ? item.hotdogs : [])) {
+                  const hid = String(hd?.hotdog?.id || hd?.id || '').trim();
+                  if (hid && recipes[hid]) acumulate(recipes[hid], qty, target);
+                }
+              }
+            }
+          }
+        };
+
+        processGroup(processed, appliedMap);
+        processGroup(pending, pendingMap);
+
+        // Merge all keys
+        const allKeys = new Set([...appliedMap.keys(), ...pendingMap.keys()]);
+
+        // --- Stats ---
+        if (statsEl) {
+          statsEl.innerHTML = [
+            `<span style="font-size:0.75rem;background:rgba(16,185,129,0.15);color:#6EE7B7;border:1px solid rgba(16,185,129,0.3);border-radius:20px;padding:0.2rem 0.65rem;">
+              <i class="fas fa-check-circle"></i> ${processed.length} aplicado${processed.length !== 1 ? 's' : ''}
+            </span>`,
+            pending.length > 0
+              ? `<span style="font-size:0.75rem;background:rgba(251,191,36,0.15);color:#FCD34D;border:1px solid rgba(251,191,36,0.3);border-radius:20px;padding:0.2rem 0.65rem;">
+                  <i class="fas fa-clock"></i> ${pending.length} pendiente${pending.length !== 1 ? 's' : ''}
+                </span>`
+              : ''
+          ].join('');
+        }
+
+        // --- Deduct button ---
+        if (deductBtn && deductLabel) {
+          if (pending.length > 0) {
+            deductLabel.textContent = `Descontar ${pending.length} pedido${pending.length !== 1 ? 's' : ''} pendiente${pending.length !== 1 ? 's' : ''}`;
+            deductBtn.style.display = 'block';
+          } else {
+            deductBtn.style.display = 'none';
+          }
+        }
+
+        // --- List ---
+        if (allKeys.size === 0) {
+          list.innerHTML = '<p style="color:var(--color-text-secondary);font-size:0.82rem;text-align:center;padding:1.2rem 0;">Sin ventas registradas hoy</p>';
+          if (statsEl) statsEl.innerHTML = '<span style="font-size:0.75rem;color:var(--color-text-secondary);">Sin pedidos hoy</span>';
+          if (deductBtn) deductBtn.style.display = 'none';
+          if (icon) icon.classList.remove('fa-spin');
+          return;
+        }
+
+        const rows = [...allKeys].sort().map(key => {
+          const applied = appliedMap.get(key);
+          const pend    = pendingMap.get(key);
+          const name = (applied?.name || pend?.name || key).toUpperCase();
+          const unit = applied?.unit || pend?.unit || '';
+          const appliedQty = applied?.qty || 0;
+          const pendQty    = pend?.qty || 0;
+
+          const appliedCell = appliedQty > 0
+            ? `<span style="font-size:0.78rem;color:#6EE7B7;font-weight:700;">-${appliedQty % 1 === 0 ? appliedQty : appliedQty.toFixed(2)} ${unit}</span>`
+            : `<span style="color:var(--color-text-secondary);font-size:0.78rem;">—</span>`;
+
+          const pendCell = pendQty > 0
+            ? `<span style="font-size:0.78rem;color:#FCD34D;font-weight:700;">${pendQty % 1 === 0 ? pendQty : pendQty.toFixed(2)} ${unit}</span>`
+            : `<span style="color:var(--color-text-secondary);font-size:0.78rem;">—</span>`;
+
+          return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+            <td style="padding:0.45rem 0.3rem;font-size:0.78rem;font-weight:600;color:var(--color-text);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${name}">${name}</td>
+            <td style="padding:0.45rem 0.3rem;text-align:right;">${appliedCell}</td>
+            <td style="padding:0.45rem 0.3rem;text-align:right;">${pendCell}</td>
+          </tr>`;
+        }).join('');
+
+        list.innerHTML = `
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+                <th style="padding:0.3rem 0.3rem;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-secondary);text-align:left;">Ingrediente</th>
+                <th style="padding:0.3rem 0.3rem;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:#6EE7B7;text-align:right;" title="Ya descontado del inventario">✅ Aplicado</th>
+                <th style="padding:0.3rem 0.3rem;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:#FCD34D;text-align:right;" title="Pendiente de descontar">⏳ Pendiente</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+
+      } catch (err) {
+        console.error('Error cargando insumos del día:', err);
+        list.innerHTML = '<p style="color:#FCA5A5;font-size:0.82rem;text-align:center;">Error al cargar. Revisa la consola.</p>';
+      } finally {
+        if (icon) icon.classList.remove('fa-spin');
+      }
+    };
+
+    // Exponer para uso global
+    window.registrarVenta = registrarVenta;
+
+    // ===== INITIALIZE =====
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('🚀 Iniciando sistema de inventario con Firebase...');
+      
+      try {
+        await initInventarioFirebase();
+        subscribeToInventario();
+        loadActivityLog();
+        loadComprasLog();
+        setupInsumosRealtimeListener();
+        loadInsumosDelDia();
+        await updateStats();
+        
+        console.log('✅ Sistema de inventario listo');
+      } catch (error) {
+        console.error('❌ Error al inicializar:', error);
+        showAlert('Error al conectar con Firebase', 'danger');
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (unsubscribeInventario) unsubscribeInventario();
+      if (unsubscribeInsumosOrders) unsubscribeInsumosOrders();
+      if (unsubscribeInsumosHistory) unsubscribeInsumosHistory();
+    });
+  </script>
+</body>
+</html>

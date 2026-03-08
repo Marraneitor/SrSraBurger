@@ -2480,8 +2480,11 @@ if (false) {
                             // Combo Familiar incluye Aros Medianos y Coca-Cola 3L
                             extraInfo.push('Aros de Cebolla Medianos', 'Coca-Cola 3L');
                         } else if (item.baseItem && Number(item.baseItem.id) === 6) {
-                            // Combo Pareja incluye aros (7 pz)
-                            extraInfo.push('Aros de Cebolla (7 pz)');
+                            // Combo Pareja incluye aros medianas
+                            extraInfo.push('Aros de Cebolla Medianas');
+                        } else if (item.baseItem && Number(item.baseItem.id) === 7) {
+                            // Combo Amigos incluye aros medianas
+                            extraInfo.push('Aros de Cebolla Medianas');
                         }
 
                         customizations = choiceDetails + (extraInfo.length ? ` | Incluye: ${extraInfo.join(', ')}` : '');
@@ -3171,10 +3174,15 @@ if (false) {
     function updateBurgerDisplay(choiceIndex, burger) {
         const priceText = getBurgerPriceDiffText(burger);
         
-        document.getElementById(`burger-img-${choiceIndex}`).src = burger.image;
-        document.getElementById(`burger-img-${choiceIndex}`).alt = burger.name;
-        document.getElementById(`burger-name-${choiceIndex}`).textContent = burger.name;
-        document.getElementById(`burger-price-${choiceIndex}`).textContent = priceText;
+        const imgEl = document.getElementById(`burger-img-${choiceIndex}`);
+        if (imgEl) {
+            imgEl.src = burger.image;
+            imgEl.alt = burger.name;
+        }
+        const nameEl = document.getElementById(`burger-name-${choiceIndex}`);
+        if (nameEl) nameEl.textContent = burger.name;
+        const priceEl = document.getElementById(`burger-price-${choiceIndex}`);
+        if (priceEl) priceEl.textContent = priceText;
     }
     
     function navigateHotdog(hotdogIndex, direction) {
@@ -3218,10 +3226,12 @@ if (false) {
             ? 'Precio base'
             : (priceDiff > 0 ? `(+ ${priceDiff.toFixed(0)})` : `(- ${Math.abs(priceDiff).toFixed(0)})`);
         
-        document.getElementById(`hotdog-img-${hotdogIndex}`).src = hotdog.image;
-        document.getElementById(`hotdog-img-${hotdogIndex}`).alt = hotdog.name;
-        document.getElementById(`hotdog-name-${hotdogIndex}`).textContent = hotdog.name;
-        document.getElementById(`hotdog-price-${hotdogIndex}`).textContent = priceText;
+        const hImgEl = document.getElementById(`hotdog-img-${hotdogIndex}`);
+        if (hImgEl) { hImgEl.src = hotdog.image; hImgEl.alt = hotdog.name; }
+        const hNameEl = document.getElementById(`hotdog-name-${hotdogIndex}`);
+        if (hNameEl) hNameEl.textContent = hotdog.name;
+        const hPriceEl = document.getElementById(`hotdog-price-${hotdogIndex}`);
+        if (hPriceEl) hPriceEl.textContent = priceText;
     }
 
     // Funciones de carrito
@@ -3387,7 +3397,7 @@ if (false) {
             // Event listeners para botones de cantidad y eliminar
             document.querySelectorAll('.cart-qty-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const id = parseInt(e.currentTarget.dataset.id);
+                    const id = Number(e.currentTarget.dataset.id);
                     const action = e.currentTarget.dataset.action;
                     const itemIndex = cart.findIndex(item => item.id === id);
                     
@@ -3406,7 +3416,7 @@ if (false) {
             
             document.querySelectorAll('.remove-item-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const id = parseInt(e.currentTarget.dataset.id);
+                    const id = Number(e.currentTarget.dataset.id);
                     cart = cart.filter(item => item.id !== id);
                     updateCart();
                 });

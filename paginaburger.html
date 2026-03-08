@@ -301,24 +301,12 @@
             }
         }
 
-        /* Scrollbar personalizado */
-        ::-webkit-scrollbar {
-            width: 12px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 6px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, var(--primary-gold) 0%, var(--primary-gold-dark) 100%);
-            border-radius: 6px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, var(--primary-gold-dark) 0%, var(--primary-red) 100%);
-        }
+        /* Scrollbar personalizado — app-like fino */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(22,163,74,0.35); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-gold); }
+        * { scrollbar-width: thin; scrollbar-color: rgba(22,163,74,0.32) transparent; }
         
         /* Advanced animations and micro-interactions */
         @keyframes fadeInUp {
@@ -837,6 +825,270 @@
             }
         }
 
+        /* ── Sticky category nav bar ── */
+        #category-sticky-nav {
+            position: sticky;
+            top: 64px; /* justo bajo el header */
+            z-index: 45;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(18px) saturate(160%);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            border-bottom: 1px solid rgba(226,232,240,0.7);
+            box-shadow: 0 4px 16px rgba(15,23,42,0.06);
+            transition: box-shadow 200ms ease;
+        }
+        html.dark #category-sticky-nav {
+            background: rgba(11,18,32,0.88);
+            border-bottom-color: rgba(255,255,255,0.08);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        }
+        #category-sticky-nav.is-scrolled {
+            box-shadow: 0 6px 24px rgba(15,23,42,0.12);
+        }
+        .cat-nav-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            color: #64748B;
+            background: transparent;
+            transition:
+                background-color 160ms ease,
+                border-color 160ms ease,
+                color 160ms ease,
+                transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 160ms ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        .cat-nav-pill:hover {
+            color: #16A34A;
+            border-color: rgba(22,163,74,0.30);
+            background: rgba(22,163,74,0.06);
+        }
+        .cat-nav-pill:active { transform: scale(0.95); }
+        .cat-nav-pill.is-active {
+            background: #16A34A;
+            border-color: #16A34A;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(22,163,74,0.35);
+            transform: scale(1.03);
+        }
+        html.dark .cat-nav-pill { color: #94A3B8; }
+        html.dark .cat-nav-pill:hover { color: #4ADE80; border-color: rgba(74,222,128,0.30); background: rgba(74,222,128,0.08); }
+        html.dark .cat-nav-pill.is-active { background: #16A34A; border-color: #16A34A; color: #fff; }
+
+        /* ── Checkout steps indicator ── */
+        .checkout-steps {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            margin-top: 8px;
+        }
+        .checkout-step {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #94A3B8;
+            transition: color 200ms ease;
+        }
+        .checkout-step.is-active { color: #16A34A; }
+        .checkout-step.is-done { color: #16A34A; }
+        .checkout-step__num {
+            width: 22px;
+            height: 22px;
+            border-radius: 9999px;
+            border: 2px solid currentColor;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            transition: background 200ms ease, border-color 200ms ease;
+        }
+        .checkout-step.is-active .checkout-step__num,
+        .checkout-step.is-done .checkout-step__num {
+            background: #16A34A;
+            border-color: #16A34A;
+            color: #fff;
+        }
+        .checkout-step-connector {
+            width: 32px;
+            height: 2px;
+            background: #E2E8F0;
+            margin: 0 4px;
+            border-radius: 9999px;
+            flex-shrink: 0;
+        }
+        html.dark .checkout-step-connector { background: rgba(255,255,255,0.12); }
+
+        /* ── Cart footer upgrade ── */
+        .cart-total-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0 14px;
+            border-top: 1px solid rgba(226,232,240,0.8);
+        }
+        .cart-total-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .cart-total-amount {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            color: #16A34A;
+            line-height: 1;
+        }
+        html.dark .cart-total-amount { color: #4ADE80; }
+        .cart-checkout-btn {
+            width: 100%;
+            min-height: 54px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 8px 28px rgba(22,163,74,0.40);
+            transition:
+                transform 260ms cubic-bezier(0.34,1.56,0.64,1),
+                box-shadow 260ms ease,
+                filter 200ms ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            will-change: transform;
+            position: relative;
+            overflow: hidden;
+        }
+        .cart-checkout-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+            transform: translateX(-100%);
+            transition: transform 600ms ease;
+        }
+        .cart-checkout-btn:hover::before { transform: translateX(100%); }
+        .cart-checkout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 38px rgba(22,163,74,0.50);
+        }
+        .cart-checkout-btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 4px 14px rgba(22,163,74,0.30);
+        }
+        .cart-checkout-btn:disabled {
+            background: linear-gradient(135deg, #94A3B8, #64748B);
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .cart-checkout-btn__total {
+            background: rgba(255,255,255,0.18);
+            border-radius: 8px;
+            padding: 2px 10px;
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        /* ── Quick add feedback ring (micro-interacción al agregar) ── */
+        @keyframes sr-add-ring {
+            0%   { box-shadow: 0 0 0 0   rgba(22,163,74,0.60); }
+            60%  { box-shadow: 0 0 0 10px rgba(22,163,74,0); }
+            100% { box-shadow: 0 0 0 0   rgba(22,163,74,0); }
+        }
+        .sr-ring-flash { animation: sr-add-ring 500ms ease forwards; }
+
+        /* ── Cart item count badge spring ── */
+        @keyframes sr-badge-pop {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(1.45); }
+            70%  { transform: scale(0.92); }
+            100% { transform: scale(1); }
+        }
+        #cart-count.popped { animation: sr-badge-pop 380ms cubic-bezier(0.34,1.56,0.64,1) both; }
+
+        /* ── Slide del cart sidebar: spring en lugar de linear ── */
+        #cart-sidebar {
+            transition: transform 340ms cubic-bezier(0.0, 0.0, 0.2, 1) !important;
+        }
+        #cart-sidebar.translate-x-0 {
+            transition: transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        }
+
+        /* ── Cart item card upgrade ── */
+        .cart-item-card {
+            border-radius: 16px;
+            transition: box-shadow 200ms ease, transform 200ms ease;
+        }
+        .cart-item-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 22px rgba(15,23,42,0.10);
+        }
+
+        /* ── Input de checkout con glow verde al foco ── */
+        #checkout-modal input:focus,
+        #checkout-modal textarea:focus,
+        #checkout-modal select:focus {
+            box-shadow: 0 0 0 3px rgba(22,163,74,0.18), 0 2px 8px rgba(22,163,74,0.08) !important;
+        }
+
+        /* ===============================================================
+           CARRITO PERSISTENTE EN DESKTOP (≥1024px)
+           El carrito queda fijo y siempre visible a la derecha.
+           El contenido principal se desplaza con padding-right.
+        =============================================================== */
+        @media (min-width: 1024px) {
+            /* 1. Forzar carrito siempre visible */
+            #cart-sidebar {
+                transform: translateX(0) !important;
+                transition: none !important;
+                border-left: 1px solid rgba(22,163,74,0.12);
+                box-shadow: -6px 0 40px rgba(15,23,42,0.10);
+            }
+            html.dark #cart-sidebar {
+                border-left-color: rgba(255,255,255,0.07);
+                box-shadow: -6px 0 40px rgba(0,0,0,0.35);
+            }
+
+            /* 2. Nunca mostrar overlay en desktop */
+            #cart-overlay { display: none !important; }
+
+            /* 3. Ocultar botón cerrar (no hace falta en desktop) */
+            #close-cart-btn { display: none !important; }
+
+            /* 4. Ocultar botón "Carrito" del navbar — el carrito ya es visible */
+            #open-cart-btn { display: none !important; }
+
+            /* 5. Desplazar TODO el contenido no-fijo para que no quede oculto
+                  bajo el panel del carrito (w-96 = 384px) */
+            body { padding-right: 384px; }
+        }
+
         /* === Carrusel horizontal de productos === */
         .menu-grid-horizontal {
             display: flex;
@@ -1120,20 +1372,10 @@
                 transform: translateX(0);
             }
         }
-        .modal-scrollbar::-webkit-scrollbar {
-            width: 8px;
-        }
-        .modal-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        .modal-scrollbar::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        .modal-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
+        .modal-scrollbar::-webkit-scrollbar { width: 4px; }
+        .modal-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .modal-scrollbar::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.30); border-radius: 9999px; }
+        .modal-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.55); }
         .nosotros-img {
             aspect-ratio: 1 / 1;
             object-fit: contain;
@@ -2377,30 +2619,39 @@
 
     
 
-    <main id="menu" class="py-20 bg-gradient-to-b from-gray-50 to-white">
+    <!-- Sticky category navigation bar (se puebla dinámicamente por JS) -->
+    <nav id="category-sticky-nav" class="hidden">
+        <div class="flex items-center gap-2 overflow-x-auto py-3 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+             style="scrollbar-width:none; -ms-overflow-style:none;">
+            <!-- Las pills se inyectan desde script.js -->
+        </div>
+    </nav>
+
+    <main id="menu" class="pt-10 pb-20 bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <span class="inline-block px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold mb-4">
-                    MENÚ GOURMET
+            <div class="text-center mb-12">
+                <span class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-green-100 dark:border-green-800/50">
+                    <i class="fa-solid fa-circle text-[6px]"></i> MENÚ GOURMET
                 </span>
-                <h2 class="text-4xl md:text-5xl font-bold font-poppins text-gray-900 mb-6">
+                <h2 class="text-4xl md:text-5xl font-bold font-poppins text-gray-900 dark:text-white mb-4 tracking-tight">
                     Nuestras <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500">Deliciosas</span> Creaciones
                 </h2>
-                <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-                    Cada hamburguesa es una obra maestra culinaria, preparada con ingredientes frescos y premium para ofrecerte una experiencia gastronómica única.
+                <p class="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                    Ingredientes frescos y premium para una experiencia única en cada bocado.
                 </p>
             </div>
-            <div id="menu-gate" class="max-w-3xl mx-auto">
-                <div class="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md text-center">
-                    <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Menú</h2>
-                    <p class="mt-2 text-white/80">Toca para ver las categorías y empezar tu pedido.</p>
-                    <button id="show-menu-btn" type="button" class="mt-5 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-amber-400 text-slate-900 font-bold hover:brightness-110 active:scale-[0.99] transition">
-                        Mostrar menú
+            <div id="menu-gate" class="max-w-3xl mx-auto mb-8">
+                <div class="p-8 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md text-center shadow-sm">
+                    <div class="text-5xl mb-4">🔥</div>
+                    <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">Ver Menú</h2>
+                    <p class="mt-2 text-gray-500 dark:text-gray-400">Toca para ver las categorías y empezar tu pedido.</p>
+                    <button id="show-menu-btn" type="button" class="mt-6 inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-green-600 text-white font-bold text-base hover:bg-green-700 hover:-translate-y-0.5 active:scale-[0.98] transition-all shadow-lg hover:shadow-xl">
+                        <i class="fas fa-utensils"></i> Mostrar menú
                     </button>
                 </div>
             </div>
 
-            <div id="menu-categories" class="space-y-16"></div>
+            <div id="menu-categories" class="space-y-20"></div>
         </div>
     </main>
 
@@ -2756,30 +3007,34 @@
         <div class="cart-header flex items-center justify-between p-4 border-b">
             <div class="min-w-0">
                 <h3 class="text-xl font-bold font-poppins truncate">Tu Pedido</h3>
-                <p class="text-xs text-gray-600">Revisa y confirma</p>
+                <p class="text-xs text-gray-500 mt-0.5">Revisa y confirma antes de ordenar</p>
             </div>
-            <button id="close-cart-btn" class="cart-close text-gray-500 hover:text-gray-800">
-                <i class="fas fa-times text-2xl"></i>
+            <button id="close-cart-btn" class="cart-close text-gray-500 hover:text-gray-800" aria-label="Cerrar carrito">
+                <i class="fas fa-times text-xl"></i>
             </button>
         </div>
         <div id="cart-items" class="cart-items flex-grow p-4 overflow-y-auto modal-scrollbar">
-            <div id="cart-empty-msg" class="text-center mt-10 text-gray-700">
-                <p class="text-lg font-bold">Tu carrito está vacío</p>
-                <p class="text-sm text-gray-600 mt-1">Agrega algo del menú para empezar tu pedido.</p>
-                <button id="cart-empty-cta" type="button" class="btn-primary mt-5 px-6 py-3 font-bold" aria-label="Explorar combos">
-                    Explorar combos
+            <div id="cart-empty-msg" class="flex flex-col items-center text-center pt-16 pb-8 px-4 text-gray-500">
+                <div class="text-6xl mb-5 opacity-30">🛒</div>
+                <p class="text-lg font-bold text-gray-700 dark:text-gray-200">Tu carrito está vacío</p>
+                <p class="text-sm text-gray-500 mt-2 max-w-xs">Agrega algo del menú para empezar tu pedido.</p>
+                <button id="cart-empty-cta" type="button" class="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95" aria-label="Explorar combos">
+                    <i class="fas fa-utensils"></i> Explorar menú
                 </button>
-                <p class="text-xs text-gray-500 mt-3">Tip: puedes personalizar toppings en cada producto.</p>
+                <p class="text-xs text-gray-400 mt-4">Tip: personaliza toppings en cada producto.</p>
             </div>
         </div>
-        <div class="cart-footer p-4 border-t bg-gray-50">
-            <div class="flex justify-between items-center mb-4">
-                <span class="text-lg font-semibold">Total:</span>
-                <span id="cart-total" class="text-2xl font-bold text-[#FFB300]">$0.00</span>
+        <div class="cart-footer p-4 border-t">
+            <div class="cart-total-row">
+                <span class="cart-total-label">Total</span>
+                <span id="cart-total" class="cart-total-amount">$0.00</span>
             </div>
-            <button id="checkout-btn" class="w-full bg-[#FFB300] text-[#212121] font-bold py-3 rounded-xl hover:bg-[#FFA000] transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                <i class="fas fa-receipt mr-2"></i>Finalizar Pedido
+            <button id="checkout-btn" class="cart-checkout-btn" disabled>
+                <i class="fas fa-bolt"></i>
+                <span>Ordenar ahora</span>
+                <span id="cart-checkout-total-badge" class="cart-checkout-btn__total hidden">$0.00</span>
             </button>
+            <p class="text-center text-xs text-gray-400 mt-3">⏱️ Listo en 25–35 min · Pago al recibir</p>
         </div>
     </div>
     <div id="cart-overlay" class="fixed top-0 left-0 w-full h-full bg-black/50 z-40 hidden"></div>
@@ -2886,8 +3141,27 @@
             
             <!-- Header compacto -->
             <div class="checkout-header p-4 pb-3 border-b">
+                <div class="flex items-center justify-center gap-2 mb-2">
+                    <!-- Step indicator -->
+                    <div class="checkout-steps">
+                        <span class="checkout-step is-active" id="chk-step-1">
+                            <span class="checkout-step__num">1</span>
+                            <span class="hidden sm:inline">Datos</span>
+                        </span>
+                        <span class="checkout-step-connector"></span>
+                        <span class="checkout-step" id="chk-step-2">
+                            <span class="checkout-step__num">2</span>
+                            <span class="hidden sm:inline">Entrega</span>
+                        </span>
+                        <span class="checkout-step-connector"></span>
+                        <span class="checkout-step" id="chk-step-3">
+                            <span class="checkout-step__num">3</span>
+                            <span class="hidden sm:inline">Confirmar</span>
+                        </span>
+                    </div>
+                </div>
                 <h3 class="text-xl font-bold font-poppins text-center">Confirmar Pedido</h3>
-                <p class="text-xs text-gray-600 text-center mt-1">⏱️ Llega en 25-35 min</p>
+                <p class="text-xs text-gray-500 text-center mt-1">⏱️ Llega en 25–35 min · Pago al recibir</p>
             </div>
             
             <!-- Contenido scrolleable -->
@@ -2987,6 +3261,41 @@
                                     <span class="text-gray-600">Envío:</span>
                                     <span class="font-semibold text-orange-600">+$40.00</span>
                                 </div>
+
+                                <!-- Código de descuento -->
+                                <div class="mt-2">
+                                    <div id="checkout-discount-row" class="flex justify-between items-center hidden">
+                                        <span id="checkout-discount-label" class="text-green-700 font-medium">Descuento:</span>
+                                        <span id="checkout-discount-amount" class="font-semibold text-green-700">-$0.00</span>
+                                    </div>
+
+                                    <div class="mt-2 grid grid-cols-[1fr_auto] gap-2">
+                                        <input
+                                            id="discount-code-input"
+                                            type="text"
+                                            placeholder="Código (ej. SR20)"
+                                            class="w-full p-2 border rounded-md text-sm focus:ring-1 focus:ring-green-300 focus:border-green-400"
+                                            autocomplete="off"
+                                            inputmode="text"
+                                        />
+                                        <button
+                                            id="apply-discount-code-btn"
+                                            type="button"
+                                            class="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm">
+                                            Aplicar
+                                        </button>
+                                    </div>
+
+                                    <div class="mt-1 flex items-center justify-between gap-2">
+                                        <div id="discount-code-msg" class="text-[11px] text-gray-600"></div>
+                                        <button
+                                            id="clear-discount-code-btn"
+                                            type="button"
+                                            class="hidden text-[11px] font-bold text-red-600 hover:text-red-700">
+                                            Quitar
+                                        </button>
+                                    </div>
+                                </div>
                                 <div class="border-t pt-1 mt-1">
                                     <div class="flex justify-between items-center">
                                         <span class="font-bold text-gray-800">Total:</span>
@@ -3067,14 +3376,22 @@
             </div>
             
             <!-- Footer fijo con botón -->
-            <div class="border-t bg-white/60 backdrop-blur-md p-3 rounded-b-lg">
-                <div id="checkout-sticky-totals" class="mb-2 flex items-center justify-between text-sm">
-                    <div class="text-gray-700">Envío: <span id="checkout-sticky-delivery" class="font-semibold">—</span></div>
-                    <div class="text-gray-800">Total: <span id="checkout-sticky-total" class="font-bold text-[#FFB300]">$0</span></div>
+            <div class="border-t bg-white/60 dark:bg-slate-900/70 backdrop-blur-md p-4 rounded-b-2xl">
+                <div id="checkout-sticky-totals" class="mb-3 flex items-center justify-between">
+                    <div class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-truck text-xs"></i>
+                        <span>Envío: <span id="checkout-sticky-delivery" class="font-semibold text-gray-700 dark:text-gray-200">—</span></span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Total</span>
+                        <span id="checkout-sticky-total" class="font-black text-xl text-green-600 dark:text-green-400 font-poppins" style="letter-spacing:-0.03em">$0</span>
+                    </div>
                 </div>
-                <button id="send-whatsapp-btn" class="w-full bg-green-500 text-white font-bold py-3 rounded-lg hover:bg-green-600 transition duration-300 flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-lg">
-                    <i class="fas fa-check-circle text-xl"></i><span>Confirmar Pedido</span>
+                <button id="send-whatsapp-btn" class="cart-checkout-btn" disabled>
+                    <i class="fab fa-whatsapp text-lg"></i>
+                    <span>Confirmar por WhatsApp</span>
                 </button>
+                <p class="text-center text-xs text-gray-400 mt-2">Ctrl+Enter para confirmar r\u00e1pido</p>
             </div>
         </div>
     </div>
@@ -3800,7 +4117,211 @@
                 });
             })();
         </script>
-        <script src="js/script.js.backup?v=2026-01-23a"></script>
+        <script src="js/script.js.backup?v=2026-02-27a"></script>
+
+        <!-- UX enhancements: sticky category nav, cart badge pop, checkout prefill -->
+        <script>
+        (function() {
+            'use strict';
+
+            /* ─── 1. Sticky Category Nav ─────────────────────────────────────────── */
+            function buildCategoryNav() {
+                const nav = document.getElementById('category-sticky-nav');
+                if (!nav) return;
+                const container = nav.querySelector('div');
+                if (!container) return;
+
+                // Esperar a que el menú esté renderizado (puede tardar si carga Firebase)
+                const waitForCategories = (attempt) => {
+                    const sections = document.querySelectorAll('.category-section[data-category]');
+                    if (sections.length === 0 && attempt < 25) {
+                        setTimeout(() => waitForCategories(attempt + 1), 400);
+                        return;
+                    }
+                    if (sections.length === 0) return;
+
+                    container.innerHTML = '';
+                    nav.classList.remove('hidden');
+
+                    sections.forEach((sec, i) => {
+                        const label = sec.getAttribute('data-category')
+                            || sec.querySelector('h3,h2,h4')?.textContent?.trim()
+                            || ('Categoría ' + (i + 1));
+                        const pill = document.createElement('button');
+                        pill.className = 'cat-nav-pill' + (i === 0 ? ' is-active' : '');
+                        pill.textContent = label;
+                        pill.setAttribute('aria-label', 'Ir a ' + label);
+                        pill.addEventListener('click', () => {
+                            sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            container.querySelectorAll('.cat-nav-pill').forEach(p => p.classList.remove('is-active'));
+                            pill.classList.add('is-active');
+                        });
+                        container.appendChild(pill);
+                    });
+
+                    // Highlight activo al hacer scroll
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                const idx = Array.from(sections).indexOf(entry.target);
+                                container.querySelectorAll('.cat-nav-pill').forEach((p, i) => {
+                                    p.classList.toggle('is-active', i === idx);
+                                });
+                                // Scroll la pill activa al centro
+                                const activePill = container.querySelectorAll('.cat-nav-pill')[idx];
+                                if (activePill) {
+                                    activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                }
+                            }
+                        });
+                    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+
+                    sections.forEach(sec => observer.observe(sec));
+                };
+                waitForCategories(0);
+            }
+
+            /* ─── 2. Sticky nav scroll shadow ───────────────────────────────────── */
+            function initNavShadow() {
+                const nav = document.getElementById('category-sticky-nav');
+                if (!nav) return;
+                const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 80);
+                window.addEventListener('scroll', onScroll, { passive: true });
+            }
+
+            /* ─── 3. Cart badge spring pop ───────────────────────────────────────── */
+            function initCartBadgePop() {
+                const badge = document.getElementById('cart-count');
+                if (!badge) return;
+
+                let prev = parseInt(badge.textContent) || 0;
+                const mo = new MutationObserver(() => {
+                    const current = parseInt(badge.textContent) || 0;
+                    if (current !== prev) {
+                        badge.classList.remove('popped');
+                        void badge.offsetWidth; // reflow
+                        badge.classList.add('popped');
+                        prev = current;
+                    }
+                });
+                mo.observe(badge, { childList: true, characterData: true, subtree: true });
+            }
+
+            /* ─── 4. Cart total badge en botón checkout ──────────────────────────── */
+            function initCartTotalBadge() {
+                const totalEl = document.getElementById('cart-total');
+                const badge = document.getElementById('cart-checkout-total-badge');
+                const btn = document.getElementById('checkout-btn');
+                if (!totalEl || !badge || !btn) return;
+
+                const syncBadge = () => {
+                    const text = totalEl.textContent?.trim();
+                    const isZero = !text || text === '$0.00' || text === '0';
+                    badge.textContent = text;
+                    badge.classList.toggle('hidden', isZero);
+                    btn.disabled = isZero;
+                };
+
+                const mo = new MutationObserver(syncBadge);
+                mo.observe(totalEl, { childList: true, characterData: true, subtree: true });
+                syncBadge();
+            }
+
+            /* ─── 5. Checkout step visual progress ───────────────────────────────── */
+            function initCheckoutStepProgress() {
+                const nameInput = document.getElementById('customer-name');
+                const phoneInput = document.getElementById('customer-phone');
+                const deliveryInputs = document.querySelectorAll('input[name="delivery-type"]');
+                const step1 = document.getElementById('chk-step-1');
+                const step2 = document.getElementById('chk-step-2');
+                const step3 = document.getElementById('chk-step-3');
+                if (!nameInput || !step1) return;
+
+                const update = () => {
+                    const hasName = nameInput.value.trim().length > 2;
+                    const hasPhone = phoneInput?.value?.trim().length >= 8;
+                    const hasDelivery = [...deliveryInputs].some(r => r.checked);
+
+                    if (hasName && hasPhone) {
+                        step1.classList.add('is-done');
+                        step2.classList.add('is-active');
+                    } else {
+                        step1.classList.remove('is-done');
+                        step2.classList.remove('is-active');
+                        step3.classList.remove('is-active');
+                    }
+                    if (hasName && hasPhone && hasDelivery) {
+                        step2.classList.add('is-done');
+                        step3.classList.add('is-active');
+                    } else {
+                        step2.classList.remove('is-done');
+                        step3.classList.remove('is-active');
+                    }
+                };
+
+                [nameInput, phoneInput].forEach(el => el?.addEventListener('input', update));
+                deliveryInputs.forEach(el => el.addEventListener('change', update));
+                update();
+            }
+
+            /* ─── 6. Cart empty CTA → scroll to menu ─────────────────────────────── */
+            function initCartEmptyCta() {
+                document.addEventListener('click', e => {
+                    if (e.target.closest('#cart-empty-cta')) {
+                        const closeBtn = document.getElementById('close-cart-btn');
+                        closeBtn?.click();
+                        setTimeout(() => {
+                            document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+                        }, 320);
+                    }
+                });
+            }
+
+            /* ─── 7. Keyboard shortcut Ctrl+Enter para confirmar pedido ──────────── */
+            function initKeyboardShortcut() {
+                document.addEventListener('keydown', e => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        const confirmBtn = document.getElementById('send-whatsapp-btn')
+                            || document.getElementById('confirm-order-btn')
+                            || document.querySelector('#checkout-modal .cart-checkout-btn');
+                        if (confirmBtn && !confirmBtn.disabled) confirmBtn.click();
+                    }
+                });
+            }
+
+            /* ─── 8. Add-to-cart ring flash en tarjetas ──────────────────────────── */
+            function initAddRingFlash() {
+                document.addEventListener('click', e => {
+                    const btn = e.target.closest('.add-to-cart-btn, .choose-combo-btn, .customize-btn');
+                    if (!btn) return;
+                    const card = btn.closest('.menu-card, .menu-card-mobile');
+                    if (!card) return;
+                    card.classList.remove('sr-ring-flash');
+                    void card.offsetWidth;
+                    card.classList.add('sr-ring-flash');
+                    card.addEventListener('animationend', () => card.classList.remove('sr-ring-flash'), { once: true });
+                });
+            }
+
+            /* ─── Init ───────────────────────────────────────────────────────────── */
+            document.addEventListener('DOMContentLoaded', () => {
+                buildCategoryNav();
+                initNavShadow();
+                initCartBadgePop();
+                initCartTotalBadge();
+                initCartEmptyCta();
+                initKeyboardShortcut();
+                initAddRingFlash();
+
+                // Step progress se inicializa al abrir el checkout
+                document.addEventListener('click', e => {
+                    if (e.target.closest('#checkout-btn, #open-checkout-btn')) {
+                        setTimeout(initCheckoutStepProgress, 100);
+                    }
+                });
+            });
+        })();
+        </script>
 
 </body>
 </html>

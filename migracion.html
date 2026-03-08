@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 Migración Multi-Tenant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .log-entry {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .log-info { background: #E0F2FE; color: #0369A1; }
+        .log-success { background: #D1FAE5; color: #065F46; }
+        .log-warning { background: #FEF3C7; color: #92400E; }
+        .log-error { background: #FEE2E2; color: #991B1B; }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <h1 class="text-4xl font-bold mb-4">🔄 Migración a Multi-Tenant</h1>
+            <p class="text-gray-600 mb-6">
+                Esta herramienta migra tus datos existentes de Firebase a la nueva estructura multi-tenant.
+                <strong>IMPORTANTE:</strong> Solo ejecuta esto UNA VEZ.
+            </p>
+            
+            <div class="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-6">
+                <h3 class="font-bold text-yellow-800 mb-2">⚠️ Antes de Continuar:</h3>
+                <ul class="list-disc ml-6 text-yellow-800 space-y-1">
+                    <li>Haz un backup completo de tu base de datos Firebase</li>
+                    <li>Verifica que el RESTAURANT_ID en business-config.js sea correcto</li>
+                    <li>Esta operación NO elimina los datos originales (quedan como respaldo)</li>
+                    <li>Puedes ejecutar esto en modo TEST primero</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <h2 class="text-2xl font-bold mb-4">📋 Configuración de Migración</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block font-semibold mb-2">Restaurant ID Actual:</label>
+                    <input type="text" id="restaurant-id" readonly
+                           class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-50">
+                </div>
+                
+                <div>
+                    <label class="block font-semibold mb-2">Colecciones a Migrar:</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" checked value="products" class="w-5 h-5">
+                            <span>Productos (products)</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" checked value="orders" class="w-5 h-5">
+                            <span>Pedidos (orders)</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" checked value="customers" class="w-5 h-5">
+                            <span>Clientes (customers)</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" checked value="manual_customers" class="w-5 h-5">
+                            <span>Clientes Manuales (manual_customers)</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" value="settings" class="w-5 h-5">
+                            <span>Configuración (settings)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="flex items-center gap-3">
+                        <input type="checkbox" id="test-mode" checked class="w-5 h-5">
+                        <span class="font-semibold">Modo TEST (simula sin guardar cambios)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex gap-4">
+                <button id="start-migration-btn" 
+                        class="px-8 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition">
+                    🚀 Iniciar Migración
+                </button>
+                <button id="check-structure-btn"
+                        class="px-8 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition">
+                    ✅ Verificar Estructura
+                </button>
+                <a href="pedido-manual.html"
+                   class="px-8 py-3 bg-gray-600 text-white rounded-lg font-bold hover:bg-gray-700 transition inline-block">
+                    ← Volver
+                </a>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <h2 class="text-2xl font-bold mb-4">📊 Log de Migración</h2>
+            <div id="log-container" class="bg-gray-900 text-gray-100 p-4 rounded-lg h-96 overflow-y-auto font-mono text-sm">
+                <div class="text-gray-400">Esperando inicio de migración...</div>
+            </div>
+            
+            <div id="stats" class="mt-6 grid grid-cols-3 gap-4 hidden">
+                <div class="bg-blue-50 p-4 rounded-lg text-center">
+                    <div class="text-3xl font-bold text-blue-600" id="total-docs">0</div>
+                    <div class="text-sm text-gray-600">Total Documentos</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg text-center">
+                    <div class="text-3xl font-bold text-green-600" id="migrated-docs">0</div>
+                    <div class="text-sm text-gray-600">Migrados</div>
+                </div>
+                <div class="bg-red-50 p-4 rounded-lg text-center">
+                    <div class="text-3xl font-bold text-red-600" id="error-docs">0</div>
+                    <div class="text-sm text-gray-600">Errores</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { RESTAURANT_CONFIG } from './config/business-config.js';
+        import { 
+            checkMultiTenantStructure,
+            migrateToMultiTenant 
+        } from './js/firebase-multi-tenant.js';
+
+        // Cargar Restaurant ID
+        document.getElementById('restaurant-id').value = RESTAURANT_CONFIG.id;
+
+        let totalMigrated = 0;
+        let totalErrors = 0;
+
+        // Funciones de log
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            
+            const icons = {
+                info: 'ℹ️',
+                success: '✅',
+                warning: '⚠️',
+                error: '❌'
+            };
+            
+            entry.textContent = `[${timestamp}] ${icons[type]} ${message}`;
+            entry.className = `log-entry log-${type}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('migrated-docs').textContent = totalMigrated;
+            document.getElementById('error-docs').textContent = totalErrors;
+            document.getElementById('total-docs').textContent = totalMigrated + totalErrors;
+            document.getElementById('stats').classList.remove('hidden');
+        }
+
+        // Verificar estructura
+        document.getElementById('check-structure-btn').addEventListener('click', async () => {
+            log('Verificando estructura multi-tenant...', 'info');
+            
+            try {
+                // Aquí deberías tener acceso a tu instancia de Firebase DB
+                if (!window.firebaseDb) {
+                    log('Firebase no está inicializado. Asegúrate de cargar firebase-config.js', 'error');
+                    return;
+                }
+                
+                const exists = await checkMultiTenantStructure(window.firebaseDb);
+                
+                if (exists) {
+                    log('✅ La estructura multi-tenant ya existe', 'success');
+                } else {
+                    log('⚠️ La estructura multi-tenant no existe. Procede con la migración.', 'warning');
+                }
+            } catch (error) {
+                log(`Error verificando estructura: ${error.message}`, 'error');
+            }
+        });
+
+        // Iniciar migración
+        document.getElementById('start-migration-btn').addEventListener('click', async () => {
+            const testMode = document.getElementById('test-mode').checked;
+            const collections = Array.from(document.querySelectorAll('input[type="checkbox"][value]'))
+                .filter(cb => cb.checked && cb.value)
+                .map(cb => cb.value);
+            
+            if (collections.length === 0) {
+                alert('Selecciona al menos una colección para migrar');
+                return;
+            }
+            
+            if (!testMode && !confirm('⚠️ ADVERTENCIA: Esto migrará datos reales. ¿Estás seguro?')) {
+                return;
+            }
+            
+            log('='.repeat(50), 'info');
+            log(`Modo: ${testMode ? 'TEST (Simulación)' : 'PRODUCCIÓN'}`, 'info');
+            log(`Restaurant ID: ${RESTAURANT_CONFIG.id}`, 'info');
+            log(`Colecciones: ${collections.join(', ')}`, 'info');
+            log('='.repeat(50), 'info');
+            
+            totalMigrated = 0;
+            totalErrors = 0;
+            
+            document.getElementById('start-migration-btn').disabled = true;
+            document.getElementById('start-migration-btn').textContent = '⏳ Migrando...';
+            
+            try {
+                if (!window.firebaseDb) {
+                    throw new Error('Firebase no está inicializado');
+                }
+                
+                for (const collection of collections) {
+                    log(`Iniciando migración de: ${collection}`, 'info');
+                    
+                    if (testMode) {
+                        log(`[TEST] Simulando migración de ${collection}...`, 'warning');
+                        // En modo test, solo contar documentos
+                        const snapshot = await window.firebaseDb.collection(collection).get();
+                        log(`[TEST] Encontrados ${snapshot.size} documentos en ${collection}`, 'info');
+                        totalMigrated += snapshot.size;
+                    } else {
+                        const result = await migrateToMultiTenant(window.firebaseDb, collection, collection);
+                        
+                        if (result.success) {
+                            log(`✅ ${collection}: ${result.migrated} documentos migrados`, 'success');
+                            totalMigrated += result.migrated;
+                            totalErrors += result.errors;
+                        } else {
+                            log(`❌ ${collection}: ${result.message}`, 'error');
+                            totalErrors++;
+                        }
+                    }
+                    
+                    updateStats();
+                }
+                
+                log('='.repeat(50), 'info');
+                log(`🎉 Migración completada!`, 'success');
+                log(`Total migrado: ${totalMigrated}`, 'success');
+                log(`Total errores: ${totalErrors}`, totalErrors > 0 ? 'warning' : 'success');
+                log('='.repeat(50), 'info');
+                
+                if (!testMode) {
+                    log('✅ Los datos originales se mantienen como respaldo', 'info');
+                    log('✅ Puedes verificar los datos en Firebase Console', 'info');
+                }
+                
+            } catch (error) {
+                log(`❌ Error crítico: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                document.getElementById('start-migration-btn').disabled = false;
+                document.getElementById('start-migration-btn').textContent = '🚀 Iniciar Migración';
+            }
+        });
+
+        log('🔧 Sistema de migración listo', 'success');
+        log('📋 Configura las opciones y presiona "Iniciar Migración"', 'info');
+    </script>
+</body>
+</html>

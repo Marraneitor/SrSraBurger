@@ -103,7 +103,7 @@
           <h2 class="text-sm font-extrabold text-sky-100">Ingredientes usados</h2>
           <span id="ingredients-count" class="text-xs font-semibold text-sky-200">0 ingredientes</span>
         </div>
-        <div class="text-xs text-sky-200/80 mb-2">Suma cantidades por ingrediente usando recetas de Productos + catálogo de Ingredientes.</div>
+        <div class="text-xs text-sky-200/80 mb-2">Suma cantidades por ingrediente usando recetas de Productos + catálogo de Ingredientes. Las papas sin receta se calculan automáticamente por tamaño: Complemento 140 g, Medianas 280 g, Extragrandes 560 g.</div>
         <div id="ingredients-table" class="text-sm text-sky-100"></div>
       </div>
 
@@ -112,7 +112,7 @@
           <h2 class="text-sm font-extrabold text-sky-100">Productos sin receta / no encontrados</h2>
           <span id="missing-count" class="text-xs font-semibold text-sky-200">0 productos</span>
         </div>
-        <div class="text-xs text-sky-200/80 mb-2">Estos productos se vendieron pero no se pudo calcular insumos (falta receta o no coincide el nombre).</div>
+        <div class="text-xs text-sky-200/80 mb-2">Estos productos se vendieron pero no se pudo calcular insumos (falta receta o no coincide el nombre). Las papas se calculan automáticamente por gramaje y no aparecen aquí.</div>
         <div id="missing-table" class="text-sm text-sky-100"></div>
         <div class="mt-3 text-xs text-slate-400">Tip: agrega/edita recetas en <a href="Productos.html" class="underline text-sky-200 hover:text-sky-100">Productos y costos</a>.</div>
       </div>
@@ -366,9 +366,12 @@
       (Array.isArray(catalog) ? catalog : []).forEach((ing) => {
         if (!ing) return;
         const id = safeText(ing.id).trim();
-        const name = safeText(ing.name).trim();
-        if (id) byId.set(id, ing);
-        if (name) byName.set(normText(name), ing);
+        // Soportar tanto 'name' (inglés) como 'nombre' (español)
+        const name = safeText(ing.name || ing.nombre).trim();
+        const unit = safeText(ing.unit || ing.unidad).trim();
+        const normalized = { ...ing, name, unit };
+        if (id) byId.set(id, normalized);
+        if (name) byName.set(normText(name), normalized);
       });
       return { byId, byName };
     }
@@ -928,15 +931,51 @@
             continue;
           }
 
-          // 5) Otros items: si mencionan papas con tamaño explícito
+          // 5) Papas mencionadas en texto con tamaño explícito
           const maybeFries = classifyFriesSize(itemText);
           if (maybeFries && normText(itemText).includes('papas')) {
             addCount(productsSold, `Papas ${maybeFries}`, qty);
+            continue;
+          }
+
+          // 6) TODOS LOS DEMÁS ITEMS (Bebidas, Aros, Salsas, etc.)
+          // Si llegamos aquí, el item NO fue procesado por las reglas anteriores
+          if (itemName && itemName.trim()) {
+            addCount(productsSold, itemName.trim(), qty);
           }
         }
       }
 
       return { totalOrders, productsSold };
+    }
+
+    // ------------------------
+    // Porciones de papas por tamaño (gramos)
+    // ------------------------
+    const FRIES_GRAMS = {
+      'complemento': 140,
+      'medianas':    280,
+      'extragrandes': 560,
+      'grandes':     560,
+      'xl':          560,
+      'xxl':         560,
+    };
+
+    function friesPortionGrams(prodName) {
+      const t = normText(prodName);
+      if (!t.includes('papas')) return null;
+      for (const [key, grams] of Object.entries(FRIES_GRAMS)) {
+        if (t.includes(key)) return grams;
+      }
+      return null;
+    }
+
+    function friesIngredientKey(prodName) {
+      // Devuelve la clave del ingrediente para agrupar por tipo de papa
+      const t = normText(prodName);
+      if (t.includes('gajo'))      return 'Papas Gajo';
+      if (t.includes('francesa') || t.includes('francesa')) return 'Papas Francesas';
+      return 'Papas';
     }
 
     // ------------------------
@@ -952,6 +991,30 @@
         if (!Number.isFinite(qtySold) || qtySold <= 0) continue;
 
         const pid = nameToId.get(normText(prodName));
+
+        // ── Papas sin receta: calcular gramos directamente ──────────────────────
+        // Si es un producto de papas y no tiene receta (o no tiene ID),
+        // calculamos el gramaje y lo sumamos como ingrediente directamente.
+        const friesGrams = friesPortionGrams(prodName);
+        if (friesGrams !== null) {
+          const recipe = pid ? (recipes ? recipes[String(pid)] : null) : null;
+          const lines  = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
+          if (!lines.length) {
+            // Sin receta registrada → usar gramaje estándar por tamaño
+            const ingKey  = friesIngredientKey(prodName);
+            const mapKey  = `fries:${ingKey}`;
+            const totalGr = friesGrams * qtySold;
+            const prev = totals.get(mapKey);
+            if (prev) {
+              prev.qty += totalGr;
+            } else {
+              totals.set(mapKey, { name: ingKey, unit: 'g', qty: totalGr });
+            }
+            continue; // NO va a missing
+          }
+          // Si tiene receta → sigue el flujo normal debajo
+        }
+
         if (!pid) {
           addCount(missing, prodName, qtySold);
           continue;

@@ -23,14 +23,21 @@
     const links = [
       { href: 'master.html', label: 'Master' },
       { href: 'admin.html', label: 'Admin' },
-      { href: 'paginaburger.html', label: 'Menú' },
+      { href: 'pedido-manual.html', label: 'Pedidos' },
       { href: 'controldeenvios.html', label: 'Envíos' },
+      { href: 'repartidor.html', label: 'Repartidor' },
+      { href: 'paginaburger.html', label: 'Menú' },
+      { href: 'Codigos.html', label: 'Códigos' },
       { href: 'data.html', label: 'Data' },
+      { href: 'Historialdepedidos.html', label: 'Historial' },
       { href: 'insumosgastados.html', label: 'Insumos' },
       { href: 'itemsvendidos.html', label: 'Items' },
       { href: 'Ganancias.html', label: 'Ganancias' },
       { href: 'Productos.html', label: 'Productos' },
-      { href: 'ingredientes.html', label: 'Ingredientes' }
+      { href: 'ingredientes.html', label: 'Ingredientes' },
+      { href: 'inventario.html', label: 'Inventario' },
+      { href: 'clientes-admin.html', label: 'Clientes' },
+      { href: 'notifi.html', label: 'Notifi' }
     ];
 
     const header = document.createElement('header');

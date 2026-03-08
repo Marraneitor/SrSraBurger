@@ -653,6 +653,381 @@ function printAddresses(port) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// WHATSAPP — Notificaciones de pedidos via Baileys
+// ═══════════════════════════════════════════════════════════════════════════
+let _whatsapp = null;
+function getWA() {
+  if (!_whatsapp) {
+    try {
+      const { getInstance } = require('./services/whatsapp');
+      _whatsapp = getInstance();
+      _whatsapp.init().catch(e => console.error('[WA init]', e.message));
+    } catch (e) {
+      console.error('[WA load]', e.message);
+    }
+  }
+  return _whatsapp;
+}
+
+// SSE: stream de eventos en tiempo real (QR, conexión, desconexión)
+app.get('/api/whatsapp/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const send = (event, data) =>
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+  // Estado actual al conectar
+  const wa = getWA();
+  if (wa) {
+    const s = wa.getStatus();
+    if (s.hasQr)     send('qr',         { qrDataUrl: s.qrDataUrl });
+    if (s.connected) send('connected',   { phoneNumber: s.phoneNumber });
+  }
+
+  const onQr   = (qrDataUrl)          => send('qr',          { qrDataUrl });
+  const onConn = ({ phoneNumber })    => send('connected',    { phoneNumber });
+  const onDisc = ({ loggedOut } = {}) => send('disconnected', { loggedOut });
+  const onReconn = ()                 => send('reconnecting', {});
+
+  if (wa) {
+    wa.on('qr',           onQr);
+    wa.on('connected',    onConn);
+    wa.on('disconnected', onDisc);
+    wa.on('reconnecting', onReconn);
+  }
+
+  req.on('close', () => {
+    if (wa) {
+      wa.off('qr',           onQr);
+      wa.off('connected',    onConn);
+      wa.off('disconnected', onDisc);
+      wa.off('reconnecting', onReconn);
+    }
+  });
+});
+
+// Estado actual
+app.get('/api/whatsapp/status', (req, res) => {
+  const wa = getWA();
+  if (!wa) return res.json({ ok: true, connected: false, hasQr: false });
+  res.json({ ok: true, ...wa.getStatus() });
+});
+
+// Lista de grupos (requiere estar conectado)
+app.get('/api/whatsapp/groups', async (req, res) => {
+  const wa = getWA();
+  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
+  try {
+    const groups = await wa.getGroups();
+    res.json({ ok: true, groups });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Guardar grupo destino
+// type: 'orders' (cocina/pedidos, default) | 'delivery' (repartidores)
+app.post('/api/whatsapp/set-group', (req, res) => {
+  const { groupId, groupName, type } = req.body || {};
+  if (!groupId) return res.status(400).json({ ok: false, error: 'groupId requerido' });
+  const wa = getWA();
+  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
+  wa.saveConfig(groupId, groupName || groupId, type || 'orders');
+  res.json({ ok: true, groupId, groupName, type: type || 'orders' });
+});
+
+// Configuración guardada
+app.get('/api/whatsapp/config', (req, res) => {
+  const wa = getWA();
+  if (!wa) return res.json({ ok: true, config: { groupId: null, groupName: null } });
+  res.json({ ok: true, config: wa.getConfig() });
+});
+
+// Mensaje de prueba — Cocina
+app.post('/api/whatsapp/send-test', async (req, res) => {
+  const wa = getWA();
+  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
+  try {
+    const text = req.body?.text || '🍔 *Prueba — SR & SRA BURGER*\n✅ Las notificaciones de pedidos están activas en el grupo *Cocina*.';
+    await wa.sendToGroup(text);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message });
+  }
+});
+
+// Mensaje de prueba — Repartidores
+app.post('/api/whatsapp/send-test-delivery', async (req, res) => {
+  const wa = getWA();
+  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
+  try {
+    const config = wa.getConfig();
+    if (!config.deliveryGroupId) {
+      return res.status(400).json({ ok: false, error: 'No hay grupo de repartidores configurado. Ve a /notifi.html y selecciónalo en la pestaña Repartidores.' });
+    }
+    const text = req.body?.text || '🛵 *Prueba — SR & SRA BURGER*\n✅ Las notificaciones de envíos están activas en el grupo *Repartidores*.\n📍 Los pedidos de domicilio llegarán aquí con dirección y link de Maps.';
+    await wa.sendToDeliveryGroup(text);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message });
+  }
+});
+
+// Notificación de nuevo pedido (llamada desde controldeenvios.html)
+app.post('/api/whatsapp/notify-order', async (req, res) => {
+  const wa = getWA();
+  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
+
+  const order = req.body?.order || {};
+  const forceAll = !!req.body?.forceAll;
+  const result = { ok: false, kitchen: false, delivery: false };
+
+  // 1) Mensaje completo → grupo Cocina/Pedidos
+  try {
+    const text = buildOrderMessage(order);
+    await wa.sendToGroup(text);
+    result.kitchen = true;
+    result.ok      = true;
+  } catch (e) {
+    result.kitchenError = e.message;
+    console.error('[WA] Error enviando a cocina:', e.message);
+    return res.status(400).json({ ...result, error: e.message });
+  }
+
+  // 2) Si es entrega a domicilio O forceAll → mensaje a repartidores
+  const deliveryType = order.deliveryType || order.type || '';
+  const isDelivery   = forceAll || /delivery|envío|envio|domicilio/i.test(deliveryType);
+  const config       = wa.getConfig();
+
+  if (isDelivery && config.deliveryGroupId) {
+    try {
+      const deliveryText = buildDeliveryMessage(order);
+      await wa.sendToDeliveryGroup(deliveryText);
+      result.delivery = true;
+      console.log('[WA] Mensaje de repartidor enviado al grupo:', config.deliveryGroupName || config.deliveryGroupId);
+    } catch (e) {
+      result.deliveryError = e.message;
+      console.error('[WA] Error enviando a repartidores:', e.message);
+    }
+  }
+
+  res.json(result);
+});
+
+// Cerrar sesión de WhatsApp
+app.delete('/api/whatsapp/logout', async (req, res) => {
+  const wa = getWA();
+  if (!wa) return res.json({ ok: true });
+  try {
+    await wa.logout();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Formateador de mensaje de pedido ────────────────────────────────────────
+function buildOrderMessage(order) {
+  const SEP  = '━━━━━━━━━━━━━━━━━━━━━━';
+  const SEP2 = '──────────────────────';
+  const lines = [];
+
+  const customer = order.customer || {};
+  const name  = customer.name  || order.customerName  || 'Sin nombre';
+  const phone = customer.phone || order.customerPhone || '';
+  const addr  = customer.address || order.address || '';
+  const type  = order.deliveryType || order.type || '';
+  const isDelivery = /delivery|envío|envio|domicilio/i.test(type);
+
+  const now = new Date();
+  const hora = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  // ── Encabezado ──────────────────────────────────────────
+  lines.push(SEP);
+  lines.push(`🍔 *NUEVO PEDIDO* — SR & SRA BURGER`);
+  lines.push(`⏰ ${hora}`);
+  lines.push(SEP);
+
+  // ── Cliente ─────────────────────────────────────────────
+  lines.push(`👤 *CLIENTE*`);
+  lines.push(`   ${name}`);
+  if (phone) lines.push(`   📱 ${phone}`);
+  lines.push('');
+
+  // ── Tipo de entrega & ubicación ──────────────────────────
+  if (isDelivery) {
+    lines.push(`🚗 *ENVÍO A DOMICILIO*`);
+    if (addr) lines.push(`   📍 ${addr}`);
+  } else {
+    lines.push(`🏪 *RECOGER EN LOCAL*`);
+  }
+  lines.push(SEP2);
+
+  // ── Productos ────────────────────────────────────────────
+  lines.push(`🛒 *PEDIDO*`);
+  lines.push('');
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  if (items.length) {
+    items.forEach((item, i) => {
+      const n   = item.name || (item.baseItem && item.baseItem.name) || 'Artículo';
+      const qty = Number(item.quantity) || 1;
+      const p   = Number(item.price) || 0;
+      const priceStr = p ? ` — *$${(p * qty).toFixed(0)}*` : '';
+
+      lines.push(`${i + 1}. *${qty}x ${n}*${priceStr}`);
+
+      if (item.customizations && typeof item.customizations === 'string' && item.customizations.trim()) {
+        const parts = item.customizations.split(/\s*\|\s*/);
+        const normalParts = parts.filter(part => !/^Incluye:/i.test(part.trim()) && part.trim());
+        const includePart = parts.find(part => /^Incluye:/i.test(part.trim()));
+
+        if (normalParts.length > 1) {
+          // Combo con múltiples hamburguesas
+          lines.push(`   🍔 *Hamburguesas y más:*`);
+          normalParts.forEach((part, idx) => {
+            const isHotdog = /^Hot\s*Dog\s*:/i.test(part.trim());
+            const clean = part.trim()
+              .replace(/^Hamburguesa\s*(\d+\s*)?:\s*/i, '')
+              .replace(/^Hot\s*Dog\s*(\d+\s*)?:\s*/i, '')
+              .trim();
+            const icon = isHotdog ? '🌭' : '🍔';
+            lines.push(`      ${icon} ${clean}`);
+          });
+          if (includePart) {
+            const detail = includePart.replace(/^Incluye:\s*/i, '');
+            // Mostrar cada elemento del "Incluye" en su propia línea
+            const extras = detail.split(/\s*,\s*/).filter(Boolean);
+            lines.push(`   ✅ *Incluye:*`);
+            extras.forEach(e => lines.push(`      • ${e}`));
+          }
+        } else if (normalParts.length === 1) {
+          // Item individual con personalización
+          const single = normalParts[0].replace(/^Hamburguesa\s*:\s*/i, '').trim();
+          lines.push(`   🍔 ${single}`);
+          if (includePart) {
+            const detail = includePart.replace(/^Incluye:\s*/i, '');
+            lines.push(`   ✅ Incluye: ${detail}`);
+          }
+        } else {
+          // Texto libre (sin formato pipe)
+          lines.push(`   ↳ ${item.customizations}`);
+        }
+      }
+
+      if (item.specifications) {
+        lines.push(`   ⚠️ *Nota:* ${item.specifications}`);
+      }
+
+      lines.push('');
+    });
+  } else {
+    lines.push('   (sin detalle de productos)');
+    lines.push('');
+  }
+
+  // ── Totales & pago ───────────────────────────────────────
+  lines.push(SEP2);
+  const total = Number(order.total || 0);
+  if (total) lines.push(`💰 *TOTAL: $${total.toFixed(0)}*`);
+  if (order.paymentMethod) lines.push(`💳 *Pago:* ${order.paymentMethod}`);
+  if (order.notes) lines.push(`📝 *Notas:* ${order.notes}`);
+  lines.push(SEP);
+
+  return lines.join('\n');
+}
+
+// ── Mensaje simplificado para grupo de repartidores ─────────────────────────
+function buildDeliveryMessage(order) {
+  const SEP  = '━━━━━━━━━━━━━━━━━━━━━━';
+  const SEP2 = '──────────────────────';
+  const lines = [];
+
+  const customer = order.customer || {};
+  const name  = customer.name  || order.customerName  || 'Sin nombre';
+  const phone = customer.phone || order.customerPhone || '';
+  const addr  = customer.address || order.address      || '';
+
+  // Coordenadas guardadas del cliente registrado
+  const lat = customer.lat  || customer.latitude  || null;
+  const lng = customer.lng  || customer.longitude || null;
+  const coords = customer.coordinates || customer.coords || null;
+  const latFinal = lat || (coords && coords.lat) || null;
+  const lngFinal = lng || (coords && coords.lng) || null;
+  const mapsLink = latFinal && lngFinal
+    ? `https://maps.google.com/?q=${latFinal},${lngFinal}`
+    : null;
+
+  const total   = Number(order.total || 0);
+  const payment = order.paymentMethod || order.payment || '';
+  const paid    = order.isPaid === true || order.isPaid === 'true' || order.status === 'pagado';
+
+  // Calcular cambio automáticamente desde cashAmount
+  const cashRaw    = Number(order.cashAmount   || order.cashPaid  || 0);
+  const changeRaw  = Number(order.changeAmount || order.change    || 0);
+  // Si tenemos monto de pago, calcular cambio; si no, usar el preexistente
+  const cashAmount   = cashRaw  > 0 ? cashRaw  : null;
+  const changeAmount = cashAmount !== null
+    ? Math.max(0, cashAmount - total)   // calculado
+    : (changeRaw > 0 ? changeRaw : null); // ya guardado
+
+  const now  = new Date();
+  const hora = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  lines.push(SEP);
+  lines.push(`🛵 *PEDIDO PARA ENTREGA*`);
+  lines.push(`⏰ ${hora}`);
+  lines.push(SEP);
+
+  // Cliente
+  lines.push(`👤 *CLIENTE*`);
+  lines.push(`   ${name}`);
+  if (phone) lines.push(`   📱 ${phone}`);
+  lines.push('');
+
+  // Dirección
+  lines.push(`📍 *DIRECCIÓN*`);
+  if (addr) lines.push(`   ${addr}`);
+  if (mapsLink) lines.push(`   🗺️ ${mapsLink}`);
+  if (!addr && !mapsLink) lines.push('   (sin dirección registrada)');
+  lines.push('');
+
+  // Cobro
+  lines.push(SEP2);
+  if (paid) {
+    lines.push(`✅ *YA PAGADO* — $${total.toFixed(0)}`);
+    if (payment) lines.push(`   Método: ${payment}`);
+  } else {
+    if (total)        lines.push(`💰 *COBRAR: $${total.toFixed(0)}*`);
+    if (payment)      lines.push(`💳 Pago con: ${payment}`);
+    if (cashAmount)   lines.push(`💵 Paga con: $${cashAmount.toFixed(0)}`);
+    if (changeAmount) lines.push(`🔄 Cambio:   $${changeAmount.toFixed(0)}`);
+  }
+
+  // Resumen de productos (solo nombres y cantidades, sin detalle)
+  const items = Array.isArray(order.items) ? order.items : [];
+  if (items.length) {
+    lines.push('');
+    lines.push(`🛒 *Productos:*`);
+    items.forEach(item => {
+      const n   = item.name || (item.baseItem && item.baseItem.name) || 'Artículo';
+      const qty = Number(item.quantity) || 1;
+      lines.push(`   • ${qty}x ${n}`);
+    });
+  }
+
+  lines.push(SEP);
+
+  return lines.join('\n');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+
 function startServer(port, retries = 3) {
   const server = app.listen(port, '0.0.0.0', () => printAddresses(port));
   server.on('error', (err) => {

@@ -953,11 +953,18 @@
             continue;
           }
 
-          // 5) Otros items: si mencionan papas con tamaño explícito
+          // 5) Papas mencionadas en texto con tamaño explícito
           const maybeFries = classifyFriesSize(itemText);
           if (maybeFries && normText(itemText).includes('papas')) {
             addCount(friesBySize, maybeFries, qty);
             addCount(productsSold, `Papas ${maybeFries}`, qty);
+            continue;
+          }
+
+          // 6) TODOS LOS DEMÁS ITEMS (Bebidas, Aros, Salsas, etc.)
+          // Si llegamos aquí, el item NO fue procesado por las reglas anteriores
+          if (itemName && itemName.trim()) {
+            addCount(productsSold, itemName.trim(), qty);
           }
         }
       }

@@ -1,437 +1,803 @@
-<!DOCTYPE html>
-<html lang="es" class="sr-dark">
+﻿<!DOCTYPE html>
+<html lang="es" class="scroll-smooth" data-sr-shell="0">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Master - SR &amp; SRA BURGER</title>
+  <title>Mission Control — SR &amp; SRA BURGER</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/sr-ui.css">
-  <script src="js/sr-shell.js" defer></script>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🍔</text></svg>">
-</head>
-<body class="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 text-gray-900">
-  <header class="bg-white shadow-sm sticky top-0 z-20">
-    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center">
-          <i class="fas fa-layer-group text-white"></i>
-        </div>
-        <div>
-          <div class="font-bold text-lg">SR &amp; SRA <span class="text-yellow-600">BURGER</span></div>
-          <div class="text-xs text-gray-500">Página master (accesos rápidos)</div>
-        </div>
-      </div>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='0.9em'%20font-size='90'%3E%F0%9F%8D%94%3C/text%3E%3C/svg%3E">
+  
+  <style>
+    :root {
+      --amber: #F59E0B;
+      --amber-dark: #D97706;
+      --amber-glow: rgba(245,158,11,0.35);
+      --red:   #EF4444;
+      --ink:   #060D1C;
+      --ink2:  #0F172A;
+      --ink3:  #1E293B;
+      --ink4:  #334155;
+      --slate: #94A3B8;
+      --font:  'Inter', sans-serif;
+      --font-display: 'Space Grotesk', sans-serif;
+    }
 
-      <div class="text-xs text-gray-500 hidden sm:block">Usa esta página para navegar a las secciones del sistema.</div>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--ink);
+      color: #E2E8F0;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* NOISE LAYER */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    .bg-glow {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245,158,11,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(99,102,241,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 30% 20% at 15% 70%, rgba(16,185,129,0.06) 0%, transparent 60%);
+    }
+
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(245,158,11,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(245,158,11,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* TOPBAR */
+    .topbar {
+      position: sticky; top: 0; z-index: 200;
+      background: rgba(6,13,28,0.8);
+      backdrop-filter: blur(24px) saturate(160%);
+      border-bottom: 1px solid rgba(245,158,11,0.15);
+    }
+    .topbar-inner {
+      max-width: 1440px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.85rem 1.5rem; gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+    .brand-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--amber), var(--red));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 18px var(--amber-glow);
+      flex-shrink: 0;
+    }
+    .brand-text { font-family: var(--font-display); }
+    .brand-text .main { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; color: #F1F5F9; }
+    .brand-text .sub  { font-size: 0.7rem; color: var(--slate); font-weight: 500; }
+    .brand-text .highlight { color: var(--amber); }
+    .topbar-status {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.78rem; color: var(--slate);
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.2);
+      padding: 0.35rem 0.85rem; border-radius: 99px;
+    }
+    .topbar-status .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #10B981;
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* HERO */
+    .hero {
+      position: relative; z-index: 1;
+      padding: 3.5rem 1.5rem 2rem;
+      text-align: center;
+      max-width: 700px; margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--amber);
+      background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25);
+      padding: 0.4rem 1rem; border-radius: 99px; margin-bottom: 1.25rem;
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+      background: linear-gradient(150deg, #fff 0%, var(--amber) 60%, var(--red) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 0.75rem;
+    }
+    .hero-sub { font-size: 1rem; color: var(--slate); line-height: 1.65; }
+
+    /* PILL NAVIGATION */
+    .pill-nav {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.5rem; flex-wrap: wrap;
+      padding: 0.5rem 1.5rem 0;
+      position: relative; z-index: 1;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.9rem; border-radius: 99px;
+      font-size: 0.75rem; font-weight: 700; text-decoration: none;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--slate);
+      transition: all 0.25s;
+      cursor: pointer;
+    }
+    .pill:hover { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: var(--amber); }
+    .pill.active { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.35); color: var(--amber); }
+
+    /* SECTION LABEL */
+    .section-label {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em;
+      color: var(--slate); margin-bottom: 1rem;
+    }
+    .section-label i { font-size: 0.75rem; }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, rgba(148,163,184,0.2), transparent);
+    }
+
+    /* BENTO WRAPPER */
+    .bento-wrap {
+      position: relative; z-index: 1;
+      max-width: 1440px; margin: 0 auto;
+      padding: 0 1.25rem 5rem;
+      display: flex; flex-direction: column; gap: 3rem;
+    }
+
+    /* BENTO GRIDS */
+    .bento { display: grid; gap: 1rem; }
+
+    .bento-front   { grid-template-columns: repeat(3, 1fr); }
+    .bento-front .card-wide { grid-column: 1 / 2; grid-row: 1 / 3; }
+
+    .bento-ops     { grid-template-columns: repeat(3, 1fr); }
+
+    .bento-admin   { grid-template-columns: repeat(4, 1fr); }
+    .bento-admin .card-w2 { grid-column: span 2; }
+
+    .bento-reports { grid-template-columns: repeat(3, 1fr); }
+    .bento-reports .card-tall { grid-row: span 2; }
+
+    .bento-otros   { grid-template-columns: repeat(3, 1fr); }
+
+    /* CARD BASE */
+    .bc {
+      position: relative;
+      background: rgba(15,23,42,0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 20px;
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: 0.75rem;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1),
+                  box-shadow 0.35s ease,
+                  border-color 0.35s ease,
+                  opacity 0.3s ease,
+                  filter 0.3s ease;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .bc::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      border-radius: 20px 20px 0 0;
+      background: var(--card-accent, linear-gradient(90deg, var(--amber), var(--red)));
+      transform: scaleX(0); transform-origin: left;
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
+    .bc:hover::before { transform: scaleX(1); }
+    .bc:hover {
+      transform: translateY(-6px) scale(1.015);
+      border-color: rgba(255,255,255,0.14);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px var(--card-glow, var(--amber-glow));
+      z-index: 10;
+    }
+    .bento:has(.bc:hover) .bc:not(:hover) {
+      opacity: 0.55; filter: blur(0.5px); transform: scale(0.985);
+    }
+
+    /* CARD INTERNALS */
+    .bc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+    .bc-icon {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: #fff;
+      background: var(--card-icon-bg, linear-gradient(135deg,#F59E0B,#D97706));
+      box-shadow: 0 0 16px var(--card-glow, var(--amber-glow));
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.35s;
+    }
+    .bc:hover .bc-icon {
+      transform: rotate(8deg) scale(1.15);
+      box-shadow: 0 0 28px var(--card-glow, var(--amber-glow));
+    }
+    .bc-badge {
+      font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 0.2rem 0.55rem; border-radius: 6px;
+      background: rgba(239,68,68,0.2); color: #FCA5A5;
+      border: 1px solid rgba(239,68,68,0.3);
+      white-space: nowrap; align-self: flex-start;
+    }
+    .bc-title {
+      font-family: var(--font-display);
+      font-size: 1rem; font-weight: 700; letter-spacing: -0.01em;
+      color: #F1F5F9; line-height: 1.3;
+    }
+    .bc-desc { font-size: 0.82rem; color: var(--slate); line-height: 1.6; flex: 1; }
+    .bc-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: auto; padding-top: 0.5rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .bc-filename { font-size: 0.68rem; color: rgb(100 116 139 / 0.7); font-family: monospace; }
+    .bc-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1.1rem; border-radius: 10px;
+      font-size: 0.8rem; font-weight: 700; text-decoration: none; color: #fff;
+      background: var(--card-btn-bg, linear-gradient(135deg,#F59E0B,#D97706));
+      transition: transform 0.25s, box-shadow 0.25s;
+      white-space: nowrap;
+    }
+    .bc-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--card-glow, var(--amber-glow)); }
+    .bc-btn i { transition: transform 0.25s; }
+    .bc-btn:hover i { transform: translateX(4px); }
+
+    /* FEATURED CARD */
+    .bc-featured {
+      background: linear-gradient(145deg, rgba(245,158,11,0.1), rgba(239,68,68,0.05));
+      border-color: rgba(245,158,11,0.18);
+    }
+    .bc-featured .bc-title { font-size: 1.2rem; }
+    .bc-featured .bc-icon { width: 52px; height: 52px; font-size: 1.35rem; }
+
+    /* CATEGORY ACCENT COLORS */
+    .cat-front     { --card-accent: linear-gradient(90deg,#F59E0B,#EF4444);   --card-glow: rgba(245,158,11,0.3);  --card-icon-bg: linear-gradient(135deg,#F59E0B,#D97706);   --card-btn-bg: linear-gradient(135deg,#F59E0B,#D97706); }
+    .cat-ops-main  { --card-accent: linear-gradient(90deg,#6366F1,#8B5CF6);   --card-glow: rgba(99,102,241,0.3);  --card-icon-bg: linear-gradient(135deg,#6366F1,#4F46E5);   --card-btn-bg: linear-gradient(135deg,#6366F1,#4F46E5); }
+    .cat-ops-del   { --card-accent: linear-gradient(90deg,#3B82F6,#2563EB);   --card-glow: rgba(59,130,246,0.3);  --card-icon-bg: linear-gradient(135deg,#3B82F6,#1D4ED8);   --card-btn-bg: linear-gradient(135deg,#3B82F6,#1D4ED8); }
+    .cat-ops-man   { --card-accent: linear-gradient(90deg,#10B981,#059669);   --card-glow: rgba(16,185,129,0.3);  --card-icon-bg: linear-gradient(135deg,#10B981,#047857);   --card-btn-bg: linear-gradient(135deg,#10B981,#047857); }
+    .cat-track     { --card-accent: linear-gradient(90deg,#10B981,#34D399);   --card-glow: rgba(16,185,129,0.3);  --card-icon-bg: linear-gradient(135deg,#10B981,#059669);   --card-btn-bg: linear-gradient(135deg,#10B981,#059669); }
+    .cat-client    { --card-accent: linear-gradient(90deg,#3B82F6,#0EA5E9);   --card-glow: rgba(59,130,246,0.3);  --card-icon-bg: linear-gradient(135deg,#3B82F6,#2563EB);   --card-btn-bg: linear-gradient(135deg,#3B82F6,#2563EB); }
+    .cat-admin     { --card-accent: linear-gradient(90deg,#374151,#6B7280);   --card-glow: rgba(107,114,128,0.25);--card-icon-bg: linear-gradient(135deg,#374151,#1F2937);   --card-btn-bg: linear-gradient(135deg,#374151,#1F2937); }
+    .cat-clients-a { --card-accent: linear-gradient(90deg,#475569,#334155);   --card-glow: rgba(71,85,105,0.3);   --card-icon-bg: linear-gradient(135deg,#475569,#334155);   --card-btn-bg: linear-gradient(135deg,#475569,#334155); }
+    .cat-clients-m { --card-accent: linear-gradient(90deg,#14B8A6,#0D9488);   --card-glow: rgba(20,184,166,0.3);  --card-icon-bg: linear-gradient(135deg,#14B8A6,#0D9488);   --card-btn-bg: linear-gradient(135deg,#14B8A6,#0D9488); }
+    .cat-products  { --card-accent: linear-gradient(90deg,#F59E0B,#FBBF24);   --card-glow: rgba(245,158,11,0.3);  --card-icon-bg: linear-gradient(135deg,#F59E0B,#D97706);   --card-btn-bg: linear-gradient(135deg,#F59E0B,#D97706); }
+    .cat-ingred    { --card-accent: linear-gradient(90deg,#6366F1,#4F46E5);   --card-glow: rgba(99,102,241,0.3);  --card-icon-bg: linear-gradient(135deg,#6366F1,#4F46E5);   --card-btn-bg: linear-gradient(135deg,#6366F1,#4F46E5); }
+    .cat-inv       { --card-accent: linear-gradient(90deg,#F59E0B,#F97316);   --card-glow: rgba(245,158,11,0.3);  --card-icon-bg: linear-gradient(135deg,#F59E0B,#D97706);   --card-btn-bg: linear-gradient(135deg,#F59E0B,#D97706); }
+    .cat-images    { --card-accent: linear-gradient(90deg,#1F2937,#4B5563);   --card-glow: rgba(75,85,99,0.25);   --card-icon-bg: linear-gradient(135deg,#374151,#1F2937);   --card-btn-bg: linear-gradient(135deg,#374151,#1F2937); }
+    .cat-stats     { --card-accent: linear-gradient(90deg,#0EA5E9,#0284C7);   --card-glow: rgba(14,165,233,0.3);  --card-icon-bg: linear-gradient(135deg,#0EA5E9,#0284C7);   --card-btn-bg: linear-gradient(135deg,#0EA5E9,#0284C7); }
+    .cat-hist      { --card-accent: linear-gradient(90deg,#F59E0B,#D97706);   --card-glow: rgba(245,158,11,0.3);  --card-icon-bg: linear-gradient(135deg,#F59E0B,#D97706);   --card-btn-bg: linear-gradient(135deg,#F59E0B,#D97706); }
+    .cat-profits   { --card-accent: linear-gradient(90deg,#10B981,#059669);   --card-glow: rgba(16,185,129,0.3);  --card-icon-bg: linear-gradient(135deg,#10B981,#059669);   --card-btn-bg: linear-gradient(135deg,#10B981,#059669); }
+    .cat-items     { --card-accent: linear-gradient(90deg,#F43F5E,#E11D48);   --card-glow: rgba(244,63,94,0.3);   --card-icon-bg: linear-gradient(135deg,#F43F5E,#E11D48);   --card-btn-bg: linear-gradient(135deg,#F43F5E,#E11D48); }
+    .cat-insum     { --card-accent: linear-gradient(90deg,#0EA5E9,#0369A1);   --card-glow: rgba(14,165,233,0.3);  --card-icon-bg: linear-gradient(135deg,#0EA5E9,#0369A1);   --card-btn-bg: linear-gradient(135deg,#0EA5E9,#0369A1); }
+    .cat-config    { --card-accent: linear-gradient(90deg,#14B8A6,#0D9488);   --card-glow: rgba(20,184,166,0.3);  --card-icon-bg: linear-gradient(135deg,#14B8A6,#0D9488);   --card-btn-bg: linear-gradient(135deg,#14B8A6,#0D9488); }
+    .cat-ideas     { --card-accent: linear-gradient(90deg,#14B8A6,#0F766E);   --card-glow: rgba(20,184,166,0.3);  --card-icon-bg: linear-gradient(135deg,#14B8A6,#0F766E);   --card-btn-bg: linear-gradient(135deg,#14B8A6,#0F766E); }
+    .cat-codes     { --card-accent: linear-gradient(90deg,#F59E0B,#F97316);   --card-glow: rgba(245,158,11,0.3);  --card-icon-bg: linear-gradient(135deg,#F59E0B,#EA580C);   --card-btn-bg: linear-gradient(135deg,#F59E0B,#EA580C); }
+    .cat-notifi    { --card-accent: linear-gradient(90deg,#25D366,#128C7E);   --card-glow: rgba(37,211,102,0.3);  --card-icon-bg: linear-gradient(135deg,#25D366,#128C7E);   --card-btn-bg: linear-gradient(135deg,#25D366,#128C7E); }
+    .cat-migra     { --card-accent: linear-gradient(90deg,#6366F1,#8B5CF6);   --card-glow: rgba(99,102,241,0.25); --card-icon-bg: linear-gradient(135deg,#6366F1,#7C3AED);   --card-btn-bg: linear-gradient(135deg,#6366F1,#7C3AED); }
+
+    /* FOOTER NOTICE */
+    .footer-notice {
+      position: relative; z-index: 1;
+      max-width: 1440px; margin: 0 auto;
+      padding: 0 1.25rem 3rem;
+    }
+    .notice-box {
+      display: flex; align-items: flex-start; gap: 1rem;
+      background: rgba(59,130,246,0.07);
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 16px; padding: 1.25rem 1.5rem;
+    }
+    .notice-box p { font-size: 0.85rem; color: var(--slate); line-height: 1.6; }
+
+    /* SCROLL REVEAL */
+    .reveal {
+      opacity: 0; transform: translateY(24px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* RESPONSIVE */
+    @media (max-width: 1100px) {
+      .bento-admin { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .bento-front, .bento-ops, .bento-reports { grid-template-columns: repeat(2, 1fr); }
+      .bento-admin { grid-template-columns: repeat(2, 1fr); }
+      .bento-front .card-wide  { grid-column: 1 / -1; grid-row: auto; }
+      .bento-admin .card-w2    { grid-column: 1 / -1; }
+      .bento-reports .card-tall{ grid-row: auto; }
+    }
+    @media (max-width: 580px) {
+      .bento-front, .bento-ops, .bento-admin, .bento-reports, .bento-otros { grid-template-columns: 1fr; }
+      .pill-nav { display: none; }
+      .hero { padding: 2rem 1rem 1.25rem; }
+    }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 10px; }
+    ::-webkit-scrollbar-track { background: var(--ink); }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(var(--amber), var(--red)); border-radius: 5px; border: 2px solid var(--ink); }
+  </style>
+</head>
+<body>
+
+  <div class="bg-glow"></div>
+  <div class="bg-grid"></div>
+
+  <!-- TOPBAR -->
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="master.html" class="brand">
+        <div class="brand-icon">🍔</div>
+        <div class="brand-text">
+          <div class="main">SR &amp; SRA <span class="highlight">BURGER</span></div>
+          <div class="sub">Mission Control Dashboard</div>
+        </div>
+      </a>
+      <div class="topbar-status">
+        <span class="dot"></span>
+        Sistema activo
+      </div>
     </div>
+  </nav>
+
+  <!-- QUICK PILLS -->
+  <div class="pill-nav">
+    <a href="#sec-front"   class="pill"><i class="fas fa-store fa-xs"></i> Clientes</a>
+    <a href="#sec-ops"     class="pill"><i class="fas fa-fire-burner fa-xs"></i> Operación</a>
+    <a href="#sec-admin"   class="pill"><i class="fas fa-sliders fa-xs"></i> Administración</a>
+    <a href="#sec-reports" class="pill"><i class="fas fa-chart-line fa-xs"></i> Reportes</a>
+    <a href="#sec-otros"   class="pill"><i class="fas fa-wrench fa-xs"></i> Utilidades</a>
+  </div>
+
+  <!-- HERO -->
+  <header class="hero reveal">
+    <div class="hero-eyebrow"><i class="fas fa-satellite-dish"></i> Centro de Control Central</div>
+    <h1 class="hero-title">Tu HQ de Burger</h1>
+    <p class="hero-sub">Todos los módulos del sistema en un solo lugar — cocina, ventas, clientes y reportes.</p>
   </header>
 
-  <main class="max-w-5xl mx-auto px-4 py-8">
-    <section class="bg-white rounded-2xl shadow border border-gray-100 p-6 sr-card">
-      <h1 class="text-2xl sm:text-3xl font-black tracking-tight sr-title">Navegación</h1>
-      <p class="mt-2 text-sm text-gray-600">Botones directos a todas las páginas existentes del proyecto, con una breve descripción de su función.</p>
+  <!-- BENTO CONTENT -->
+  <main class="bento-wrap">
 
-      <div class="mt-6 grid gap-4 sm:grid-cols-2">
-        <!-- Sección: Clientes / Front -->
-        <div class="sm:col-span-2">
-          <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Clientes / Front</h2>
-        </div>
+    <!-- â•â• SECCIÃ“N 1: CLIENTES / FRONT â•â• -->
+    <section id="sec-front">
+      <div class="section-label reveal">
+        <i class="fas fa-users"></i> Experiencia del cliente
+      </div>
+      <div class="bento bento-front">
 
-        <!-- Web principal / menú -->
-        <div class="rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-gray-50 p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-yellow-500 text-white">
-                  <i class="fas fa-store"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Web / Menú</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Página principal para clientes: ver el menú, armar el pedido y enviar la orden.</p>
-            </div>
-            <a href="paginaburger.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-600 font-bold sr-btn sr-btn-primary">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
+        <!-- Web / MenÃº â€” FEATURED WIDE -->
+        <div class="bc bc-featured cat-front card-wide reveal" onclick="window.open('paginaburger.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-store"></i></div>
+          </div>
+          <div class="bc-title">Web / Menú Principal</div>
+          <div class="bc-desc">Página que ven tus clientes: navegan el menú, arman su pedido y lo envían. La vitrina digital del negocio.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">paginaburger.html</span>
+            <a href="paginaburger.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">
+              Abrir <i class="fas fa-arrow-right"></i>
             </a>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: paginaburger.html</div>
         </div>
 
-        <!-- Cuenta del cliente -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600 text-white">
-                  <i class="fas fa-user"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Mi cuenta (cliente)</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Registro e inicio de sesión del cliente. Muestra puntos, dirección y el historial de compras.</p>
-            </div>
-            <a href="cliente.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Mi cuenta -->
+        <div class="bc cat-client reveal" onclick="window.open('cliente.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-user-circle"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: cliente.html</div>
-        </div>
-
-        <!-- Rastreo -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-600 text-white">
-                  <i class="fas fa-truck-fast"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Rastrea tu pedido</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Consultar el estado de una orden usando el número de pedido (se actualiza en tiempo real).</p>
-            </div>
-            <a href="tuenvio.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+          <div class="bc-title">Mi Cuenta</div>
+          <div class="bc-desc">Registro e inicio de sesión del cliente: puntos, dirección e historial de compras.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">cliente.html</span>
+            <a href="cliente.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: tuenvio.html</div>
         </div>
 
-        <!-- Sección: Operación del día a día -->
-        <div class="sm:col-span-2 mt-2">
-          <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Operación (cocina, entregas, captura)</h2>
-        </div>
-
-        <!-- Control de envíos -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-600 text-white">
-                  <i class="fas fa-clipboard-list"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Control de envíos</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Panel operativo para ver órdenes y gestionar su avance (preparación, listo, en camino, entregado).</p>
-            </div>
-            <a href="controldeenvios.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Rastrear -->
+        <div class="bc cat-track reveal" onclick="window.open('tuenvio.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-truck-fast"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: controldeenvios.html</div>
+          <div class="bc-title">Rastrear Pedido</div>
+          <div class="bc-desc">Estado de la orden en tiempo real con número de pedido. El cliente sabe exactamente dónde está su burger.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">tuenvio.html</span>
+            <a href="tuenvio.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- â•â• SECCIÃ“N 2: OPERACIÃ“N â•â• -->
+    <section id="sec-ops">
+      <div class="section-label reveal">
+        <i class="fas fa-fire-burner"></i> Operación del día a día
+      </div>
+      <div class="bento bento-ops">
+
+        <!-- Control de envÃ­os -->
+        <div class="bc cat-ops-main reveal" onclick="window.open('controldeenvios.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-clipboard-list"></i></div>
+          </div>
+          <div class="bc-title">Control de Envíos</div>
+          <div class="bc-desc">Panel operativo en tiempo real: órdenes por estado, cocina, en camino y entregado.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">controldeenvios.html</span>
+            <a href="controldeenvios.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
         <!-- Repartidor -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600 text-white">
-                  <i class="fas fa-motorcycle"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Repartidor</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Vista para entregas: pedidos listos/en camino con ruta a Maps y mensaje rápido al cliente.</p>
-            </div>
-            <a href="repartidor.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <div class="bc cat-ops-del reveal" onclick="window.open('repartidor.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-motorcycle"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: repartidor.html</div>
+          <div class="bc-title">Repartidor</div>
+          <div class="bc-desc">Vista mobile para entregas: pedidos listos, ruta a Maps y mensaje rápido al cliente.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">repartidor.html</span>
+            <a href="repartidor.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Pedido manual (para tomar pedidos en local) -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-600 text-white">
-                  <i class="fas fa-clipboard-check"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Pedido manual</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Pantalla optimizada para capturar pedidos rápido en mostrador o teléfono (sin fotos, todo texto).</p>
-            </div>
-            <a href="pedido-manual.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Pedido manual -->
+        <div class="bc cat-ops-man reveal" onclick="window.open('pedido-manual.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-clipboard-check"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: pedido-manual.html</div>
+          <div class="bc-title">Pedido Manual</div>
+          <div class="bc-desc">Captura rápida de pedidos en mostrador o teléfono, con asistente IA incluido.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">pedido-manual.html</span>
+            <a href="pedido-manual.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Sección: Administración y configuración -->
-        <div class="sm:col-span-2 mt-4">
-          <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Administración y configuración</h2>
+      </div>
+    </section>
+
+    <!-- â•â• SECCIÃ“N 3: ADMINISTRACIÃ“N â•â• -->
+    <section id="sec-admin">
+      <div class="section-label reveal">
+        <i class="fas fa-sliders"></i> Administración y configuración
+      </div>
+      <div class="bento bento-admin">
+
+        <!-- Panel Admin â€” wide -->
+        <div class="bc cat-admin card-w2 reveal" onclick="window.open('admin.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-shield-halved"></i></div>
+          </div>
+          <div class="bc-title">Panel de Administración</div>
+          <div class="bc-desc">Control total del negocio: activar/desactivar servicio, ocultar productos, ajustes generales y configuración del sistema.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">admin.html</span>
+            <a href="admin.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Panel de administración -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-gray-900 text-white">
-                  <i class="fas fa-sliders"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Panel de administración</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Configuración para el negocio (por ejemplo: activar/desactivar servicio, ocultar productos, ajustes).</p>
-            </div>
-            <a href="admin.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 hover:bg-black text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- ConfiguraciÃ³n -->
+        <div class="bc cat-config reveal" onclick="window.open('configuracion.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-gear"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: admin.html</div>
+          <div class="bc-title">Configuración</div>
+          <div class="bc-desc">Ajustes avanzados: horarios, zonas de entrega y parámetros del negocio.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">configuracion.html</span>
+            <a href="configuracion.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Admin clientes (Firebase, con sesión) -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-slate-800 text-white">
-                  <i class="fas fa-users"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Panel de clientes (ADMIN)</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Ver clientes registrados, sus datos básicos, puntos y el historial de compras (requiere contraseña de admin).</p>
-            </div>
-            <a href="clientes-admin.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Clientes ADMIN -->
+        <div class="bc cat-clients-a reveal" onclick="window.open('clientes-admin.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-users-gear"></i></div>
+            <span class="bc-badge">ADMIN</span>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: clientes-admin.html</div>
+          <div class="bc-title">Clientes (Admin)</div>
+          <div class="bc-desc">Clientes registrados con Firebase Auth: datos, puntos e historial. Requiere contraseña de admin.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">clientes-admin.html</span>
+            <a href="clientes-admin.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Clientes (manuales, sin sesión) -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-teal-600 text-white">
-                  <i class="fas fa-address-book"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Clientes (manual)</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Gestión rápida de clientes guardados manualmente (lista en Firebase, importación/exportación).</p>
-            </div>
-            <a href="clientes.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Clientes manual -->
+        <div class="bc cat-clients-m reveal" onclick="window.open('clientes.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-address-book"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: clientes.html</div>
+          <div class="bc-title">Clientes (Manual)</div>
+          <div class="bc-desc">Gestión rápida de clientes guardados manualmente: lista Firebase, importar y exportar.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">clientes.html</span>
+            <a href="clientes.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Productos y costos internos -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-amber-500 text-white">
-                  <i class="fas fa-burger"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Productos y costos</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Listado de productos del menú junto con su costo interno de producción.</p>
-            </div>
-            <a href="Productos.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Códigos de descuento -->
+        <div class="bc cat-codes reveal" onclick="window.open('Codigos.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-tag"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: Productos.html</div>
+          <div class="bc-title">Códigos de Descuento</div>
+          <div class="bc-desc">Crea y gestiona cupones con descuento fijo en MXN. Se aplican automáticamente en el checkout del cliente.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">Codigos.html</span>
+            <a href="Codigos.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+
+        <!-- Productos -->
+        <div class="bc cat-products reveal" onclick="window.open('Productos.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-burger"></i></div>
+          </div>
+          <div class="bc-title">Productos y Costos</div>
+          <div class="bc-desc">Catálogo del menú con costos internos de producción por producto.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">Productos.html</span>
+            <a href="Productos.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
         <!-- Ingredientes -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-600 text-white">
-                  <i class="fas fa-boxes-stacked"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Ingredientes</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Catálogo de ingredientes: alta/edición, costo por unidad y exportación/importación JSON.</p>
-            </div>
-            <a href="ingredientes.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <div class="bc cat-ingred reveal" onclick="window.open('ingredientes.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-boxes-stacked"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: ingredientes.html</div>
+          <div class="bc-title">Ingredientes</div>
+          <div class="bc-desc">Alta y edición de ingredientes: costo por unidad, exportación e importación JSON.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">ingredientes.html</span>
+            <a href="ingredientes.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Orden de imágenes del menú -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-gray-700 text-white">
-                  <i class="fas fa-images"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Imágenes del menú</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Herramienta para definir y reordenar las imágenes que aparecen en la página principal.</p>
-            </div>
-            <a href="admin-burger-images.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-800 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Inventario â€” wide -->
+        <div class="bc cat-inv card-w2 reveal" onclick="window.open('inventario.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-warehouse"></i></div>
+            <span class="bc-badge">FIREBASE</span>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: admin-burger-images.html</div>
+          <div class="bc-title">Inventario Dinámico</div>
+          <div class="bc-desc">Stock en tiempo real vinculado a ventas. Descuento automático por recetas inteligentes — nunca más contar a mano.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">inventario.html</span>
+            <a href="inventario.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Sección: Reportes y análisis -->
-        <div class="sm:col-span-2 mt-4">
-          <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Reportes y análisis</h2>
+        <!-- ImÃ¡genes -->
+        <div class="bc cat-images reveal" onclick="window.open('admin-burger-images.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-images"></i></div>
+          </div>
+          <div class="bc-title">Imágenes del Menú</div>
+          <div class="bc-desc">Define y reordena las fotos que aparecen en la página principal del cliente.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">admin-burger-images.html</span>
+            <a href="admin-burger-images.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Panel de estadísticas -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-sky-600 text-white">
-                  <i class="fas fa-chart-column"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Panel de estadísticas</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">KPIs y gráficos de ventas (delivery y pickup) con filtros por fechas.</p>
-            </div>
-            <a href="data.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+      </div>
+    </section>
+
+    <!-- â•â• SECCIÃ“N 4: REPORTES â•â• -->
+    <section id="sec-reports">
+      <div class="section-label reveal">
+        <i class="fas fa-chart-line"></i> Reportes y análisis
+      </div>
+      <div class="bento bento-reports">
+
+        <!-- EstadÃ­sticas â€” tall -->
+        <div class="bc cat-stats card-tall reveal" onclick="window.open('data.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-chart-column"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: data.html</div>
+          <div class="bc-title">Panel de Estadísticas</div>
+          <div class="bc-desc">KPIs y gráficos de ventas (delivery y pickup) con filtros por fechas. Tendencias y comparativas al instante.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">data.html</span>
+            <a href="data.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Historial de pedidos -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-amber-600 text-white">
-                  <i class="fas fa-receipt"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Historial de pedidos</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Consulta y seguimiento histórico de órdenes/pedidos (según implementación).</p>
-            </div>
-            <a href="Historialdepedidos.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Historial -->
+        <div class="bc cat-hist reveal" onclick="window.open('Historialdepedidos.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-receipt"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: Historialdepedidos.html</div>
+          <div class="bc-title">Historial de Pedidos</div>
+          <div class="bc-desc">Consulta y seguimiento de todas las órdenes pasadas con filtros de búsqueda.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">Historialdepedidos.html</span>
+            <a href="Historialdepedidos.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
         <!-- Ganancias -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-600 text-white">
-                  <i class="fas fa-chart-line"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Ganancias</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Resumen diario de ventas, costos de producción y utilidad aproximada.</p>
-            </div>
-            <a href="Ganancias.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <div class="bc cat-profits reveal" onclick="window.open('Ganancias.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-sack-dollar"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: Ganancias.html</div>
+          <div class="bc-title">Ganancias</div>
+          <div class="bc-desc">Resumen diario de ventas, costos de producción y utilidad aproximada del negocio.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">Ganancias.html</span>
+            <a href="Ganancias.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
         <!-- Items vendidos -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-rose-600 text-white">
-                  <i class="fas fa-chart-pie"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Items vendidos</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Estadísticas de hamburguesas, boneless, combos y papas vendidas por rango de fechas.</p>
-            </div>
-            <a href="itemsvendidos.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <div class="bc cat-items reveal" onclick="window.open('itemsvendidos.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-chart-pie"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: itemsvendidos.html</div>
+          <div class="bc-title">Ítems Vendidos</div>
+          <div class="bc-desc">Hamburguesas, boneles, combos y papas vendidas por rango de fechas con ranking.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">itemsvendidos.html</span>
+            <a href="itemsvendidos.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Insumos gastados (por recetas) -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-sky-600 text-white">
-                  <i class="fas fa-box-open"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Insumos gastados</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Suma ingredientes usados en base a productos vendidos y sus recetas (día/semana/mes/fecha o rango).</p>
-            </div>
-            <a href="insumosgastados.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
+        <!-- Insumos gastados -->
+        <div class="bc cat-insum reveal" onclick="window.open('insumosgastados.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-box-open"></i></div>
           </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: insumosgastados.html</div>
+          <div class="bc-title">Insumos Gastados</div>
+          <div class="bc-desc">Suma ingredientes consumidos basándose en ventas y recetas. Día, semana, mes o rango personalizado.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">insumosgastados.html</span>
+            <a href="insumosgastados.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
         </div>
 
-        <!-- Sección: Otros / utilidades -->
-        <div class="sm:col-span-2 mt-4">
-          <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Otros / Utilidades</h2>
-        </div>
-
-        <!-- Ideas / notas -->
-        <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-teal-700 text-white">
-                  <i class="fas fa-lightbulb"></i>
-                </span>
-                <h2 class="text-lg font-extrabold">Ideas / pruebas</h2>
-              </div>
-              <p class="mt-2 text-sm text-gray-600">Página auxiliar para ideas, prototipos o notas del proyecto.</p>
-            </div>
-            <a href="ideas.html" target="_blank" rel="noopener noreferrer" class="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold sr-btn">
-              <span>Abrir</span>
-              <i class="fas fa-arrow-right"></i>
-            </a>
-          </div>
-          <div class="mt-3 text-xs text-gray-500">Archivo: ideas.html</div>
-        </div>
       </div>
     </section>
 
-    <section class="mt-6 text-xs text-gray-500">
-      <div class="bg-white rounded-2xl border border-gray-100 p-4 sr-card">
-        <div class="flex items-start gap-3">
-          <i class="fas fa-circle-info text-blue-600 mt-0.5"></i>
-          <div>
-            <p class="font-semibold text-gray-700">Nota</p>
-            <p>Todos los accesos se abren en una pestaña nueva. Si alguna página no carga, revisa que el servidor/tarea esté apuntando al archivo correcto.</p>
+    <!-- â•â• SECCIÃ“N 5: UTILIDADES â•â• -->
+    <section id="sec-otros">
+      <div class="section-label reveal">
+        <i class="fas fa-wrench"></i> Utilidades
+      </div>
+      <div class="bento bento-otros">
+
+        <div class="bc cat-ideas reveal" onclick="window.open('ideas.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-lightbulb"></i></div>
+          </div>
+          <div class="bc-title">Ideas / Pruebas</div>
+          <div class="bc-desc">Página auxiliar para prototipos, notas e ideas del proyecto en desarrollo.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">ideas.html</span>
+            <a href="ideas.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
           </div>
         </div>
+
+        <!-- Notificaciones WhatsApp -->
+        <div class="bc cat-notifi reveal" onclick="window.open('notifi.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fab fa-whatsapp"></i></div>
+          </div>
+          <div class="bc-title">Notificaciones WhatsApp</div>
+          <div class="bc-desc">Gestión del bot de WhatsApp: estado de conexión, mensajes automáticos y configuración de notificaciones a clientes.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">notifi.html</span>
+            <a href="notifi.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+
+        <!-- Migración Multi-Tenant -->
+        <div class="bc cat-migra reveal" onclick="window.open('migracion.html','_blank')">
+          <div class="bc-head">
+            <div class="bc-icon"><i class="fas fa-database"></i></div>
+            <span class="bc-badge">DEV</span>
+          </div>
+          <div class="bc-title">Migración Multi-Tenant</div>
+          <div class="bc-desc">Herramienta de migración de datos para estructura multi-tenant de Firebase. Solo para uso en desarrollo.</div>
+          <div class="bc-foot">
+            <span class="bc-filename">migracion.html</span>
+            <a href="migracion.html" target="_blank" rel="noopener" class="bc-btn" onclick="event.stopPropagation()">Abrir <i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+
       </div>
     </section>
+
   </main>
+
+  <!-- FOOTER -->
+  <footer class="footer-notice">
+    <div class="notice-box">
+      <i class="fas fa-circle-info" style="color:#3B82F6;font-size:1.1rem;margin-top:2px;flex-shrink:0;"></i>
+      <div>
+        <p style="font-weight:700;color:#E2E8F0;margin-bottom:0.2rem;">Nota</p>
+        <p>Todos los accesos se abren en una pestaña nueva. Si alguna página no carga, verifica que el servidor esté corriendo correctamente.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en, i) => {
+        if (en.isIntersecting) {
+          setTimeout(() => en.target.classList.add('visible'), i * 40);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    // Stagger cards inside each bento section
+    document.querySelectorAll('.bento').forEach(grid => {
+      grid.querySelectorAll('.bc').forEach((card, i) => {
+        card.style.transitionDelay = `${i * 55}ms`;
+      });
+    });
+
+    // Active pill on scroll
+    const sections = document.querySelectorAll('section[id]');
+    const pills    = document.querySelectorAll('.pill');
+    const pillObs  = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          pills.forEach(p => p.classList.remove('active'));
+          const match = document.querySelector(`.pill[href="#${entry.target.id}"]`);
+          if (match) match.classList.add('active');
+        }
+      });
+    }, { threshold: 0.4 });
+    sections.forEach(s => pillObs.observe(s));
+
+    // Smooth scroll pills
+    document.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('click', e => {
+        e.preventDefault();
+        const target = document.querySelector(pill.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    // 3-D tilt on hover
+    document.querySelectorAll('.bc').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const r  = card.getBoundingClientRect();
+        const rx = ((e.clientY - r.top  - r.height / 2) / (r.height / 2)) * 5;
+        const ry = ((r.width  / 2 - (e.clientX - r.left)) / (r.width  / 2)) * 5;
+        card.style.transform = `translateY(-6px) scale(1.015) perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+      });
+      card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+    });
+  </script>
 </body>
 </html>
