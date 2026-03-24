@@ -482,9 +482,11 @@
         }
         
         @keyframes pulse-glow {
-            0% { box-shadow: 0 0 0 0 rgba(255, 199, 44, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 199, 44, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 199, 44, 0); }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.04); opacity: 0.85; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .pulse-glow { animation: none; }
         }
         
         /* Enhanced Mobile-first responsive improvements */
@@ -2040,12 +2042,15 @@
         
         /* 5) Floating WhatsApp pulse */
         @keyframes waPulse {
-            0% { transform: scale(1); box-shadow: 0 12px 30px rgba(16, 185, 129, 0.35); }
-            50% { transform: scale(1.04); box-shadow: 0 18px 44px rgba(16, 185, 129, 0.45); }
-            100% { transform: scale(1); box-shadow: 0 12px 30px rgba(16, 185, 129, 0.35); }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.92; }
         }
         .wa-float {
             animation: waPulse 1.8s ease-in-out infinite;
+            will-change: transform, opacity;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .wa-float { animation: none; }
         }
 
         /* ===== Customization modal (premium) ===== */
@@ -2655,12 +2660,12 @@
                     <a href="cliente.html" id="mobile-account-btn" data-sr-auth-open="1" class="lg:hidden p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Mi cuenta / Iniciar sesión">
                         <i class="fas fa-user text-gray-700 text-sm sm:text-base"></i>
                     </a>
-                    <button id="open-cart-btn" class="btn-primary flex items-center space-x-2 sm:space-x-3 shadow-lg text-sm sm:text-base px-3 py-2 sm:px-6 sm:py-3">
+                    <button id="open-cart-btn" class="btn-primary flex items-center space-x-2 sm:space-x-3 shadow-lg text-sm sm:text-base px-3 py-2 sm:px-6 sm:py-3" aria-label="Abrir carrito de compras">
                         <i class="fas fa-shopping-cart text-sm sm:text-lg"></i>
                         <span class="hidden sm:inline font-semibold">Carrito</span>
                         <span id="cart-count" class="bg-white text-yellow-600 text-xs sm:text-sm font-bold rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center shadow-sm">0</span>
                     </button>
-                    <button id="mobile-menu-btn" class="lg:hidden p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors">
+                    <button id="mobile-menu-btn" class="lg:hidden p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Abrir menú de navegación">
                         <i class="fas fa-bars text-gray-700 text-sm sm:text-base"></i>
                     </button>
                 </div>
@@ -3752,7 +3757,7 @@
     </div>
 
     <!-- Botón flotante de WhatsApp optimizado para móvil -->
-    <a href="https://wa.me/5219221593688" target="_blank" class="wa-float fixed bottom-24 sm:bottom-40 right-4 sm:right-6 bg-gradient-to-br from-green-400 to-green-600 text-white rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 z-40 group">
+    <a href="https://wa.me/5219221593688" target="_blank" rel="noopener noreferrer" class="wa-float fixed bottom-24 sm:bottom-40 right-4 sm:right-6 bg-gradient-to-br from-green-400 to-green-600 text-white rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 z-40 group" aria-label="Contactar por WhatsApp">
         <i class="fab fa-whatsapp text-2xl sm:text-3xl group-hover:scale-110 transition-transform duration-300"></i>
         <div class="absolute -left-20 sm:-left-24 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white px-3 py-1 rounded-lg text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap hidden sm:block">
             ¡Chatea con nosotros!
@@ -3760,7 +3765,7 @@
     </a>
 
     <!-- Botón flotante de ayuda optimizado para móvil -->
-    <button id="help-btn" class="fixed bottom-4 sm:bottom-20 right-4 sm:right-6 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 z-40 group">
+    <button id="help-btn" class="fixed bottom-4 sm:bottom-20 right-4 sm:right-6 bg-gradient-to-br from-yellow-400 to-orange-500 text-white rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shadow-2xl hover:shadow-3xl hover:scale-110 transition-all duration-300 z-40 group" aria-label="Abrir asistente de ayuda">
         <i class="fas fa-question text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-300"></i>
         <div class="absolute -left-12 sm:-left-16 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white px-3 py-1 rounded-lg text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap hidden sm:block">
             ¿Ayuda?

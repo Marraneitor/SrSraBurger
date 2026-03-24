@@ -1141,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         return `
                             <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
                                 <div class="flex items-center space-x-2">
-                                    ${((typeof window.__MANUAL_FAST_MODE === 'undefined' || window.__MANUAL_FAST_MODE !== true) && item.image) ? `<img src="${item.image}" alt="${item.name}" class="w-8 h-8 rounded object-cover" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display='none';">` : ''}
+                                    ${((typeof window.__MANUAL_FAST_MODE === 'undefined' || window.__MANUAL_FAST_MODE !== true) && item.image) ? `<img src="${item.image}" alt="${item.name}" class="w-8 h-8 rounded object-cover" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display='none';">` : ''}
                                     <div>
                                         <div class="text-sm font-semibold">${item.name}</div>
                                         <div class="text-xs text-gray-500">$${item.price}</div>
@@ -2278,7 +2278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cartItemsContainer.innerHTML = cart.map((item, index) => `
             <div class="cart-item-enter bg-gradient-to-r from-white to-gray-50 p-4 rounded-lg shadow-sm border border-gray-100 mb-3 hover:shadow-md transition-all duration-300">
                 <div class="flex items-start space-x-3">
-                ${((typeof window.__MANUAL_FAST_MODE === 'undefined' || window.__MANUAL_FAST_MODE !== true) && item.baseItem && item.baseItem.image) ? `<img src="${item.baseItem.image}" alt="${item.baseItem.name}" class="w-16 h-16 object-cover rounded-lg shadow-sm" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display='none';">` : `<div class="w-16 h-16 rounded-lg bg-gray-100"></div>`}
+                ${((typeof window.__MANUAL_FAST_MODE === 'undefined' || window.__MANUAL_FAST_MODE !== true) && item.baseItem && item.baseItem.image) ? `<img src="${item.baseItem.image}" alt="${item.baseItem.name}" class="w-16 h-16 object-cover rounded-lg shadow-sm" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display='none';">` : `<div class="w-16 h-16 rounded-lg bg-gray-100"></div>`}
                     <div class="flex-grow">
                         <h4 class="font-bold text-gray-800 text-lg">${item.baseItem.name}</h4>
                         
@@ -2820,6 +2820,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar todos los ítems y usar scroll horizontal / snap para navegar
             const itemsToRender = eligibleItems;
 
+            const gridCards = [];
             itemsToRender.forEach((originalItem, index) => {
                 if(!originalItem || originalItem.hidden) return;
 
@@ -3031,8 +3032,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 }
                 
-                grid.innerHTML += cardHtml;
+                gridCards.push(cardHtml);
             });
+
+            grid.innerHTML = gridCards.join('');
 
             if (carouselShell) {
                 carouselShell.appendChild(grid);
@@ -5467,7 +5470,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 itemDiv.innerHTML = `
                     <div class="cart-item-thumb flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden ring-1 ring-gray-200">
-                        ${item.baseItem && item.baseItem.image ? `<img src="${item.baseItem.image}" alt="${itemName}" class="w-full h-full object-cover" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display='none';">` : ''}
+                        ${item.baseItem && item.baseItem.image ? `<img src="${item.baseItem.image}" alt="${itemName}" class="w-full h-full object-cover" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.onerror=null;this.style.display='none';">` : ''}
                     </div>
                     <div class="ml-4 flex-grow">
                         <div class="flex justify-between items-start">
