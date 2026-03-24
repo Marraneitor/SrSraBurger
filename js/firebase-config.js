@@ -1365,6 +1365,12 @@ class FirebaseClientManager {
         return list;
     }
 
+    async getClientById(uid) {
+        const snap = await getDoc(doc(this.clientsCollection, uid));
+        if (!snap.exists()) return null;
+        return { id: snap.id, ...snap.data() };
+    }
+
     // Sumar puntos a partir de un pedido (1 punto cada 10 pesos gastados)
     async addPointsFromOrder(orderTotal, uid) {
         try {
@@ -1723,6 +1729,27 @@ window.firebaseClientManager = new FirebaseClientManager();
 window.firebaseManualCustomerManager = new FirebaseManualCustomerManager();
 window.firebaseAuth = auth;
 window.firebaseDb = db;
+
+// ── Helpers de autenticación para el chatbot (usa la API modular correcta) ──
+// onAuthStateChanged es una función standalone en Firebase v10 — NO un método del objeto auth.
+// Exponemos helpers globales para que scripts no-módulo (como sr-chatbot.js) puedan
+// suscribirse al estado de sesión de forma confiable.
+let _chatbotCurrentUser = null;
+onAuthStateChanged(auth, (user) => {
+    _chatbotCurrentUser = user || null;
+});
+
+// Devuelve el usuario autenticado actual (o null)
+window.firebaseGetChatUser = () => _chatbotCurrentUser;
+
+// Devuelve el ID token del usuario actual (o null si no está autenticado)
+window.firebaseGetChatToken = async () => {
+    if (!_chatbotCurrentUser) return null;
+    try { return await _chatbotCurrentUser.getIdToken(); } catch (_e) { return null; }
+};
+
+// true si hay sesión activa
+window.firebaseIsAuthenticated = () => !!_chatbotCurrentUser;
 
 // Función de utilidad para mostrar errores
 window.showFirebaseError = function(error) {

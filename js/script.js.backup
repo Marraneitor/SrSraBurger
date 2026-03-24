@@ -53,39 +53,52 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Firebase-dependent features
     async function initializeFirebaseFeatures() {
         try {
-            // Load hidden products from Firebase
-            await loadHiddenProductsFromFirebase();
-            
-            // Setup real-time listeners
+            // SKILL-09: scheduleRender — consolida llamadas a renderMenu() en un solo frame
+            // Cualquier número de llamadas dentro del mismo tick se colapsa en una sola.
+            let _renderScheduled = false;
+            function scheduleRender() {
+                if (_renderScheduled) return;
+                _renderScheduled = true;
+                requestAnimationFrame(() => {
+                    try { renderMenu(); } catch (_) {}
+                    _renderScheduled = false;
+                });
+            }
+            // Exponer para que setupHiddenProductsListener la use
+            window.__srScheduleRender = scheduleRender;
+
+            // ───────────────────────────────────────────────────────────
+            // SKILL-07: Firestore en PARALELO (2 olas) en vez de 9 awaits en serie
+            // Ola 1: funciones independientes entre sí (no dependen del resultado de otras)
+            // ───────────────────────────────────────────────────────────
+            await Promise.all([
+                loadHiddenProductsFromFirebase(),   // lee settings/main completo (cacheado en SKILL-08)
+                checkServiceStatusFromFirebase(),   // verifica si el servicio está activo
+                loadAndApplyCustomProducts(),       // agrega productos del admin al menú
+                loadCustomizeButtonOverrides(),     // setea customizeButtonOverridesFromFirebase
+                loadSpecificationsOverrides(),      // setea specificationsOverridesFromFirebase
+            ]);
+
+            // Setup real-time listeners (no es async, se registra inmediatamente)
             setupHiddenProductsListener();
-            
-            // Check service status
-            await checkServiceStatusFromFirebase();
-            
-            // Load and merge custom products before applying overrides
-            await loadAndApplyCustomProducts();
 
-            // Load and apply product order after custom products are merged
-            await loadAndApplyProductOrder();
+            // ───────────────────────────────────────────────────────────
+            // Ola 2: overrides que deben aplicarse DESPUÉS de cargar customProducts
+            // (para que los nuevos productos también reciban precios e imágenes correctas)
+            // ───────────────────────────────────────────────────────────
+            await Promise.all([
+                loadAndApplyProductOrder(),         // reordena incluyendo custom products
+                loadAndApplyPriceOverrides(),       // precios — aplica a todos los productos
+                loadAndApplyImageOverrides(),       // imágenes
+                loadAndApplyProductInfoOverrides(), // nombre/descripción
+            ]);
 
-            // Load and apply price overrides
-            await loadAndApplyPriceOverrides();
-            
-            // Load and apply image overrides
-            await loadAndApplyImageOverrides();
+            // SKILL-09: renderMenu() UNA SOLA VEZ al final, con todo listo
+            scheduleRender();
 
-            // Load and apply product info overrides (name/description)
-            await loadAndApplyProductInfoOverrides();
-
-            // Load overrides for Personalizar button visibility
-            await loadCustomizeButtonOverrides();
-
-            // Load overrides for per-product Especificaciones field
-            await loadSpecificationsOverrides();
-            
-            console.log('Firebase features initialized successfully');
+            console.error('[SR] Firebase features OK'); // error intencional para que sobreviva el silenciador de logs
         } catch (error) {
-            console.error('Error initializing Firebase features:', error);
+            console.error('[SR] Error initializing Firebase features:', error);
             // Fallback to localStorage-based functionality
             checkServiceStatusFromLocalStorage();
         }
@@ -341,21 +354,40 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Load hidden products from Firebase on page load
     async function loadHiddenProductsFromFirebase() {
+        // SKILL-08: Cache con TTL de 5 minutos en sessionStorage
+        const CACHE_KEY = 'sr_cache_settings';
+        const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+        function _getCache() {
+            try {
+                const raw = sessionStorage.getItem(CACHE_KEY);
+                if (!raw) return null;
+                const { data, ts } = JSON.parse(raw);
+                if (Date.now() - ts > CACHE_TTL) { sessionStorage.removeItem(CACHE_KEY); return null; }
+                return data;
+            } catch (_) { return null; }
+        }
+
+        function _setCache(data) {
+            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch (_) {}
+        }
+
         try {
-            // Preferimos leer settings una sola vez para extraer múltiples valores
             if (window.firebaseManager && typeof window.firebaseManager.getSettings === 'function') {
-                const settings = await window.firebaseManager.getSettings();
+                // Intentar leer desde caché primero
+                let settings = _getCache();
+                if (!settings) {
+                    settings = await window.firebaseManager.getSettings();
+                    _setCache(settings); // guardar para próximas visitas
+                }
                 hiddenProductsFromFirebase = Array.isArray(settings?.hiddenProducts) ? settings.hiddenProducts : [];
                 hiddenCategoriesFromFirebase = normalizeHiddenCategoriesList(settings?.hiddenCategories);
                 categoriesFromFirebase = Array.isArray(settings?.categories) ? settings.categories : null;
                 try { localStorage.setItem('hiddenCategories', JSON.stringify(hiddenCategoriesFromFirebase)); } catch (_) {}
-                console.log('Productos ocultos cargados desde Firebase:', hiddenProductsFromFirebase);
-                console.log('Categorías ocultas cargadas desde Firebase:', hiddenCategoriesFromFirebase);
                 return;
             }
 
             hiddenProductsFromFirebase = await window.firebaseManager.getHiddenProducts();
-            console.log('Productos ocultos cargados desde Firebase:', hiddenProductsFromFirebase);
         } catch (error) {
             console.error('Error loading hidden products from Firebase:', error);
             // Fallback to localStorage
@@ -601,17 +633,22 @@ document.addEventListener('DOMContentLoaded', () => {
             
             window.firebaseManager.listenToSettings((newSettings) => {
                 if (newSettings && !isUpdating) {
+                    // SKILL-09: invalidar caché cuando el admin cambia algo en tiempo real
+                    try { sessionStorage.removeItem('sr_cache_settings'); } catch (_) {}
+
+                    // Usar scheduleRender en lugar de renderMenu() directo
+                    // (evita múltiples re-renders si llegan varios cambios al mismo tiempo)
+                    const _schedule = window.__srScheduleRender || (function (fn) { fn(); });
+
                     // Handle hidden products changes
                     if (newSettings.hiddenProducts) {
                         const oldHiddenProducts = [...hiddenProductsFromFirebase];
                         hiddenProductsFromFirebase = newSettings.hiddenProducts;
                         
-                        // Re-render menu if hidden products changed
                         if (JSON.stringify(oldHiddenProducts) !== JSON.stringify(hiddenProductsFromFirebase)) {
-                            console.log('Productos ocultos actualizados, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
-                            setTimeout(() => { isUpdating = false; }, 500); // Reset flag after delay
+                            _schedule();
+                            setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
                     
@@ -622,9 +659,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (oldPriceOverrides !== newPriceOverrides) {
                             priceOverridesFromFirebase = newSettings.priceOverrides || {};
                             applyPriceOverrides(priceOverridesFromFirebase);
-                            console.log('Precios actualizados por admin, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -636,9 +672,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (oldImageOverrides !== newImageOverrides) {
                             imageOverridesFromFirebase = newSettings.imageOverrides || {};
                             applyImageOverrides(imageOverridesFromFirebase);
-                            console.log('Imágenes actualizadas por admin, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -663,9 +698,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             // Reaplicar overrides de información
                             applyProductInfoOverrides(productInfoOverridesFromFirebase || {});
-                            console.log('Productos personalizados actualizados, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -677,9 +711,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const newCats = JSON.stringify(nextCats || null);
                         if (oldCats !== newCats) {
                             categoriesFromFirebase = nextCats;
-                            console.log('Categorías actualizadas, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -692,9 +725,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (oldHidden !== newHidden) {
                             hiddenCategoriesFromFirebase = nextHidden;
                             try { localStorage.setItem('hiddenCategories', JSON.stringify(hiddenCategoriesFromFirebase)); } catch (_) {}
-                            console.log('Categorías ocultas actualizadas, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -706,9 +738,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (oldOrder !== newOrder) {
                             productOrderFromFirebase = newSettings.productOrder || {};
                             applyProductOrder(productOrderFromFirebase);
-                            console.log('Orden de productos actualizado, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -720,9 +751,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (oldInfo !== newInfo) {
                             productInfoOverridesFromFirebase = newSettings.productInfoOverrides || {};
                             applyProductInfoOverrides(productInfoOverridesFromFirebase);
-                            console.log('Información actualizada por admin, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -733,9 +763,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const newCustomize = JSON.stringify(newSettings.customizeButtonOverrides || {});
                         if (oldCustomize !== newCustomize) {
                             customizeButtonOverridesFromFirebase = newSettings.customizeButtonOverrides || {};
-                            console.log('Overrides de botón Personalizar actualizados, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }
@@ -746,9 +775,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         const newSpecs = JSON.stringify(newSettings.specificationsOverrides || {});
                         if (oldSpecs !== newSpecs) {
                             specificationsOverridesFromFirebase = newSettings.specificationsOverrides || {};
-                            console.log('Overrides de especificaciones actualizados, re-renderizando menú...');
                             isUpdating = true;
-                            renderMenu();
+                            _schedule();
                             setTimeout(() => { isUpdating = false; }, 500);
                         }
                     }

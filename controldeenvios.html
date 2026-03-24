@@ -2276,32 +2276,68 @@
 
             // Nota: se removió QR del ticket para aligerar el spool y evitar bloqueos en térmicas.
 
-            // ── TICKET DE CLIENTE: diseño profesional de restaurante ──────
+            // ── TICKET DE CLIENTE: formato térmico 58mm ──────────────
             if (mode === 'customer') {
-                const esc = (s) => String(s ?? '')
-                    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                const custLines = [];
 
                 const orderShort = (() => {
                     const num = (order.orderNumber || '').toString().trim();
                     if (num) return num;
                     if (order.id) return String(order.id).slice(-6).toUpperCase();
-                    return '—';
+                    return '---';
                 })();
 
-                const customer = order.customer || order.cliente || {};
-                const items = Array.isArray(order.items) ? order.items : [];
+                const paymentMethod = String(order.paymentMethod || order.payment || order.metodoPago || 'Efectivo');
+
+                // Extraer monto pagado y cambio desde el campo notes (ej: "Pago: $100 | Cambio: $10")
+                const notesRaw = String(order.notes || '');
+                let pagoCon = 0;
+                let cambioCal = 0;
+                const pagoMatch = notesRaw.match(/Pago(?:\s+con)?\s*:\s*\$?([\d.,]+)/i);
+                const cambioMatch = notesRaw.match(/Cambio\s*:\s*\$?([\d.,]+)/i);
+                if (pagoMatch) pagoCon = parseFloat(pagoMatch[1].replace(',', '.')) || 0;
+                if (cambioMatch) cambioCal = parseFloat(cambioMatch[1].replace(',', '.')) || 0;
+                // Fallback: calcular cambio si hay monto ingresado y método es efectivo
+                if (!cambioCal && pagoCon > 0 && totalNumber > 0 && /efectivo/i.test(paymentMethod)) {
+                    cambioCal = Math.max(0, pagoCon - totalNumber);
+                }
 
                 const deliveryType = String(order.deliveryType || 'pickup').toLowerCase();
                 const isDelivery = deliveryType === 'delivery';
                 const isLocal = deliveryType === 'local';
-                const entregaLabel = isDelivery ? '🚗 Envío a domicilio' : isLocal ? '🏪 Consumo Local' : '🏪 Recoger en local';
+                const entregaLabel = isDelivery ? 'Domicilio' : isLocal ? 'Consumo Local' : 'Recoger en local';
 
-                const paymentMethod = String(order.paymentMethod || order.payment || order.metodoPago || 'Efectivo');
+                // ── ENCABEZADO ──
+                custLines.push(center('SR Y SRA BURGER'));
+                custLines.push(center('Minatitlan, Veracruz'));
+                custLines.push(SEP);
+                custLines.push(lr(`Orden #${orderShort}`, fechaCompacta));
+                custLines.push(SEP);
 
-                // Calcular precios de items (reutilizar ticketPriceMode ya computado)
-                const itemsHtml = items.map((item) => {
+                // ── CLIENTE ──
+                const cust = order.customer || order.cliente || {};
+                const custName = String(cust.name || '').trim();
+                const custPhone = String(cust.phone || '').trim();
+                const custAddr = String(cust.address || '').trim();
+                if (custName && custName.toLowerCase() !== 'consumo local') {
+                    custLines.push(`CLIENTE: ${custName}`);
+                }
+                if (custPhone && custPhone !== '---') {
+                    custLines.push(`TEL: ${custPhone}`);
+                }
+                if (isDelivery && custAddr) {
+                    wrap(`DIR: ${custAddr}`, PAPER_CHARS).forEach(l => custLines.push(l));
+                }
+                custLines.push(`ENTREGA: ${entregaLabel}`);
+                custLines.push(SEP);
+
+                // ── PRODUCTOS ──
+                custLines.push('PRODUCTOS');
+                custLines.push(SEP);
+
+                items.forEach((item) => {
                     const qty = Number(item.quantity || 1) || 1;
-                    const name = esc(String(item.name || 'Producto').trim());
+                    const name = String(item.name || 'Producto').trim();
                     const p = Number(item.price || 0);
                     const u = Number(item.unitPrice || 0);
 
@@ -2322,304 +2358,82 @@
                             ? lineCandidate : (unitTimesQty > 0 ? unitTimesQty : lineCandidate);
                     }
 
+                    const right = '$' + money(lineTotal);
+                    const leftBase = `${qty}x ${name}`;
+                    const maxLeft = Math.max(8, PAPER_CHARS - right.length - 1);
+                    const nameLines = wrap(leftBase, maxLeft);
+                    if (nameLines.length) {
+                        custLines.push(lr(nameLines[0], right));
+                        for (let i = 1; i < nameLines.length; i++) custLines.push('  ' + nameLines[i]);
+                    } else {
+                        custLines.push(lr(leftBase, right));
+                    }
+
+                    // Detalles del item (opcionales, breves)
                     const custom = String(item.customizations || '').trim();
                     const specs = String(item.specifications || '').trim();
                     const details = [custom, specs].filter(Boolean).join(' | ')
                         .split('|').map(s => s.trim()).filter(Boolean);
+                    details.forEach(d => {
+                        wrap(`- ${d}`, PAPER_CHARS - 2).forEach(dl => custLines.push('  ' + dl));
+                    });
+                });
 
-                    const detailsHtml = details.map(d =>
-                        `<div class="item-detail">• ${esc(d)}</div>`
-                    ).join('');
+                custLines.push(SEP);
 
-                    return `
-                    <div class="item">
-                        <div class="item-main">
-                            <span class="item-qty-name">${esc(String(qty))}x ${name}</span>
-                            <span class="item-price">$${money(lineTotal)}</span>
-                        </div>
-                        ${detailsHtml}
-                    </div>`;
-                }).join('');
-
-                // Filas de totales
-                let totalsHtml = '';
+                // ── TOTALES ──
                 if (subtotalNumber > 0) {
-                    totalsHtml += `<div class="total-row"><span>Subtotal</span><span>$${money(subtotalNumber)}</span></div>`;
+                    custLines.push(lr('Subtotal', '$' + money(subtotalNumber)));
                 }
                 if (discountAmountNumber > 0) {
                     let discLabel = 'Descuento';
-                    if (discountCode) discLabel += ` (${esc(discountCode)})`;
-                    totalsHtml += `<div class="total-row discount"><span>${esc(discLabel)}</span><span>-$${money(discountAmountNumber)}</span></div>`;
+                    if (discountCode) discLabel += ` (${discountCode})`;
+                    custLines.push(lr(discLabel, '-$' + money(discountAmountNumber)));
                     if (discountReason) {
-                        totalsHtml += `<div class="total-row reason"><span>Motivo: ${esc(discountReason)}</span><span></span></div>`;
+                        wrap('Motivo: ' + discountReason, PAPER_CHARS).forEach(l => custLines.push(l));
                     }
                 }
                 if (deliveryFeeNumber > 0) {
-                    totalsHtml += `<div class="total-row"><span>Envío</span><span>$${money(deliveryFeeNumber)}</span></div>`;
+                    custLines.push(lr('Envio', '$' + money(deliveryFeeNumber)));
+                }
+                custLines.push(SEP);
+                custLines.push(lr('TOTAL', '$' + money(totalNumber)));
+                custLines.push(SEP);
+
+                // ── PAGO ──
+                custLines.push(lr('Metodo de pago', paymentMethod));
+                if (pagoCon > 0) {
+                    custLines.push(lr('Pago con', '$' + money(pagoCon)));
+                }
+                if (cambioCal > 0) {
+                    custLines.push(lr('Su cambio', '$' + money(cambioCal)));
                 }
 
-                // Dirección (solo si delivery)
-                const addrRow = (isDelivery && customer.address)
-                    ? `<div class="info-row"><span class="info-label">DIR</span>${esc(String(customer.address).trim())}</div>`
-                    : '';
+                // ── NOTAS (sin info de descuento ya mostrada) ──
+                const extraNotes = notesRaw
+                    .replace(/Pago(?:\s+con)?\s*:\s*\$?[\d.,]+\s*\|?\s*/gi, '')
+                    .replace(/Cambio\s*:\s*\$?[\d.,]+/gi, '')
+                    .replace(/Descuento manual:.*$/mi, '')
+                    .trim();
+                if (extraNotes) {
+                    custLines.push(SEP);
+                    wrap('Nota: ' + extraNotes, PAPER_CHARS).forEach(l => custLines.push(l));
+                }
 
-                const customerSection = (customer.name && String(customer.name).trim().toLowerCase() !== 'consumo local' && !isLocal)
-                    ? `<div class="section">
-                        <div class="section-title">Cliente</div>
-                        ${customer.name ? `<div class="info-row"><span class="info-label">NOMBRE</span>${esc(String(customer.name).trim())}</div>` : ''}
-                        ${customer.phone && String(customer.phone).trim() !== '---' ? `<div class="info-row"><span class="info-label">TEL</span>${esc(String(customer.phone).trim())}</div>` : ''}
-                        ${addrRow}
-                        <div class="info-row"><span class="info-label">ENTREGA</span>${esc(entregaLabel)}</div>
-                       </div>`
-                    : `<div class="section">
-                        <div class="info-row"><span class="info-label">ENTREGA</span>${esc(entregaLabel)}</div>
-                       </div>`;
+                // ── FOOTER ──
+                custLines.push(SEP);
+                custLines.push(center('GRACIAS POR SU PREFERENCIA'));
+                custLines.push(center('Vuelva pronto!'));
+                custLines.push(SEP);
 
-                const notesStr = String(order.notes || '').replace(/^Descuento manual:.*$/mi,'').trim();
-                const notesHtml = notesStr
-                    ? `<div class="notes">📝 ${esc(notesStr)}</div>`
-                    : '';
+                const custHeightMm = (() => {
+                    const lineCount = custLines.length;
+                    const mmPerLine = 3.55;
+                    const raw = 18 + (lineCount * mmPerLine);
+                    return Math.max(220, Math.min(900, Math.ceil(raw / 10) * 10));
+                })();
 
-                const html = `<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <title>Ticket #${esc(orderShort)}</title>
-  <style>
-    @page { size: 58mm auto; margin: 0; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: #fff; color: #000; }
-    body {
-      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
-      font-size: 8.5px;
-      line-height: 1.35;
-      width: 58mm;
-    }
-    .ticket { width: 58mm; padding: 4mm 3mm 5mm; }
-
-    /* ── HEADER ── */
-    .header {
-      text-align: center;
-      padding-bottom: 3mm;
-      border-bottom: 2px solid #000;
-      margin-bottom: 2.5mm;
-    }
-    .burger-icon { font-size: 22px; line-height: 1; margin-bottom: 1mm; }
-    .brand-name {
-      font-size: 15px;
-      font-weight: 900;
-      letter-spacing: -0.3px;
-      line-height: 1.1;
-    }
-    .brand-tagline {
-      font-size: 7.5px;
-      margin-top: 1.5mm;
-      font-style: italic;
-      color: #444;
-    }
-    .brand-contact {
-      font-size: 7px;
-      color: #666;
-      margin-top: 1mm;
-    }
-
-    /* ── META BADGE ── */
-    .meta-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      font-size: 7.5px;
-      padding: 1.5mm 0;
-      border-bottom: 1px dashed #000;
-      margin-bottom: 2mm;
-    }
-    .order-num {
-      font-size: 10px;
-      font-weight: 900;
-    }
-    .meta-date { color: #555; font-size: 7px; margin-top: 0.5mm; }
-
-    /* ── SECTIONS ── */
-    .section {
-      padding: 1.5mm 0;
-      border-bottom: 1px dashed #bbb;
-      margin-bottom: 1.5mm;
-    }
-    .section-title {
-      font-size: 7px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #888;
-      margin-bottom: 1mm;
-    }
-    .info-row {
-      font-size: 8px;
-      line-height: 1.5;
-      display: flex;
-      gap: 2mm;
-    }
-    .info-label {
-      font-weight: 700;
-      font-size: 7px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      min-width: 11mm;
-      color: #555;
-      flex-shrink: 0;
-      padding-top: 0.5px;
-    }
-
-    /* ── ITEMS ── */
-    .items-section { margin-bottom: 1.5mm; }
-    .items-header {
-      font-size: 7px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #888;
-      padding-bottom: 1mm;
-      border-bottom: 1px solid #000;
-      margin-bottom: 1mm;
-    }
-    .item {
-      padding: 1.2mm 0;
-      border-bottom: 1px dotted #ccc;
-    }
-    .item:last-child { border-bottom: none; }
-    .item-main {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      font-weight: 700;
-      font-size: 8.5px;
-    }
-    .item-qty-name { flex: 1; padding-right: 2mm; word-break: break-word; }
-    .item-price { flex-shrink: 0; font-variant-numeric: tabular-nums; }
-    .item-detail {
-      font-size: 7.5px;
-      color: #555;
-      padding-left: 3mm;
-      line-height: 1.4;
-    }
-    .items-sep { border-top: 1px solid #000; margin-top: 1mm; }
-
-    /* ── TOTALS ── */
-    .totals { margin-top: 2mm; }
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 8px;
-      padding: 0.6mm 0;
-    }
-    .total-row.discount { color: #16A34A; font-weight: 700; }
-    .total-row.reason { color: #888; font-size: 7px; }
-    .grand-total-sep { border-top: 2px solid #000; margin: 2mm 0 1.5mm; }
-    .grand-total {
-      display: flex;
-      justify-content: space-between;
-      font-size: 14px;
-      font-weight: 900;
-      letter-spacing: -0.3px;
-    }
-
-    /* ── PAYMENT ── */
-    .payment {
-      margin-top: 2mm;
-      padding-top: 1.5mm;
-      border-top: 1px dashed #bbb;
-      font-size: 8px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .payment-label { font-weight: 700; }
-
-    /* ── NOTES ── */
-    .notes {
-      margin-top: 1.5mm;
-      font-size: 7.5px;
-      color: #555;
-      padding: 1mm;
-      background: #f5f5f5;
-      border-radius: 1mm;
-    }
-
-    /* ── FOOTER ── */
-    .footer {
-      text-align: center;
-      margin-top: 3.5mm;
-      padding-top: 2.5mm;
-      border-top: 2px solid #000;
-    }
-    .footer-thanks { font-size: 9.5px; font-weight: 900; }
-    .footer-sub { font-size: 7.5px; color: #555; margin-top: 1mm; }
-    .footer-dots { font-size: 8px; letter-spacing: 3px; margin-top: 1.5mm; color: #aaa; }
-
-    @media print {
-      html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-<div class="ticket">
-
-  <!-- ENCABEZADO -->
-  <div class="header">
-    <div class="burger-icon">🍔</div>
-    <div class="brand-name">SR &amp; SRA BURGER</div>
-    <div class="brand-tagline">★ Hechas con Pasión ★</div>
-    <div class="brand-contact">Minatitlán, Veracruz</div>
-  </div>
-
-  <!-- No. ORDEN y FECHA -->
-  <div class="meta-row">
-    <div>
-      <div class="order-num">Orden #${esc(orderShort)}</div>
-    </div>
-    <div style="text-align:right">
-      <div class="meta-date">${esc(fechaCompacta)}</div>
-    </div>
-  </div>
-
-  <!-- CLIENTE -->
-  ${customerSection}
-
-  <!-- PRODUCTOS -->
-  <div class="items-section">
-    <div class="items-header">Productos</div>
-    ${itemsHtml}
-    <div class="items-sep"></div>
-  </div>
-
-  <!-- TOTALES -->
-  <div class="totals">
-    ${totalsHtml}
-    <div class="grand-total-sep"></div>
-    <div class="grand-total">
-      <span>TOTAL</span>
-      <span>$${money(totalNumber)}</span>
-    </div>
-  </div>
-
-  <!-- PAGO -->
-  <div class="payment">
-    <span class="payment-label">Método de pago</span>
-    <span>${esc(paymentMethod)}</span>
-  </div>
-
-  ${notesHtml}
-
-  <!-- FOOTER -->
-  <div class="footer">
-    <div class="footer-thanks">¡Gracias por su preferencia!</div>
-    <div class="footer-sub">Vuelva pronto 🍔🔥</div>
-    <div class="footer-dots">• • • • • • • • • •</div>
-  </div>
-
-</div>
-</body>
-</html>`;
-                return html;
+                return buildPrintableTicketHtmlFromLines(custLines, custHeightMm, order, 'customer');
             }
             // ── FIN TICKET CLIENTE ─────────────────────────────────────────
 

@@ -1,381 +1,560 @@
 <!DOCTYPE html>
-<html lang="es" class="sr-dark">
+<html lang="es" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mi cuenta - SR &amp; SRA BURGER</title>
+  <title>Mi cuenta · SR &amp; SRA BURGER</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preload" as="style"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/sr-ui.css">
+  <style>
+    /* ── Tokens ───────────────────────────────────────────── */
+    :root {
+      --cl-bg:       #070a12;
+      --cl-surface:  rgba(255,255,255,.043);
+      --cl-border:   rgba(255,255,255,.075);
+      --cl-primary:  #16A34A;
+      --cl-primary2: #15803d;
+      --cl-gold:     #f59e0b;
+      --cl-r:        26px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--cl-bg);
+      background-image: radial-gradient(ellipse 90% 50% at 50% -6%, rgba(22,163,74,.13) 0%, transparent 66%);
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: #cbd5e1;
+    }
+
+    /* ── Glass card ──────────────────────────────────────── */
+    .c2 {
+      background: var(--cl-surface);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--cl-border);
+      border-radius: var(--cl-r);
+    }
+
+    /* ── Inputs ──────────────────────────────────────────── */
+    .c2-inp {
+      width: 100%;
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      padding: .78rem 1rem;
+      color: #f1f5f9;
+      font-size: .9rem;
+      font-family: inherit;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+    .c2-inp::placeholder { color: rgba(255,255,255,.27); }
+    .c2-inp:focus {
+      border-color: var(--cl-primary);
+      box-shadow: 0 0 0 3px rgba(22,163,74,.14);
+    }
+    .c2-lbl {
+      display: block;
+      margin-bottom: .42rem;
+      font-size: .72rem;
+      font-weight: 700;
+      color: rgba(255,255,255,.38);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────── */
+    .c2-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+      background: linear-gradient(135deg, var(--cl-primary), var(--cl-primary2));
+      color: #fff; padding: .78rem 1.5rem; border-radius: 14px;
+      font-weight: 700; font-size: .9rem; font-family: inherit;
+      border: none; cursor: pointer; white-space: nowrap;
+      transition: transform .17s ease, box-shadow .17s ease, opacity .17s;
+      box-shadow: 0 4px 18px rgba(22,163,74,.28);
+    }
+    .c2-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(22,163,74,.44); }
+    .c2-btn:active:not(:disabled) { transform: translateY(0); }
+    .c2-btn:disabled { opacity: .42; cursor: not-allowed; }
+
+    .c2-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+      background: rgba(255,255,255,.055); color: #94a3b8;
+      padding: .75rem 1.25rem; border-radius: 14px;
+      font-weight: 600; font-size: .875rem; font-family: inherit;
+      border: 1px solid rgba(255,255,255,.09); cursor: pointer;
+      transition: background .17s, border-color .17s, color .17s;
+    }
+    .c2-ghost:hover:not(:disabled) {
+      background: rgba(255,255,255,.09);
+      border-color: rgba(255,255,255,.15);
+      color: #e2e8f0;
+    }
+
+    /* ── Auth tabs ───────────────────────────────────────── */
+    .c2-tab {
+      flex: 1; padding: .65rem; border-radius: 18px;
+      font-size: .875rem; font-weight: 700; font-family: inherit;
+      color: #64748b; background: none; border: none; cursor: pointer;
+      transition: all .2s ease;
+    }
+    .c2-tab.on {
+      background: linear-gradient(135deg, var(--cl-primary), var(--cl-primary2));
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(22,163,74,.32);
+    }
+
+    /* ── Points ring ─────────────────────────────────────── */
+    .pts-ring {
+      width: 88px; height: 88px; border-radius: 50%;
+      background: conic-gradient(var(--cl-primary) var(--ring, 0%), rgba(255,255,255,.08) 0%);
+      display: flex; align-items: center; justify-content: center;
+      padding: 5px; flex-shrink: 0;
+      transition: background .6s ease;
+    }
+    .pts-core {
+      background: #0c0f1b; border-radius: 50%; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+
+    /* ── Reward pills ────────────────────────────────────── */
+    .rwd {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: .75rem; padding: .85rem 1rem; border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.03);
+      cursor: pointer; transition: all .18s ease; width: 100%; font-family: inherit; text-align: left;
+    }
+    .rwd:hover:not(:disabled) {
+      background: rgba(255,255,255,.065); border-color: rgba(255,255,255,.12);
+      transform: translateY(-1px);
+    }
+    .rwd:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+    /* ── Section heading ─────────────────────────────────── */
+    .c2-h {
+      font-size: .95rem; font-weight: 800; color: #f1f5f9;
+      letter-spacing: -.01em; display: flex; align-items: center; gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    .c2-icon {
+      width: 28px; height: 28px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; flex-shrink: 0;
+    }
+
+    /* ── Animations ──────────────────────────────────────── */
+    @keyframes su { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .su { animation: su .32s ease forwards; }
+
+    /* ── Order rows ──────────────────────────────────────── */
+    .orow { border-bottom: 1px solid rgba(255,255,255,.05); transition: background .15s; }
+    .orow:hover { background: rgba(255,255,255,.025); }
+    .obadge {
+      display: inline-flex; align-items: center;
+      border-radius: 999px; padding: .2rem .6rem;
+      font-size: .7rem; font-weight: 700; white-space: nowrap;
+    }
+
+    /* ── Skeleton override dark ──────────────────────────── */
+    .sr-skeleton, .sr-skeleton-block { background: rgba(255,255,255,.06) !important; }
+    .sr-badge--success {
+      background: rgba(22,163,74,.18) !important;
+      color: #4ade80 !important;
+      border: 1px solid rgba(22,163,74,.22) !important;
+    }
+
+    /* ── Misc ────────────────────────────────────────────── */
+    #client-mini-map { border-radius: 18px !important; }
+    body.sr-sticky-cart-visible { padding-bottom: 5.5rem; }
+    @media (min-width: 768px) { body.sr-sticky-cart-visible { padding-bottom: 0; } }
+    details summary::-webkit-details-marker { display: none; }
+  </style>
 </head>
-<body class="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
-  <header class="sr-topbar">
-    <div class="sr-topbar__inner">
-      <a class="sr-brand" href="paginaburger.html" aria-label="Volver al menú">SR &amp; SRA <span>BURGER</span></a>
-      <div class="sr-topbar__meta">Mi cuenta</div>
-      <nav class="sr-topbar__nav" aria-label="Acciones">
-        <a class="sr-nav-link" href="paginaburger.html"><i class="fas fa-arrow-left"></i>&nbsp;Volver al menú</a>
-      </nav>
+<body>
+  <!-- ═══ HEADER ══════════════════════════════════════════════════ -->
+  <header style="position:sticky;top:0;z-index:50;background:rgba(7,10,18,.9);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-bottom:1px solid rgba(255,255,255,.06);">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="paginaburger.html"
+         class="flex items-center gap-2 text-slate-500 hover:text-slate-200 transition-colors text-sm font-semibold"
+         aria-label="Volver al menú principal">
+        <i class="fas fa-arrow-left text-xs"></i>
+        <span class="hidden sm:inline">Volver al menú</span>
+      </a>
+      <a href="paginaburger.html"
+         style="font-family:'Poppins',sans-serif;"
+         class="font-black text-white text-base tracking-tight">
+        SR&nbsp;&amp;&nbsp;SRA&nbsp;<span style="color:var(--cl-primary)">BURGER</span>
+      </a>
+      <div class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Mi&nbsp;cuenta</div>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 py-8">
-    <div id="auth-section" class="grid gap-6 md:grid-cols-2 mb-8">
-      <!-- Registro -->
-      <section class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <h2 class="text-xl font-black mb-4 flex items-center gap-2">
-          <i class="fas fa-user-plus text-yellow-500"></i>
-          Crear cuenta
-        </h2>
-        <div class="mb-4 p-4 rounded-2xl border border-yellow-300 bg-gradient-to-r from-yellow-50 via-white to-amber-50">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-yellow-500 text-white flex items-center justify-center shrink-0">
-              <i class="fas fa-gift"></i>
-            </div>
-            <div>
-              <p class="text-base sm:text-lg font-black text-gray-900">Regístrate y obtén un 10% de descuento en tu primera compra</p>
-              <p class="text-sm text-gray-700 mt-1">Al crear tu cuenta, el bono se activa automáticamente y se aplica cuando hagas tu primer pedido desde el menú.</p>
-            </div>
+  <!-- ═══ MAIN ════════════════════════════════════════════════════ -->
+  <main class="max-w-4xl mx-auto px-4 py-8 space-y-5">
+
+    <!-- ── AUTH SECTION ─────────────────────────────────────────── -->
+    <div id="auth-section" class="max-w-md mx-auto space-y-4 su">
+
+      <!-- Promo banner -->
+      <div class="c2 p-4" style="background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(22,163,74,.08));border-color:rgba(245,158,11,.22);">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0"
+               style="background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.22);">🎁</div>
+          <div>
+            <div class="text-sm font-black text-white">10% OFF en tu primera compra</div>
+            <div class="text-xs text-slate-400 mt-0.5">Se activa automáticamente al crear tu cuenta.</div>
           </div>
         </div>
-        <form id="register-form" class="space-y-3 text-sm">
-          <div>
-            <label class="block mb-1 font-medium">Nombre completo</label>
-            <input id="reg-nombre" type="text" required class="w-full border rounded-lg px-3 py-2 focus:ring-yellow-400 focus:border-yellow-400" />
-          </div>
-          <div>
-            <label class="block mb-1 font-medium">Correo electrónico</label>
-            <input id="reg-correo" type="email" required class="w-full border rounded-lg px-3 py-2 focus:ring-yellow-400 focus:border-yellow-400" />
-          </div>
-          <div>
-            <label class="block mb-1 font-medium">Teléfono</label>
-            <input id="reg-telefono" type="tel" required class="w-full border rounded-lg px-3 py-2 focus:ring-yellow-400 focus:border-yellow-400" placeholder="Ej. 9221234567" />
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block mb-1 font-medium">Contraseña</label>
-              <input id="reg-pass" type="password" required minlength="6" class="w-full border rounded-lg px-3 py-2 focus:ring-yellow-400 focus:border-yellow-400" />
-            </div>
-            <div>
-              <label class="block mb-1 font-medium">Confirmar contraseña</label>
-              <input id="reg-pass2" type="password" required minlength="6" class="w-full border rounded-lg px-3 py-2 focus:ring-yellow-400 focus:border-yellow-400" />
-            </div>
-          </div>
-          <p class="text-xs text-gray-500">Tus datos se usan para identificarte y guardar tu historial. La dirección se agrega después en “Verificar dirección (mapa)”.</p>
-          <button id="reg-submit" type="submit" class="sr-btn sr-btn-primary w-full mt-2 flex items-center justify-center gap-2 disabled:opacity-60">
-            <span>Crear cuenta</span>
-            <span id="reg-spinner" class="hidden w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
-          </button>
-          <p id="reg-error" class="mt-2 text-xs text-red-600 hidden"></p>
-          <p id="reg-success" class="mt-2 text-xs text-green-600 hidden"></p>
-        </form>
-      </section>
+      </div>
 
-      <!-- Login -->
-      <section class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-        <h2 class="text-xl font-black mb-4 flex items-center gap-2">
-          <i class="fas fa-right-to-bracket text-blue-500"></i>
-          Iniciar sesión
-        </h2>
-        <form id="login-form" class="space-y-3 text-sm">
+      <!-- Tab bar -->
+      <div class="c2 p-1.5 flex gap-1.5">
+        <button id="tab-login-btn" class="c2-tab on">Iniciar sesión</button>
+        <button id="tab-register-btn" class="c2-tab">Crear cuenta</button>
+      </div>
+
+      <!-- Login panel -->
+      <div id="panel-login" class="c2 p-6 su">
+        <p class="text-xs text-slate-500 mb-5">Accede a tus pedidos, puntos y direcciones guardadas.</p>
+        <form id="login-form" class="space-y-4">
           <div>
-            <label class="block mb-1 font-medium">Correo electrónico</label>
-            <input id="login-correo" type="email" required class="w-full border rounded-lg px-3 py-2 focus:ring-blue-400 focus:border-blue-400" />
+            <label class="c2-lbl" for="login-correo">Correo electrónico</label>
+            <input id="login-correo" type="email" required class="c2-inp"
+              placeholder="tu@correo.com" autocomplete="email" />
           </div>
           <div>
-            <label class="block mb-1 font-medium">Contraseña</label>
-            <input id="login-pass" type="password" required class="w-full border rounded-lg px-3 py-2 focus:ring-blue-400 focus:border-blue-400" />
+            <label class="c2-lbl" for="login-pass">Contraseña</label>
+            <input id="login-pass" type="password" required class="c2-inp"
+              placeholder="••••••••" autocomplete="current-password" />
           </div>
-          <button id="login-submit" type="submit" class="sr-btn sr-btn-primary w-full mt-2 flex items-center justify-center gap-2 disabled:opacity-60">
+          <button id="login-submit" type="submit" class="c2-btn w-full">
             <span>Entrar</span>
             <span id="login-spinner" class="hidden w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
           </button>
-          <button id="forgot-pass-btn" type="button" class="sr-btn sr-btn-ghost w-full flex items-center justify-center gap-2 text-sm disabled:opacity-60">
+          <button id="forgot-pass-btn" type="button" class="c2-ghost w-full">
             <span>Olvidé mi contraseña</span>
-            <span id="forgot-pass-spinner" class="hidden w-4 h-4 border-2 border-gray-900/25 border-t-gray-900 rounded-full animate-spin"></span>
+            <span id="forgot-pass-spinner" class="hidden w-4 h-4 border-2 border-white/20 border-t-slate-300 rounded-full animate-spin"></span>
           </button>
-          <p id="login-error" class="mt-2 text-xs text-red-600 hidden"></p>
-          <p id="forgot-pass-success" class="mt-2 text-xs text-green-600 hidden"></p>
+          <p id="login-error" class="text-xs text-red-400 hidden"></p>
+          <p id="forgot-pass-success" class="text-xs text-emerald-400 hidden"></p>
         </form>
-        <p class="mt-4 text-xs text-gray-500">
-          Si ya hiciste un pedido pero no tenías cuenta, puedes crearla usando el mismo correo y teléfono para vincular tus futuros pedidos.
+        <p class="mt-4 text-xs text-slate-600 text-center">
+          ¿Hiciste un pedido sin cuenta? Regístrate con el mismo correo para vincularlo.
         </p>
-      </section>
-    </div>
+      </div>
 
-    <!-- Dashboard de cliente autenticado -->
-    <section id="dashboard" class="hidden space-y-6">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <p class="text-sm text-gray-500">Bienvenido(a)</p>
-          <h1 id="dash-nombre" class="text-2xl font-black">—</h1>
-        </div>
-        <div class="flex items-center gap-3">
-          <button id="logout-btn" class="sr-btn sr-btn-ghost flex items-center gap-2 text-sm">
-            <i class="fas fa-right-from-bracket"></i>
-            Cerrar sesión
+      <!-- Register panel -->
+      <div id="panel-register" class="c2 p-6 su hidden">
+        <p class="text-xs text-slate-500 mb-5">Llena tus datos para crear tu cuenta gratis.</p>
+        <form id="register-form" class="space-y-4">
+          <div>
+            <label class="c2-lbl" for="reg-nombre">Nombre completo</label>
+            <input id="reg-nombre" type="text" required class="c2-inp"
+              placeholder="Tu nombre" autocomplete="name" />
+          </div>
+          <div>
+            <label class="c2-lbl" for="reg-correo">Correo electrónico</label>
+            <input id="reg-correo" type="email" required class="c2-inp"
+              placeholder="tu@correo.com" autocomplete="email" />
+          </div>
+          <div>
+            <label class="c2-lbl" for="reg-telefono">Teléfono</label>
+            <input id="reg-telefono" type="tel" required class="c2-inp"
+              placeholder="Ej. 9221234567" autocomplete="tel" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="c2-lbl" for="reg-pass">Contraseña</label>
+              <input id="reg-pass" type="password" required minlength="6" class="c2-inp"
+                placeholder="Mín. 6 caracteres" autocomplete="new-password" />
+            </div>
+            <div>
+              <label class="c2-lbl" for="reg-pass2">Confirmar</label>
+              <input id="reg-pass2" type="password" required minlength="6" class="c2-inp"
+                placeholder="Repite tu clave" autocomplete="new-password" />
+            </div>
+          </div>
+          <p class="text-xs text-slate-600">La dirección de entrega se agrega después desde el mapa.</p>
+          <button id="reg-submit" type="submit" class="c2-btn w-full">
+            <span>Crear cuenta</span>
+            <span id="reg-spinner" class="hidden w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
           </button>
-        </div>
+          <p id="reg-error" class="text-xs text-red-400 hidden"></p>
+          <p id="reg-success" class="text-xs text-emerald-400 hidden"></p>
+        </form>
       </div>
 
-      <div id="dash-welcome-reward" class="hidden bg-gradient-to-r from-yellow-50 via-white to-amber-50 border border-yellow-200 rounded-2xl p-4">
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xl bg-yellow-500 text-white flex items-center justify-center shrink-0">
-            <i class="fas fa-ticket-alt"></i>
+    </div><!-- /auth-section -->
+
+    <!-- ── DASHBOARD ────────────────────────────────────────────── -->
+    <section id="dashboard" class="hidden space-y-4 su">
+
+      <!-- Hero greeting -->
+      <div class="flex items-center justify-between gap-3 pt-1">
+        <div class="flex items-center gap-3">
+          <div id="dash-avatar" class="w-11 h-11 rounded-2xl shrink-0 flex items-center justify-center text-white"
+               style="background:linear-gradient(135deg,var(--cl-primary),var(--cl-primary2));">
+            <i class="fas fa-user text-sm"></i>
           </div>
           <div>
-            <p class="text-base sm:text-lg font-black text-gray-900">10% de descuento activo</p>
-            <p id="dash-welcome-reward-text" class="text-sm text-gray-700 mt-1">Se aplicará automáticamente en tu siguiente pedido (primera compra).</p>
+            <p class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Bienvenido(a)</p>
+            <h1 id="dash-nombre" class="text-xl font-black text-white leading-tight">—</h1>
+          </div>
+        </div>
+        <button id="logout-btn" class="c2-ghost text-xs px-3 py-2">
+          <i class="fas fa-right-from-bracket text-slate-500 text-xs"></i>
+          <span class="hidden sm:inline">Cerrar sesión</span>
+        </button>
+      </div>
+
+      <!-- Welcome reward banner -->
+      <div id="dash-welcome-reward" class="c2 p-4 hidden"
+           style="background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(22,163,74,.08));border-color:rgba(245,158,11,.22);">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl leading-none">🎁</span>
+          <div>
+            <div class="text-sm font-black text-white">10% de descuento activo</div>
+            <p id="dash-welcome-reward-text" class="text-xs text-yellow-200/75 mt-0.5">
+              Se aplicará automáticamente en tu siguiente pedido (primera compra).
+            </p>
           </div>
         </div>
       </div>
 
+      <!-- Points + addresses -->
       <div class="grid gap-4 md:grid-cols-3">
-        <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 flex flex-col justify-between">
-          <div>
-            <p class="text-xs text-gray-500 mb-1">Puntos acumulados</p>
-            <p id="dash-puntos" class="text-3xl font-black text-yellow-600">0</p>
+
+        <!-- Points card -->
+        <div class="c2 p-5 flex flex-col gap-5">
+          <div class="flex items-center gap-4">
+            <div class="pts-ring" id="dash-points-ring">
+              <div class="pts-core">
+                <span id="dash-puntos" class="text-xl font-black text-white leading-none">0</span>
+                <span class="text-[9px] font-bold text-slate-600 uppercase tracking-wider mt-0.5">pts</span>
+              </div>
+            </div>
+            <div>
+              <div class="text-sm font-black text-white">Mis puntos</div>
+              <div class="text-xs text-slate-500 mt-0.5 leading-snug">1&nbsp;pto&nbsp;·&nbsp;$10&nbsp;MXN</div>
+            </div>
           </div>
-          <p class="mt-1 text-[11px] text-gray-500">Ganas 1 punto por cada $10 MXN de consumo.</p>
-          <div class="mt-3 space-y-2 text-xs">
-            <p class="text-[11px] text-gray-500 mb-1">Canjea tus puntos:</p>
-            <!-- 10% descuento -->
-            <button
-              id="btn-reward-10"
-              class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-2xl border border-yellow-400/60 bg-gradient-to-r from-yellow-50/70 via-white/40 to-amber-50/70 backdrop-blur-md shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 text-[11px] font-medium text-gray-800">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-400/90 text-white shadow"><i class="fas fa-ticket-alt text-[10px]"></i></span>
-                <span class="leading-tight">10% de descuento</span>
+          <div class="space-y-2">
+            <p class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Canjear recompensa</p>
+            <button id="btn-reward-10" class="rwd">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0"
+                      style="background:rgba(245,158,11,.15);color:#fbbf24;"><i class="fas fa-ticket"></i></span>
+                <span class="text-sm font-semibold text-slate-200">10% descuento</span>
               </div>
-              <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-yellow-500 text-[10px] font-bold text-white shadow-inner">
-                75 pts
-              </span>
+              <span class="text-xs font-black text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 px-2.5 py-1 rounded-full whitespace-nowrap">75 pts</span>
             </button>
-            <!-- 25% descuento -->
-            <button
-              id="btn-reward-25"
-              class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-2xl border border-amber-500/70 bg-gradient-to-r from-amber-50/70 via-white/40 to-orange-100/80 backdrop-blur-md shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 text-[11px] font-medium text-gray-900">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white shadow"><i class="fas fa-crown text-[10px]"></i></span>
-                <span class="leading-tight">25% de descuento</span>
+            <button id="btn-reward-25" class="rwd">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0"
+                      style="background:rgba(168,85,247,.15);color:#c084fc;"><i class="fas fa-crown"></i></span>
+                <span class="text-sm font-semibold text-slate-200">25% descuento</span>
               </div>
-              <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-amber-600 text-[10px] font-bold text-white shadow-inner">
-                150 pts
-              </span>
+              <span class="text-xs font-black text-purple-400 bg-purple-400/10 border border-purple-400/20 px-2.5 py-1 rounded-full whitespace-nowrap">150 pts</span>
             </button>
-            <!-- Envío gratis -->
-            <button
-              id="btn-reward-envio"
-              class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-2xl border border-green-500/70 bg-gradient-to-r from-emerald-50/70 via-white/40 to-green-100/80 backdrop-blur-md shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 text-[11px] font-medium text-gray-900">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500 text-white shadow"><i class="fas fa-truck-fast text-[10px]"></i></span>
-                <span class="leading-tight">Envío gratis</span>
+            <button id="btn-reward-envio" class="rwd">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0"
+                      style="background:rgba(22,163,74,.15);color:#4ade80;"><i class="fas fa-truck-fast"></i></span>
+                <span class="text-sm font-semibold text-slate-200">Envío gratis</span>
               </div>
-              <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-green-600 text-[10px] font-bold text-white shadow-inner">
-                75 pts
-              </span>
+              <span class="text-xs font-black text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full whitespace-nowrap">75 pts</span>
             </button>
-            <div id="reward-message" class="mt-3 hidden text-sm font-semibold text-amber-900 bg-amber-50 border border-amber-200 p-3 rounded-xl"></div>
+            <div id="reward-message" class="hidden mt-1 text-xs text-amber-300 rounded-2xl p-3"
+                 style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);"></div>
           </div>
         </div>
-        <div class="bg-white rounded-2xl shadow border border-gray-100 p-4 md:col-span-2">
-          <p class="text-xs text-gray-500 mb-1">Direcciones registradas</p>
-          <p id="dash-direccion" class="text-sm font-medium text-gray-800">—</p>
-          <div id="dash-direcciones-list" class="mt-2 space-y-1 text-sm text-gray-700"></div>
+
+        <!-- Addresses -->
+        <div class="c2 p-5 md:col-span-2">
+          <div class="c2-h">
+            <span class="c2-icon" style="background:rgba(22,163,74,.14);color:#4ade80;"><i class="fas fa-location-dot"></i></span>
+            Mis direcciones
+          </div>
+          <p id="dash-direccion" class="text-xs text-slate-600 mb-2 hidden"></p>
+          <div id="dash-direcciones-list" class="space-y-2"></div>
         </div>
       </div>
 
-      <section class="bg-white rounded-2xl shadow border border-gray-100 p-4">
-        <h2 class="text-base font-black flex items-center gap-2">
-          <i class="fas fa-location-dot text-green-600"></i>
-          Verificar dirección (mapa)
-        </h2>
-        <div class="mt-3 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/25 to-sky-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0">
-              <i class="fas fa-map-location-dot text-emerald-200"></i>
-            </div>
-            <div class="min-w-0">
-              <div class="text-base font-black text-slate-100">Pasos rápidos (te toma 10 segundos)</div>
-              <div class="text-sm text-slate-200/90 mt-0.5">Escribe tu dirección, verifica y ajusta el pin. Al soltar el pin, la dirección se corrige sola.</div>
-            </div>
-          </div>
-
-          <div class="mt-4 grid gap-3 sm:grid-cols-2">
-            <div tabindex="0" class="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-white/0 p-3 hover:from-white/10 hover:to-white/0 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400/60 focus-visible:outline-offset-2">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 font-black">1</span>
-                <div class="font-black text-slate-100">Escribe tu dirección</div>
-              </div>
-              <div class="mt-1 text-sm text-slate-200/90">Calle + número + colonia. Entre más detalle, más exacto.</div>
-            </div>
-
-            <div tabindex="0" class="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-white/0 p-3 hover:from-white/10 hover:to-white/0 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400/60 focus-visible:outline-offset-2">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-400/30 text-sky-200 font-black">2</span>
-                <div class="font-black text-slate-100">Pulsa “Verificar”</div>
-              </div>
-              <div class="mt-1 text-sm text-slate-200/90">Te ubica en el minimapa y calcula distancia + costo.</div>
-            </div>
-
-            <div tabindex="0" class="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-white/0 p-3 hover:from-white/10 hover:to-white/0 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400/60 focus-visible:outline-offset-2">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-200 font-black">3</span>
-                <div class="font-black text-slate-100">Ajusta el pin si hace falta</div>
-              </div>
-              <div class="mt-1 text-sm text-slate-200/90">Muévelo o da clic en el mapa. Al soltarlo, la <span class="text-amber-200 font-semibold">dirección se actualiza</span>.</div>
-            </div>
-
-            <div tabindex="0" class="group rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-white/0 p-3 hover:from-white/10 hover:to-white/0 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400/60 focus-visible:outline-offset-2">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 font-black">4</span>
-                <div class="font-black text-slate-100">Guarda tu ubicación</div>
-              </div>
-              <div class="mt-1 text-sm text-slate-200/90">Pulsa <span class="text-emerald-200 font-semibold">Agregar dirección</span> y listo. Se usará al pedir a domicilio.</div>
-            </div>
-          </div>
-
-          <div class="mt-3 flex items-center gap-2 text-sm">
-            <span class="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 text-emerald-200 font-semibold">
-              <i class="fas fa-circle-info"></i>
-              Costo: <span class="text-slate-100 font-black">$8 por km</span> (redondeo al entero más cercano)
-            </span>
-          </div>
-
-          <div class="mt-3 grid gap-2">
-            <details class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 open:bg-white/10 transition-all">
-              <summary class="cursor-pointer select-none font-black text-slate-100 flex items-center gap-2">
-                <i class="fas fa-lightbulb text-amber-200"></i>
-                Ejemplos de cómo escribir la dirección
-              </summary>
-              <div class="mt-2 text-sm text-slate-200/90 space-y-1">
-                <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">“Coahuila 36, 10 de Mayo, Minatitlán, Veracruz”</div>
-                <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">“Vicente Guerrero 19, Patria Libre, Minatitlán”</div>
-                <div class="text-xs text-slate-300">Tip: si tu colonia no sale, agrega una referencia cercana (parque/tienda).</div>
-              </div>
-            </details>
-
-            <details class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 open:bg-white/10 transition-all">
-              <summary class="cursor-pointer select-none font-black text-slate-100 flex items-center gap-2">
-                <i class="fas fa-triangle-exclamation text-red-300"></i>
-                Si el mapa no encuentra tu calle
-              </summary>
-              <div class="mt-2 text-sm text-slate-200/90 space-y-1">
-                <div>1) Agrega <strong>colonia</strong> y <strong>número</strong>.</div>
-                <div>2) Prueba con una <strong>referencia</strong> (“cerca de …”).</div>
-                <div>3) Verifica y después ajusta el pin manualmente.</div>
-              </div>
-            </details>
-          </div>
+      <!-- Map / address verifier -->
+      <div class="c2 p-5">
+        <div class="c2-h">
+          <span class="c2-icon" style="background:rgba(56,189,248,.12);color:#38bdf8;"><i class="fas fa-map-location-dot"></i></span>
+          Verificar dirección en el mapa
         </div>
-
-        <div class="mt-4 grid gap-3 md:grid-cols-[1fr_auto] items-end">
-          <div>
-            <label class="block mb-1 text-sm font-medium text-gray-700">Tu dirección</label>
-            <input
-              id="client-address-input"
-              type="text"
-              class="w-full border rounded-lg px-3 py-2 focus:ring-green-400 focus:border-green-400"
-              placeholder="Ej. Vicente Guerrero 19, Patria Libre"
-            />
+        <!-- Collapsible instructions -->
+        <details class="mb-5 rounded-2xl overflow-hidden" style="border:1px solid rgba(255,255,255,.06);">
+          <summary class="px-4 py-3.5 cursor-pointer select-none text-sm font-bold text-slate-300 flex items-center gap-2.5"
+                   style="background:rgba(255,255,255,.04);">
+            <i class="fas fa-circle-info text-sky-400 text-xs"></i>
+            ¿Cómo funciona?
+            <i class="fas fa-chevron-down text-[10px] text-slate-600 ml-auto"></i>
+          </summary>
+          <div class="px-4 pb-4 pt-3" style="background:rgba(255,255,255,.02);">
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="flex items-start gap-3 text-xs text-slate-400">
+                <span class="w-5 h-5 rounded-lg flex items-center justify-center font-black text-white text-[10px] shrink-0 mt-0.5" style="background:var(--cl-primary);">1</span>
+                <span>Escribe calle + número + colonia. Más detalle = más exactitud.</span>
+              </div>
+              <div class="flex items-start gap-3 text-xs text-slate-400">
+                <span class="w-5 h-5 rounded-lg flex items-center justify-center font-black text-white text-[10px] shrink-0 mt-0.5" style="background:#3b82f6;">2</span>
+                <span>Pulsa <strong class="text-slate-200">Verificar</strong> para ver el mapa y calcular costo.</span>
+              </div>
+              <div class="flex items-start gap-3 text-xs text-slate-400">
+                <span class="w-5 h-5 rounded-lg flex items-center justify-center font-black text-white text-[10px] shrink-0 mt-0.5" style="background:#f59e0b;">3</span>
+                <span>Si el pin no es exacto, arrástralo. La dirección se actualiza sola.</span>
+              </div>
+              <div class="flex items-start gap-3 text-xs text-slate-400">
+                <span class="w-5 h-5 rounded-lg flex items-center justify-center font-black text-white text-[10px] shrink-0 mt-0.5" style="background:#8b5cf6;">4</span>
+                <span>Toca <strong class="text-slate-200">Agregar dirección</strong> para guardarla.</span>
+              </div>
+            </div>
+            <p class="mt-3 text-xs text-slate-600">
+              Costo: <strong class="text-slate-400">$8 por km</strong>. Si no encuentra tu calle, agrega una referencia cercana.
+            </p>
+            <div class="mt-3 space-y-1.5">
+              <div class="text-xs text-slate-500 rounded-xl px-3 py-2" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">
+                "Coahuila 36, 10 de Mayo, Minatitlán, Veracruz"
+              </div>
+              <div class="text-xs text-slate-500 rounded-xl px-3 py-2" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">
+                "Vicente Guerrero 19, Patria Libre, Minatitlán"
+              </div>
+            </div>
           </div>
-          <button
-            id="client-verify-btn"
-            type="button"
-            class="sr-btn sr-btn-primary w-full md:w-auto flex items-center justify-center gap-2">
-            <i class="fas fa-check"></i>
+        </details>
+
+        <div class="grid gap-3 md:grid-cols-[1fr_auto] items-end mb-4">
+          <div>
+            <label class="c2-lbl" for="client-address-input">Tu dirección</label>
+            <input id="client-address-input" type="text" class="c2-inp"
+              placeholder="Ej. Vicente Guerrero 19, Patria Libre" />
+          </div>
+          <button id="client-verify-btn" type="button" class="c2-btn w-full md:w-auto">
+            <i class="fas fa-magnifying-glass text-xs"></i>
             Verificar
           </button>
         </div>
 
-        <div class="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3">
-          <div class="text-xs font-black text-emerald-200 tracking-wide">DIRECCIÓN DETECTADA</div>
-          <div id="client-selected-address" class="mt-1 text-base font-black text-slate-100">—</div>
+        <div class="rounded-2xl p-4 mb-4" style="background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);">
+          <div class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1.5">Dirección detectada</div>
+          <div id="client-selected-address" class="text-sm font-bold text-white">—</div>
         </div>
 
-        <div id="client-map-section" class="hidden mt-4">
-          <div class="text-sm text-slate-100 mb-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-4 py-3">
-            <div class="font-black text-sky-200 flex items-center gap-2">
-              <i class="fas fa-hand-pointer"></i>
-              Ajuste fino
-            </div>
-            <div class="mt-1 text-slate-200/90">
-              Puedes <strong>mover el pin</strong> o dar <strong>clic</strong> en el mapa. Al soltar el pin, tu dirección se actualiza automáticamente.
-            </div>
+        <div id="client-map-section" class="hidden">
+          <div class="rounded-2xl p-3 mb-3 text-xs flex items-center gap-2"
+               style="background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.15);color:#7dd3fc;">
+            <i class="fas fa-hand-pointer text-xs"></i>
+            Mueve el pin o haz clic en el mapa para ajustar tu ubicación exacta.
           </div>
-          <div id="client-mini-map" class="w-full rounded-xl border border-gray-200 overflow-hidden" style="height: 320px;"></div>
+          <div id="client-mini-map" class="w-full"
+               style="height:300px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.07);"></div>
         </div>
 
-        <div id="client-distance-result" class="text-sm mt-3"></div>
-
-        <div class="mt-3 flex flex-col md:flex-row md:items-center gap-3">
-          <button
-            id="client-add-address-btn"
-            type="button"
-            disabled
-            class="sr-btn sr-btn-primary w-full md:w-auto flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-            <i class="fas fa-plus"></i>
+        <div id="client-distance-result" class="text-sm mt-3 text-slate-400"></div>
+        <div class="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <button id="client-add-address-btn" type="button" disabled class="c2-btn">
+            <i class="fas fa-plus text-xs"></i>
             Agregar dirección
           </button>
-          <div id="client-save-msg" class="text-xs text-gray-500"></div>
+          <div id="client-save-msg" class="text-xs text-slate-500"></div>
         </div>
-      </section>
+      </div>
 
-      <section class="bg-white rounded-2xl shadow border border-gray-100 p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-base font-black flex items-center gap-2">
-            <i class="fas fa-receipt text-gray-600"></i>
-            Historial de compras
-          </h2>
-          <span id="dash-count" class="text-xs text-gray-500"></span>
-        </div>
-
-        <div id="dash-current-order" class="hidden mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="font-black text-amber-900">Pedido actual</div>
-              <div id="dash-current-order-meta" class="text-xs text-amber-800 mt-0.5"></div>
-            </div>
-            <a id="dash-current-order-track" href="tuenvio.html" class="sr-btn sr-btn-primary px-3 py-2 text-xs font-black">Rastrear</a>
+      <!-- Orders -->
+      <div class="c2 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="c2-h mb-0">
+            <span class="c2-icon" style="background:rgba(148,163,184,.1);color:#94a3b8;"><i class="fas fa-bag-shopping"></i></span>
+            Mis pedidos
           </div>
+          <span id="dash-count" class="text-xs font-bold text-slate-600"></span>
         </div>
-
-        <div id="dash-empty" class="text-xs text-gray-500 py-6 hidden">
-          Aún no hemos encontrado pedidos asociados a tu cuenta. Cuando compres desde el menú usando este correo, aparecerán aquí.
+        <!-- Active order -->
+        <div id="dash-current-order" class="hidden mb-4 rounded-2xl p-4 flex items-center justify-between gap-3"
+             style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.18);">
+          <div class="min-w-0">
+            <div class="text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-1">Pedido activo</div>
+            <div id="dash-current-order-meta" class="text-sm font-semibold text-slate-300 truncate"></div>
+          </div>
+          <a id="dash-current-order-track" href="tuenvio.html" class="c2-btn text-xs px-4 py-2.5">
+            <i class="fas fa-satellite-dish text-[11px]"></i>
+            Rastrear
+          </a>
         </div>
+        <!-- Empty state -->
+        <div id="dash-empty" class="hidden py-12 text-center">
+          <div class="text-4xl mb-3 leading-none">🛍️</div>
+          <div class="text-sm font-bold text-slate-400">Aún no tienes pedidos.</div>
+          <a href="paginaburger.html" class="inline-block mt-4 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+            Explorar el menú →
+          </a>
+        </div>
+        <!-- Table -->
         <div class="overflow-x-auto">
           <table class="min-w-full text-xs">
-            <thead class="bg-gray-50 text-gray-500">
-              <tr>
-                <th class="px-3 py-2 text-left font-semibold">Fecha</th>
-                <th class="px-3 py-2 text-left font-semibold">Estado</th>
-                <th class="px-3 py-2 text-left font-semibold">Pago</th>
-                <th class="px-3 py-2 text-left font-semibold">Detalle</th>
-                <th class="px-3 py-2 text-right font-semibold">Total</th>
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,.07);">
+                <th class="px-3 py-2 text-left font-bold text-slate-600 text-[10px] uppercase tracking-wider">Fecha</th>
+                <th class="px-3 py-2 text-left font-bold text-slate-600 text-[10px] uppercase tracking-wider">Estado</th>
+                <th class="px-3 py-2 text-left font-bold text-slate-600 text-[10px] uppercase tracking-wider">Pago</th>
+                <th class="px-3 py-2 text-left font-bold text-slate-600 text-[10px] uppercase tracking-wider">Detalle</th>
+                <th class="px-3 py-2 text-right font-bold text-slate-600 text-[10px] uppercase tracking-wider">Total</th>
               </tr>
             </thead>
-            <tbody id="dash-orders" class="divide-y divide-gray-100"></tbody>
+            <tbody id="dash-orders" class="divide-y" style="border-color:rgba(255,255,255,.05);"></tbody>
           </table>
         </div>
-      </section>
-    </section>
+      </div>
+
+    </section><!-- /dashboard -->
   </main>
 
-  <!-- Sticky cart CTA (móvil): lee el carrito del menú desde localStorage -->
+  <!-- ═══ STICKY CART (mobile) ══════════════════════════════════ -->
   <div id="client-sticky-cart" class="fixed bottom-0 left-0 right-0 md:hidden z-30 hidden">
-    <div class="mx-auto max-w-4xl px-4 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
-      <div class="bg-white/95 dark:bg-gray-900/95 backdrop-blur border border-gray-200 dark:border-white/10 rounded-2xl shadow-lg flex items-center justify-between gap-3 p-3">
+    <div class="max-w-4xl mx-auto px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+.75rem)]">
+      <div class="rounded-2xl flex items-center justify-between gap-3 p-3.5"
+           style="background:rgba(7,10,18,.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);box-shadow:0 -8px 32px rgba(0,0,0,.38);">
         <div class="min-w-0">
-          <div id="client-sticky-title" class="text-sm font-black text-gray-900 dark:text-gray-100">Tu carrito</div>
-          <div id="client-sticky-sub" class="text-xs text-gray-600 dark:text-gray-300 truncate">0 artículos · $0</div>
+          <div id="client-sticky-title" class="text-sm font-black text-white">Tu carrito</div>
+          <div id="client-sticky-sub" class="text-xs text-slate-400 truncate">0 artículos · $0</div>
         </div>
-        <a id="client-sticky-btn" href="paginaburger.html" class="sr-btn sr-btn-primary inline-flex items-center justify-center px-4 text-sm font-black" aria-label="Ir al menú">
+        <a id="client-sticky-btn" href="paginaburger.html"
+           class="c2-btn text-sm px-4 py-2.5 font-black" aria-label="Ir al menú">
           Explorar combos
         </a>
       </div>
     </div>
   </div>
+
+  <!-- Tab switcher -->
+  <script>
+    (function() {
+      var tl = document.getElementById('tab-login-btn');
+      var tr = document.getElementById('tab-register-btn');
+      var pl = document.getElementById('panel-login');
+      var pr = document.getElementById('panel-register');
+      function go(v) {
+        var isL = v === 'l';
+        tl.classList.toggle('on', isL);
+        tl.classList.toggle('text-slate-500', !isL);
+        tr.classList.toggle('on', !isL);
+        tr.classList.toggle('text-slate-500', isL);
+        pl.classList.toggle('hidden', !isL);
+        pr.classList.toggle('hidden', isL);
+      }
+      tl.addEventListener('click', function() { go('l'); });
+      tr.addEventListener('click', function() { go('r'); });
+    })();
+  </script>
 
   <script type="module" src="js/firebase-config.js"></script>
   <script>
@@ -988,6 +1167,12 @@
               setText('dash-nombre', cliente.nombre || cliente.correo || 'Cliente');
               const puntos = Number(cliente.puntos != null ? cliente.puntos : 0);
               setText('dash-puntos', String(puntos));
+              // Actualizar anillo de progreso de puntos (máx referencial: 150 pts = 100%)
+              const _ring = byId('dash-points-ring');
+              if (_ring) {
+                const _pct = Math.min(100, (puntos / 150) * 100).toFixed(1);
+                _ring.style.setProperty('--ring', _pct + '%');
+              }
               const d = cliente.direccion || {};
               const direccionTexto = (d.formatted || '').trim() || [d.calle, d.numero, d.colonia].filter(Boolean).join(' ');
               const principalMeta = formatDistanceCost(d.distanceKm, d.deliveryPrice, d.durationMin);
@@ -1145,17 +1330,30 @@
               const paid = !!o.paid;
               const payLabel = isOnline ? (paid ? 'Pagado' : 'Pago pendiente') : 'Se paga al recibir';
 
+              const statusStyles = {
+                pendiente:   'background:rgba(245,158,11,.12);color:#fbbf24',
+                preparando:  'background:rgba(56,189,248,.12);color:#38bdf8',
+                listo:       'background:rgba(168,85,247,.12);color:#c084fc',
+                'en camino': 'background:rgba(22,163,74,.12);color:#4ade80',
+                entregado:   'background:rgba(100,116,139,.1);color:#94a3b8',
+                cancelado:   'background:rgba(239,68,68,.1);color:#f87171',
+              };
+              const statusStyle = statusStyles[statusKey] || 'background:rgba(100,116,139,.1);color:#94a3b8';
+              const payStyle = paid
+                ? 'background:rgba(22,163,74,.12);color:#4ade80'
+                : 'background:rgba(245,158,11,.12);color:#fbbf24';
+
               return `
-                <tr class="hover:bg-gray-50">
-                  <td class="px-3 py-2 align-top whitespace-nowrap">${fecha}</td>
-                  <td class="px-3 py-2 align-top whitespace-nowrap">
-                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700">${statusLabel}</span>
+                <tr class="orow">
+                  <td class="px-3 py-2.5 align-top whitespace-nowrap text-slate-400">${fecha}</td>
+                  <td class="px-3 py-2.5 align-top whitespace-nowrap">
+                    <span class="obadge" style="${statusStyle}">${statusLabel}</span>
                   </td>
-                  <td class="px-3 py-2 align-top whitespace-nowrap">
-                    <span class="inline-flex items-center rounded-full ${paid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'} px-2 py-0.5 text-[11px] font-semibold">${payLabel}</span>
+                  <td class="px-3 py-2.5 align-top whitespace-nowrap">
+                    <span class="obadge" style="${payStyle}">${payLabel}</span>
                   </td>
-                  <td class="px-3 py-2 align-top text-gray-700">${detalle || '—'}</td>
-                  <td class="px-3 py-2 align-top text-right font-semibold">${total}</td>
+                  <td class="px-3 py-2.5 align-top text-slate-400">${detalle || '—'}</td>
+                  <td class="px-3 py-2.5 align-top text-right font-semibold text-slate-200">${total}</td>
                 </tr>`;
             }).join('');
           } catch (e) {
@@ -1173,5 +1371,8 @@
   </script>
   <script src="js/cliente-location.js"></script>
   <script src="js/maps-loader.js"></script>
+
+  <!-- Chatbot flotante Burgy -->
+  <script src="js/sr-chatbot.js" defer></script>
 </body>
 </html>

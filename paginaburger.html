@@ -5,6 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, minimum-scale=1.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no">
     <title>SR & SRA BURGER - ¡Hechas con Pasión!</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🍔</text></svg>">
+
+    <!-- ══ SKILL-02: Resource hints PRIMERO — antes de cualquier script bloqueante ══ -->
+    <!-- Preconnect: establece TCP+TLS con CDNs antes de que el parser llegue a usarlos -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <!-- DNS-prefetch: fallback para browsers que no soportan preconnect -->
+    <link rel="dns-prefetch" href="https://i.imgur.com">
+    <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com">
+    <!-- Preload: imagen hero above-the-fold (crítica para LCP) -->
+    <link rel="preload" as="image" href="https://i.imgur.com/TSTuaNr.jpg" fetchpriority="high">
+    <!-- SKILL-06: modulepreload firebase-config para que el SW de Firebase arranque antes -->
+    <link rel="modulepreload" href="js/firebase-config.js">
+
+    <!-- ══ Dark mode inline — DEBE ser síncrono para evitar FOUC ══ -->
     <script>
         // Enable class-based dark mode for Tailwind CDN
         window.tailwind = window.tailwind || {};
@@ -17,12 +35,42 @@
             const useDark = stored ? stored === 'dark' : true;
             document.documentElement.classList.toggle('dark', useDark);
         })();
+
+        // SKILL-04: Silenciar console.log/warn/info en producción para no desperdiciar CPU
+        (function () {
+            const isLocal = location.hostname === 'localhost'
+                || location.hostname === '127.0.0.1'
+                || location.hostname.startsWith('192.168.')
+                || location.hostname.startsWith('10.');
+            if (!isLocal) {
+                const noop = function () {};
+                console.log = noop;
+                console.warn = noop;
+                console.info = noop;
+                console.debug = noop;
+                // console.error se conserva para errores reales
+            }
+        })();
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- SKILL-11: CSS Tailwind compilado — reemplaza CDN bloqueante -->
+    <!-- Compilar con: node node_modules/tailwindcss/lib/cli.js -- -i styles/input.css -o styles/tailwind.min.css --minify -->
+    <link rel="stylesheet" href="styles/tailwind.min.css">
+
+    <!-- Fuentes Google: display=swap asegura que el texto sea visible antes de cargar la fuente -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="preload" as="image" href="https://i.imgur.com/TSTuaNr.jpg">
+
+    <!-- SKILL-05: Font Awesome async — deja de bloquear el renderizado inicial -->
+    <!-- preload + onload: la hoja se descarga en paralelo y se aplica al terminar -->
+    <link rel="preload" as="style"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    </noscript>
+
+    <!-- Theme toggle: bind después de que el DOM exista -->
     <script>
-        // Theme toggle (light/dark) - bind after DOM exists
         window.addEventListener('DOMContentLoaded', () => {
             const key = 'sr_theme';
             const btn = document.getElementById('theme-toggle');
@@ -35,7 +83,6 @@
             });
         });
     </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Estilos personalizados -->
     <style>
         :root {
@@ -2428,6 +2475,131 @@
             border-color: rgba(239, 68, 68, 0.28) !important;
             color: #FCA5A5 !important;
         }
+
+        /* ═══════════════════════════════════════════════════════════
+           SPA PERFORMANCE SYSTEM — Transiciones, Skeletons, Lazy
+           Generado por spa-router.js
+        ═══════════════════════════════════════════════════════════ */
+
+        /* ── content-visibility: diferir render de secciones lejanas ── */
+        #nosotros,
+        #faq,
+        footer {
+            content-visibility: auto;
+            /* estimado conservador para evitar layout jumps */
+            contain-intrinsic-size: 0 700px;
+        }
+
+        /* ── Shimmer base para skeletons ── */
+        @keyframes spa-shimmer-move {
+            0%   { background-position: -400px 0; }
+            100% { background-position:  400px 0; }
+        }
+
+        .spa-shimmer {
+            background: linear-gradient(
+                90deg,
+                #f0f0f0 25%,
+                #e6e6e6 37%,
+                #f0f0f0 63%
+            );
+            background-size: 800px 100%;
+            animation: spa-shimmer-move 1.5s ease-in-out infinite;
+        }
+
+        html.dark .spa-shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(30,41,59,0.9) 25%,
+                rgba(51,65,85,1)   37%,
+                rgba(30,41,59,0.9) 63%
+            );
+            background-size: 800px 100%;
+        }
+
+        /* ── Skeleton grid del menú ── */
+        .spa-sk-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            padding: 0 0.25rem;
+        }
+        @media (min-width: 480px)  { .spa-sk-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; } }
+        @media (min-width: 640px)  { .spa-sk-grid { grid-template-columns: repeat(3, 1fr); gap: 1.25rem; } }
+        @media (min-width: 1024px) { .spa-sk-grid { grid-template-columns: repeat(4, 1fr); gap: 1.5rem; } }
+
+        .spa-sk-card {
+            border-radius: 16px;
+            overflow: hidden;
+            background: #f9fafb;
+        }
+        html.dark .spa-sk-card {
+            background: rgba(15,23,42,0.55);
+        }
+
+        .spa-sk-img {
+            aspect-ratio: 1 / 1;
+            width: 100%;
+        }
+
+        .spa-sk-body {
+            padding: 0.625rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .spa-sk-line {
+            height: 12px;
+            border-radius: 9999px;
+        }
+
+        .spa-sk-price {
+            height: 20px;
+            width: 50%;
+            border-radius: 9999px;
+            margin-top: 2px;
+        }
+
+        .spa-sk-btn {
+            height: 36px;
+            border-radius: 10px;
+            margin-top: 6px;
+        }
+
+        .spa-sk-header {
+            padding: 0 0.25rem 1.25rem;
+        }
+
+        /* ── Imagen reveal al cargar ── */
+        @keyframes spa-img-reveal {
+            from { opacity: 0.5; transform: scale(1.02); }
+            to   { opacity: 1;   transform: scale(1); }
+        }
+        .spa-img-reveal {
+            animation: spa-img-reveal 0.3s ease-out forwards;
+        }
+
+        /* ── Enlace activo en nav ── */
+        .spa-nav-active {
+            color: var(--primary-gold) !important;
+        }
+        .spa-nav-active > span.absolute {
+            width: 100% !important;
+        }
+
+        /* ── Dark mode: tinte oscuro en el overlay de transición ── */
+        html.dark #spa-overlay {
+            --spa-overlay-bg: rgba(11, 18, 32, 0.5);
+        }
+
+        /* ── prefers-reduced-motion: desactivar todo lo animado del SPA ── */
+        @media (prefers-reduced-motion: reduce) {
+            .spa-shimmer { animation: none !important; background: #e8e8e8 !important; }
+            html.dark .spa-shimmer { background: rgba(30,41,59,0.9) !important; }
+            #spa-overlay { display: none !important; }
+            .spa-img-reveal { animation: none !important; }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-950 dark:text-gray-100">
@@ -2562,7 +2734,12 @@
     <div id="mobile-menu-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"></div>
 
     <section class="hero-bg text-white min-h-[70vh] sm:min-h-[80vh] flex items-center relative overflow-hidden">
-        <img src="https://i.imgur.com/TSTuaNr.jpg" alt="" class="absolute inset-0 w-full h-full object-cover" fetchpriority="high" loading="eager" decoding="async" referrerpolicy="no-referrer">
+        <!-- SKILL-03: width+height explícitos → browser reserva espacio → CLS=0 -->
+        <img src="https://i.imgur.com/TSTuaNr.jpg"
+             alt="Fondo SR y SRA Burger — hamburguesas artesanales en Minatitlán"
+             width="1920" height="1080"
+             class="absolute inset-0 w-full h-full object-cover"
+             fetchpriority="high" loading="eager" decoding="auto" referrerpolicy="no-referrer">
         <div class="absolute inset-0 bg-black/10"></div>
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <div class="max-w-4xl mx-auto">
@@ -4117,7 +4294,8 @@
                 });
             })();
         </script>
-        <script src="js/script.js.backup?v=2026-02-27a"></script>
+        <!-- SKILL-01: defer — no bloquea el parser HTML; el script corre tras DOMContentLoaded -->
+        <script src="js/script.js.backup?v=2026-02-27a" defer></script>
 
         <!-- UX enhancements: sticky category nav, cart badge pop, checkout prefill -->
         <script>
@@ -4322,6 +4500,12 @@
             });
         })();
         </script>
+
+        <!-- SPA Performance Router: transiciones, prefetch, skeleton screens -->
+        <script src="js/spa-router.js"></script>
+
+        <!-- Chatbot flotante Burgy -->
+        <script src="js/sr-chatbot.js" defer></script>
 
 </body>
 </html>

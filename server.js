@@ -656,390 +656,320 @@ function printAddresses(port) {
 // ═══════════════════════════════════════════════════════════════════════════
 // WHATSAPP — Notificaciones de pedidos via Baileys
 // ═══════════════════════════════════════════════════════════════════════════
-let _whatsapp = null;
-function getWA() {
-  if (!_whatsapp) {
-    try {
-      const { getInstance } = require('./services/whatsapp');
-      _whatsapp = getInstance();
-      _whatsapp.init().catch(e => console.error('[WA init]', e.message));
-    } catch (e) {
-      console.error('[WA load]', e.message);
-    }
-  }
-  return _whatsapp;
-}
-
-// SSE: stream de eventos en tiempo real (QR, conexión, desconexión)
-app.get('/api/whatsapp/events', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders();
-
-  const send = (event, data) =>
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-
-  // Estado actual al conectar
-  const wa = getWA();
-  if (wa) {
-    const s = wa.getStatus();
-    if (s.hasQr)     send('qr',         { qrDataUrl: s.qrDataUrl });
-    if (s.connected) send('connected',   { phoneNumber: s.phoneNumber });
-  }
-
-  const onQr   = (qrDataUrl)          => send('qr',          { qrDataUrl });
-  const onConn = ({ phoneNumber })    => send('connected',    { phoneNumber });
-  const onDisc = ({ loggedOut } = {}) => send('disconnected', { loggedOut });
-  const onReconn = ()                 => send('reconnecting', {});
-
-  if (wa) {
-    wa.on('qr',           onQr);
-    wa.on('connected',    onConn);
-    wa.on('disconnected', onDisc);
-    wa.on('reconnecting', onReconn);
-  }
-
-  req.on('close', () => {
-    if (wa) {
-      wa.off('qr',           onQr);
-      wa.off('connected',    onConn);
-      wa.off('disconnected', onDisc);
-      wa.off('reconnecting', onReconn);
-    }
-  });
-});
-
-// Estado actual
-app.get('/api/whatsapp/status', (req, res) => {
-  const wa = getWA();
-  if (!wa) return res.json({ ok: true, connected: false, hasQr: false });
-  res.json({ ok: true, ...wa.getStatus() });
-});
-
-// Lista de grupos (requiere estar conectado)
-app.get('/api/whatsapp/groups', async (req, res) => {
-  const wa = getWA();
-  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
-  try {
-    const groups = await wa.getGroups();
-    res.json({ ok: true, groups });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// Guardar grupo destino
-// type: 'orders' (cocina/pedidos, default) | 'delivery' (repartidores)
-app.post('/api/whatsapp/set-group', (req, res) => {
-  const { groupId, groupName, type } = req.body || {};
-  if (!groupId) return res.status(400).json({ ok: false, error: 'groupId requerido' });
-  const wa = getWA();
-  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
-  wa.saveConfig(groupId, groupName || groupId, type || 'orders');
-  res.json({ ok: true, groupId, groupName, type: type || 'orders' });
-});
-
-// Configuración guardada
-app.get('/api/whatsapp/config', (req, res) => {
-  const wa = getWA();
-  if (!wa) return res.json({ ok: true, config: { groupId: null, groupName: null } });
-  res.json({ ok: true, config: wa.getConfig() });
-});
-
-// Mensaje de prueba — Cocina
-app.post('/api/whatsapp/send-test', async (req, res) => {
-  const wa = getWA();
-  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
-  try {
-    const text = req.body?.text || '🍔 *Prueba — SR & SRA BURGER*\n✅ Las notificaciones de pedidos están activas en el grupo *Cocina*.';
-    await wa.sendToGroup(text);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(400).json({ ok: false, error: e.message });
-  }
-});
-
-// Mensaje de prueba — Repartidores
-app.post('/api/whatsapp/send-test-delivery', async (req, res) => {
-  const wa = getWA();
-  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
-  try {
-    const config = wa.getConfig();
-    if (!config.deliveryGroupId) {
-      return res.status(400).json({ ok: false, error: 'No hay grupo de repartidores configurado. Ve a /notifi.html y selecciónalo en la pestaña Repartidores.' });
-    }
-    const text = req.body?.text || '🛵 *Prueba — SR & SRA BURGER*\n✅ Las notificaciones de envíos están activas en el grupo *Repartidores*.\n📍 Los pedidos de domicilio llegarán aquí con dirección y link de Maps.';
-    await wa.sendToDeliveryGroup(text);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(400).json({ ok: false, error: e.message });
-  }
-});
-
-// Notificación de nuevo pedido (llamada desde controldeenvios.html)
-app.post('/api/whatsapp/notify-order', async (req, res) => {
-  const wa = getWA();
-  if (!wa) return res.status(503).json({ ok: false, error: 'Servicio no disponible' });
-
-  const order = req.body?.order || {};
-  const forceAll = !!req.body?.forceAll;
-  const result = { ok: false, kitchen: false, delivery: false };
-
-  // 1) Mensaje completo → grupo Cocina/Pedidos
-  try {
-    const text = buildOrderMessage(order);
-    await wa.sendToGroup(text);
-    result.kitchen = true;
-    result.ok      = true;
-  } catch (e) {
-    result.kitchenError = e.message;
-    console.error('[WA] Error enviando a cocina:', e.message);
-    return res.status(400).json({ ...result, error: e.message });
-  }
-
-  // 2) Si es entrega a domicilio O forceAll → mensaje a repartidores
-  const deliveryType = order.deliveryType || order.type || '';
-  const isDelivery   = forceAll || /delivery|envío|envio|domicilio/i.test(deliveryType);
-  const config       = wa.getConfig();
-
-  if (isDelivery && config.deliveryGroupId) {
-    try {
-      const deliveryText = buildDeliveryMessage(order);
-      await wa.sendToDeliveryGroup(deliveryText);
-      result.delivery = true;
-      console.log('[WA] Mensaje de repartidor enviado al grupo:', config.deliveryGroupName || config.deliveryGroupId);
-    } catch (e) {
-      result.deliveryError = e.message;
-      console.error('[WA] Error enviando a repartidores:', e.message);
-    }
-  }
-
-  res.json(result);
-});
-
-// Cerrar sesión de WhatsApp
-app.delete('/api/whatsapp/logout', async (req, res) => {
-  const wa = getWA();
-  if (!wa) return res.json({ ok: true });
-  try {
-    await wa.logout();
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// ── Formateador de mensaje de pedido ────────────────────────────────────────
-function buildOrderMessage(order) {
-  const SEP  = '━━━━━━━━━━━━━━━━━━━━━━';
-  const SEP2 = '──────────────────────';
-  const lines = [];
-
-  const customer = order.customer || {};
-  const name  = customer.name  || order.customerName  || 'Sin nombre';
-  const phone = customer.phone || order.customerPhone || '';
-  const addr  = customer.address || order.address || '';
-  const type  = order.deliveryType || order.type || '';
-  const isDelivery = /delivery|envío|envio|domicilio/i.test(type);
-
-  const now = new Date();
-  const hora = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-  // ── Encabezado ──────────────────────────────────────────
-  lines.push(SEP);
-  lines.push(`🍔 *NUEVO PEDIDO* — SR & SRA BURGER`);
-  lines.push(`⏰ ${hora}`);
-  lines.push(SEP);
-
-  // ── Cliente ─────────────────────────────────────────────
-  lines.push(`👤 *CLIENTE*`);
-  lines.push(`   ${name}`);
-  if (phone) lines.push(`   📱 ${phone}`);
-  lines.push('');
-
-  // ── Tipo de entrega & ubicación ──────────────────────────
-  if (isDelivery) {
-    lines.push(`🚗 *ENVÍO A DOMICILIO*`);
-    if (addr) lines.push(`   📍 ${addr}`);
-  } else {
-    lines.push(`🏪 *RECOGER EN LOCAL*`);
-  }
-  lines.push(SEP2);
-
-  // ── Productos ────────────────────────────────────────────
-  lines.push(`🛒 *PEDIDO*`);
-  lines.push('');
-
-  const items = Array.isArray(order.items) ? order.items : [];
-  if (items.length) {
-    items.forEach((item, i) => {
-      const n   = item.name || (item.baseItem && item.baseItem.name) || 'Artículo';
-      const qty = Number(item.quantity) || 1;
-      const p   = Number(item.price) || 0;
-      const priceStr = p ? ` — *$${(p * qty).toFixed(0)}*` : '';
-
-      lines.push(`${i + 1}. *${qty}x ${n}*${priceStr}`);
-
-      if (item.customizations && typeof item.customizations === 'string' && item.customizations.trim()) {
-        const parts = item.customizations.split(/\s*\|\s*/);
-        const normalParts = parts.filter(part => !/^Incluye:/i.test(part.trim()) && part.trim());
-        const includePart = parts.find(part => /^Incluye:/i.test(part.trim()));
-
-        if (normalParts.length > 1) {
-          // Combo con múltiples hamburguesas
-          lines.push(`   🍔 *Hamburguesas y más:*`);
-          normalParts.forEach((part, idx) => {
-            const isHotdog = /^Hot\s*Dog\s*:/i.test(part.trim());
-            const clean = part.trim()
-              .replace(/^Hamburguesa\s*(\d+\s*)?:\s*/i, '')
-              .replace(/^Hot\s*Dog\s*(\d+\s*)?:\s*/i, '')
-              .trim();
-            const icon = isHotdog ? '🌭' : '🍔';
-            lines.push(`      ${icon} ${clean}`);
-          });
-          if (includePart) {
-            const detail = includePart.replace(/^Incluye:\s*/i, '');
-            // Mostrar cada elemento del "Incluye" en su propia línea
-            const extras = detail.split(/\s*,\s*/).filter(Boolean);
-            lines.push(`   ✅ *Incluye:*`);
-            extras.forEach(e => lines.push(`      • ${e}`));
-          }
-        } else if (normalParts.length === 1) {
-          // Item individual con personalización
-          const single = normalParts[0].replace(/^Hamburguesa\s*:\s*/i, '').trim();
-          lines.push(`   🍔 ${single}`);
-          if (includePart) {
-            const detail = includePart.replace(/^Incluye:\s*/i, '');
-            lines.push(`   ✅ Incluye: ${detail}`);
-          }
-        } else {
-          // Texto libre (sin formato pipe)
-          lines.push(`   ↳ ${item.customizations}`);
-        }
-      }
-
-      if (item.specifications) {
-        lines.push(`   ⚠️ *Nota:* ${item.specifications}`);
-      }
-
-      lines.push('');
-    });
-  } else {
-    lines.push('   (sin detalle de productos)');
-    lines.push('');
-  }
-
-  // ── Totales & pago ───────────────────────────────────────
-  lines.push(SEP2);
-  const total = Number(order.total || 0);
-  if (total) lines.push(`💰 *TOTAL: $${total.toFixed(0)}*`);
-  if (order.paymentMethod) lines.push(`💳 *Pago:* ${order.paymentMethod}`);
-  if (order.notes) lines.push(`📝 *Notas:* ${order.notes}`);
-  lines.push(SEP);
-
-  return lines.join('\n');
-}
-
-// ── Mensaje simplificado para grupo de repartidores ─────────────────────────
-function buildDeliveryMessage(order) {
-  const SEP  = '━━━━━━━━━━━━━━━━━━━━━━';
-  const SEP2 = '──────────────────────';
-  const lines = [];
-
-  const customer = order.customer || {};
-  const name  = customer.name  || order.customerName  || 'Sin nombre';
-  const phone = customer.phone || order.customerPhone || '';
-  const addr  = customer.address || order.address      || '';
-
-  // Coordenadas guardadas del cliente registrado
-  const lat = customer.lat  || customer.latitude  || null;
-  const lng = customer.lng  || customer.longitude || null;
-  const coords = customer.coordinates || customer.coords || null;
-  const latFinal = lat || (coords && coords.lat) || null;
-  const lngFinal = lng || (coords && coords.lng) || null;
-  const mapsLink = latFinal && lngFinal
-    ? `https://maps.google.com/?q=${latFinal},${lngFinal}`
-    : null;
-
-  const total   = Number(order.total || 0);
-  const payment = order.paymentMethod || order.payment || '';
-  const paid    = order.isPaid === true || order.isPaid === 'true' || order.status === 'pagado';
-
-  // Calcular cambio automáticamente desde cashAmount
-  const cashRaw    = Number(order.cashAmount   || order.cashPaid  || 0);
-  const changeRaw  = Number(order.changeAmount || order.change    || 0);
-  // Si tenemos monto de pago, calcular cambio; si no, usar el preexistente
-  const cashAmount   = cashRaw  > 0 ? cashRaw  : null;
-  const changeAmount = cashAmount !== null
-    ? Math.max(0, cashAmount - total)   // calculado
-    : (changeRaw > 0 ? changeRaw : null); // ya guardado
-
-  const now  = new Date();
-  const hora = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-  lines.push(SEP);
-  lines.push(`🛵 *PEDIDO PARA ENTREGA*`);
-  lines.push(`⏰ ${hora}`);
-  lines.push(SEP);
-
-  // Cliente
-  lines.push(`👤 *CLIENTE*`);
-  lines.push(`   ${name}`);
-  if (phone) lines.push(`   📱 ${phone}`);
-  lines.push('');
-
-  // Dirección
-  lines.push(`📍 *DIRECCIÓN*`);
-  if (addr) lines.push(`   ${addr}`);
-  if (mapsLink) lines.push(`   🗺️ ${mapsLink}`);
-  if (!addr && !mapsLink) lines.push('   (sin dirección registrada)');
-  lines.push('');
-
-  // Cobro
-  lines.push(SEP2);
-  if (paid) {
-    lines.push(`✅ *YA PAGADO* — $${total.toFixed(0)}`);
-    if (payment) lines.push(`   Método: ${payment}`);
-  } else {
-    if (total)        lines.push(`💰 *COBRAR: $${total.toFixed(0)}*`);
-    if (payment)      lines.push(`💳 Pago con: ${payment}`);
-    if (cashAmount)   lines.push(`💵 Paga con: $${cashAmount.toFixed(0)}`);
-    if (changeAmount) lines.push(`🔄 Cambio:   $${changeAmount.toFixed(0)}`);
-  }
-
-  // Resumen de productos (solo nombres y cantidades, sin detalle)
-  const items = Array.isArray(order.items) ? order.items : [];
-  if (items.length) {
-    lines.push('');
-    lines.push(`🛒 *Productos:*`);
-    items.forEach(item => {
-      const n   = item.name || (item.baseItem && item.baseItem.name) || 'Artículo';
-      const qty = Number(item.quantity) || 1;
-      lines.push(`   • ${qty}x ${n}`);
-    });
-  }
-
-  lines.push(SEP);
-
-  return lines.join('\n');
-}
-
+// CHATBOT IA — Asistente virtual "Burgy" · SR & SRA BURGER
+// Requiere: GEMINI_API_KEY en .env
 // ═══════════════════════════════════════════════════════════════════════════
+const _chatRateLimit = new Map(); // ip → { count, resetAt }
+const CHAT_RATE = { window: 60_000, max: 15 }; // 15 msgs/min por IP
 
-function startServer(port, retries = 3) {
-  const server = app.listen(port, '0.0.0.0', () => printAddresses(port));
-  server.on('error', (err) => {
-    if ((err && err.code) === 'EADDRINUSE' && retries > 0) {
-      const next = port + 1;
-      console.warn(`Puerto ${port} en uso, intentando ${next}...`);
-      startServer(next, retries - 1);
-    } else {
-      console.error('No se pudo iniciar el servidor:', err);
-      process.exit(1);
-    }
-  });
+let _menuCache = { items: [], expiresAt: 0 };
+const MENU_CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+
+async function getChatMenuItems() {
+  if (Date.now() < _menuCache.expiresAt && _menuCache.items.length) return _menuCache.items;
+  try {
+    const admin = getFirebaseAdminApp();
+    if (!admin) return _menuCache.items;
+    const db = admin.firestore();
+    const snap = await db.collection('productos')
+      .where('disponible', '==', true)
+      .limit(80)
+      .get();
+    const items = snap.docs.map(doc => {
+      const d = doc.data();
+      return {
+        name:        String(d.nombre || d.name || '').trim(),
+        category:    String(d.categoria || d.category || 'Menú').trim(),
+        price:       Number(d.precio || d.price || 0),
+        description: String(d.descripcion || d.description || '').slice(0, 100),
+      };
+    }).filter(i => i.name);
+    _menuCache = { items, expiresAt: Date.now() + MENU_CACHE_TTL };
+    return items;
+  } catch (e) {
+    console.error('[Chat] Error cargando menú desde Firestore:', e.message);
+    return _menuCache.items; // devolver caché antigua si hay
+  }
+}
+// ── Prompt del chatbot (Burgy — guía de paginaburger.html) ───────────────────
+
+// Calcula solo la sección dinámica de estado del local (abierto/cerrado)
+function buildStatusSection() {
+  const nowMX = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+  const dayOfWeek = nowMX.getDay();
+  const hour = nowMX.getHours();
+  const timeDecimal = hour + nowMX.getMinutes() / 60;
+  let isOpen = false;
+  if (dayOfWeek === 1) { isOpen = false; }
+  else if (dayOfWeek >= 2 && dayOfWeek <= 5) { isOpen = timeDecimal >= 18 && timeDecimal < 22; }
+  else { isOpen = timeDecimal >= 16 && timeDecimal < 22; }
+  const statusNote = isOpen
+    ? '✅ El local está ABIERTO ahora mismo.'
+    : '🌙 El local está CERRADO en este momento. Informa el horario si te preguntan.';
+  return `━━━━ ESTADO DEL LOCAL ━━━━\n${statusNote}\nHorario: Lunes CERRADO | Mar–Vie 18:00–22:00 | Sáb–Dom 16:00–22:00`;
 }
 
-startServer(DEFAULT_PORT);
+// Cuerpo base (fallback si aún no hay prompt guardado en Firestore)
+const CHATBOT_PROMPT_DEFAULT = `Eres Burgy 🍔, el asistente guía de **Sr. y Sra. Burger** — dark kitchen de hamburguesas artesanales en Minatitlán, Veracruz, México.
+Tu función: orientar y resolver dudas sobre la página y el restaurante. NO tomas pedidos — los pedidos se hacen usando el carrito de la web. Sé amable y directo. Responde SIEMPRE en español. Usa emojis con moderación. Sé breve (máx. 4-5 líneas salvo que el tema requiera más).
+━━━━ 1. CÓMO HACER UN PEDIDO ━━━━
+Cuando alguien quiera pedir, explica estos pasos:
+1. Pulsa "Mostrar menú" para ver el catálogo.
+2. Abre la categoría deseada (Hamburguesas, Hot Dogs, Combos, Complementos).
+3. Pulsa el producto:
+   • "Personalizar" → elige toppings, tipo de papas (Francesas o Gajo), salsas Boneless (Natural, BBQ Dulce, BBQ Picante, Parmesano Ranch) o extras, luego confirma.
+   • "Agregar" → lo añade directo al carrito.
+4. Abre el carrito (ícono arriba a la derecha o barra flotante en móvil → "Tu Pedido").
+5. Revisa los productos y pulsa "Ordenar ahora".
+6. Completa el checkout en 3 pasos:
+   • Datos: tu nombre y teléfono.
+   • Entrega: elige "Recoger en local" (gratis) o "Envío a domicilio" (el costo se calcula automáticamente según tu colonia a $8/km).
+   • Confirmar: elige método de pago (Efectivo, Tarjeta, Pago en línea o Transferencia) y pulsa "Confirmar por WhatsApp".
+7. ¡Listo! Tiempo estimado: 25–35 min 🎉
+━━━━ 2. CÓMO REGISTRARSE / INICIAR SESIÓN ━━━━
+No necesitas cuenta para pedir, pero con una cuenta puedes:
+✅ Guardar tu dirección (el checkout se llena solo)
+✅ Acumular puntos (~1 punto por cada $10 gastado)
+✅ Obtener 10% de descuento en tu primera compra 🎁
+Pasos para registrarse:
+1. Pulsa el ícono de persona 🧑 en la barra superior → "Mi cuenta" (o ve directamente a cliente.html).
+2. Selecciona "Registrarse" e ingresa tu nombre, correo y contraseña.
+3. ¡Ya puedes pedir con tu dirección guardada y acumular puntos!
+━━━━ 3. MENÚ Y PRECIOS ━━━━
+🍔 HAMBURGUESAS
+• Sencilla $90 | Premium $105 | BBQ Beacon $115
+• Alohawai $120 | Chistorraburger $125 | Salchiburger $125
+• Choriargentina $125 | Guacamole $140 | Boneless Burger $150
+  (Boneless: elige salsa — Natural, BBQ Dulce, BBQ Picante o Parmesano Ranch)
+🌭 HOT DOGS
+• Hot Dog Jumbo $65
+🎁 COMBOS (incluyen la Premium; otra burger aplica diferencial de precio)
+• Combo Duo $190 | Triple Dog $215 | Combo Boneless $215
+• Combo Amigos $380 | Combo Familiar $680
+🍟 COMPLEMENTOS
+• Papas Francesas / Gajo: M $65 / XL $130
+• Salchipapas Parmesanas: M $90 / XL $140
+• Aros de Cebolla: M $50 / XL $95
+• Papas Complemento (extra a tu burger): $25
+━━━━ 4. ENVÍO Y ZONAS ━━━━
+📍 Recoger en local: SIN costo — Calle Coahuila #36, Col. Emiliano Zapata, Minatitlán, Ver.
+Envío a domicilio (la página calcula automáticamente a $8/km, máx. 12 km):
+• ~$40: Azteca, G. Díaz Ordaz, Congreso Constituyentes, Unver, Las Fuentes, Salinas de Gortari, Soto Innes, Reyes Azteca, Los Maestros, Infonavit Paquital, El Guayabal, Costa de Marfil (Entrada).
+• ~$50: Rosalinda, Infonavit Justo Sierra, Salubridad, Nueva Primero de Mayo, El Palmar, Santa Clara, Buena Vista Norte/Sur, Petrolera, 18 de Marzo, Reforma, Villas del Sol, Valle Alto, La Fuente, Framboyanes, Arboledas, Las Lomas, Nueva Mina, Insurgentes (Norte/Sur).
+• ~$55: Hidalgo, Niños Héroes, 20 de Noviembre, Cuauhtémoc, Obrera, Chapala, Ruiz Cortines, La Bomba, Miguel Hidalgo, Centro, Playón (Norte/Sur), Jagüey, Gravera, Praderas del Jagüey, El Mangal, Benito Juárez, Bohemia, Delicias, Esperanza, 16 de Septiembre, Tlapancalco, Patria Libre, San Antonio, San Pedro, Santa Isabel, Tierra y Libertad, Zaragoza, Vicente Guerrero, Vista Hermosa y Ampliaciones.
+• Colonia no listada: el sistema la calcula igual usando la distancia.
+━━━━ 5. CONTACTO ━━━━
+📞 Tel/WhatsApp: 922 159 3688
+📱 Instagram: @srysraburger | TikTok: @srsra.burger
+━━━━ 6. RESTRICCIONES ━━━━
+— Solo responde temas relacionados con el restaurante o el uso de la página.
+— NUNCA inventes productos, precios ni zonas de entrega.
+— NUNCA intentes tomar un pedido directamente — siempre redirige al carrito de la web.
+— Si no sabes algo, sugiere llamar al 922 159 3688.`;
+
+// Caché del prompt personalizado (cargado desde Firestore o archivo local)
+let _chatbotPromptCache = { text: null, expiresAt: 0 };
+const CHATBOT_PROMPT_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+// Ruta del archivo local de fallback (cuando Firebase Admin no está disponible)
+const BOTCONF_LOCAL_PATH = nodePath.join(__dirname, 'data', 'botconf.json');
+
+function loadBotconfLocal() {
+  try {
+    if (!fs.existsSync(BOTCONF_LOCAL_PATH)) return null;
+    const raw = fs.readFileSync(BOTCONF_LOCAL_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed.systemPrompt ? String(parsed.systemPrompt).trim() : null;
+  } catch (_) { return null; }
+}
+
+async function saveBotconfLocal(text) {
+  const dir = nodePath.dirname(BOTCONF_LOCAL_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(BOTCONF_LOCAL_PATH, JSON.stringify({ systemPrompt: text, updatedAt: new Date().toISOString() }), 'utf8');
+}
+
+async function loadCustomPromptFromFirestore() {
+  try {
+    const admin = getFirebaseAdminApp();
+    if (admin) {
+      const db = admin.firestore();
+      const snap = await db.collection('settings').doc('chatbot_config').get();
+      if (snap.exists && snap.data()?.systemPrompt) {
+        return String(snap.data().systemPrompt).trim();
+      }
+    }
+  } catch (e) {
+    console.error('[Chat] Firebase no disponible, usando archivo local:', e.message);
+  }
+  // Fallback: archivo local
+  return loadBotconfLocal();
+}
+
+async function getCachedCustomPrompt(forceReload = false) {
+  if (!forceReload && Date.now() < _chatbotPromptCache.expiresAt) {
+    return _chatbotPromptCache.text; // null = usar default
+  }
+  const text = await loadCustomPromptFromFirestore();
+  _chatbotPromptCache = { text, expiresAt: Date.now() + CHATBOT_PROMPT_CACHE_TTL };
+  return text;
+}
+
+// Construye el prompt final: sección dinámica + cuerpo (custom o default)
+async function buildChatSystemPrompt() {
+  const statusSection = buildStatusSection();
+  const customBody = await getCachedCustomPrompt();
+  const body = customBody || CHATBOT_PROMPT_DEFAULT;
+  return `${statusSection}\n\n${body}`;
+}
+
+function checkChatRateLimit(ip) {
+  const now = Date.now();
+  const entry = _chatRateLimit.get(ip);
+  if (!entry || entry.resetAt < now) {
+    _chatRateLimit.set(ip, { count: 1, resetAt: now + CHAT_RATE.window });
+    return true;
+  }
+  if (entry.count >= CHAT_RATE.max) return false;
+  entry.count++;
+  return true;
+}
+
+// Limpiar entradas expiradas del rate limiter cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of _chatRateLimit) {
+    if (entry.resetAt < now) _chatRateLimit.delete(ip);
+  }
+}, 5 * 60 * 1000);
+
+app.post('/api/chat', async (req, res) => {
+  // Rate limit por IP
+  const ip = String(req.ip || req.socket?.remoteAddress || 'unknown').replace(/^::ffff:/, '');
+  if (!checkChatRateLimit(ip)) {
+    return res.status(429).json({ ok: false, error: 'Demasiadas solicitudes. Espera un momento.' });
+  }
+
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) {
+    return res.status(503).json({ ok: false, error: 'Asistente no configurado en el servidor.' });
+  }
+
+  // Validar y sanitizar mensaje actual
+  const rawMessage = String(req.body?.message || '').replace(/<[^>]*>/g, '').trim();
+  if (!rawMessage) return res.status(400).json({ ok: false, error: 'Mensaje vacío.' });
+  if (rawMessage.length > 500) return res.status(400).json({ ok: false, error: 'Mensaje demasiado largo (máx. 500 caracteres).' });
+
+  // Validar y sanitizar historial (máx 10 turnos anteriores)
+  const rawHistory = Array.isArray(req.body?.history) ? req.body.history : [];
+  const history = rawHistory.slice(-10).map(m => ({
+    role: String(m.role || '') === 'model' ? 'model' : 'user',
+    text: String(m.content || '').replace(/<[^>]*>/g, '').slice(0, 500),
+  })).filter(m => m.text);
+
+  try {
+    const systemPrompt = await buildChatSystemPrompt();
+
+    // Construir array de turnos para Gemini (debe alternar user/model)
+    const contents = [];
+    for (const turn of history) {
+      contents.push({ role: turn.role, parts: [{ text: turn.text }] });
+    }
+    // Añadir mensaje actual del usuario al final
+    contents.push({ role: 'user', parts: [{ text: rawMessage }] });
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const geminiRes = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        generationConfig: { temperature: 0.75, maxOutputTokens: 1024, topP: 0.95 },
+      }),
+    });
+
+    if (!geminiRes.ok) {
+      const errBody = await geminiRes.json().catch(() => ({}));
+      console.error('[Chat] Gemini error', geminiRes.status, JSON.stringify(errBody).slice(0, 200));
+      return res.status(502).json({ ok: false, error: 'Error al conectar con el asistente de IA.' });
+    }
+
+    const data  = await geminiRes.json();
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!reply) {
+      console.error('[Chat] Gemini sin respuesta:', JSON.stringify(data).slice(0, 300));
+      return res.status(502).json({ ok: false, error: 'El asistente no pudo responder.' });
+    }
+
+    res.json({ ok: true, reply: reply.trim() });
+  } catch (e) {
+    console.error('[Chat] Error interno:', e.message);
+    res.status(500).json({ ok: false, error: 'Error interno del asistente.' });
+  }
+});
+
+// ── API de configuración del chatbot ────────────────────────────────────────
+
+// GET — devuelve el prompt actual (custom de Firestore o el default hardcodeado)
+app.get('/api/admin/botconf', async (req, res) => {
+  try {
+    const custom = await getCachedCustomPrompt();
+    res.json({
+      ok: true,
+      systemPrompt: custom !== null ? custom : CHATBOT_PROMPT_DEFAULT,
+      isDefault: custom === null,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST — guarda el prompt (Firestore si está disponible, archivo local como fallback)
+app.post('/api/admin/botconf', async (req, res) => {
+  try {
+    const text = String(req.body?.systemPrompt || '').trim();
+    if (!text) return res.status(400).json({ ok: false, error: 'systemPrompt no puede estar vacío' });
+
+    let savedTo = 'local';
+    try {
+      const admin = getFirebaseAdminApp();
+      if (admin) {
+        const db = admin.firestore();
+        await db.collection('settings').doc('chatbot_config').set({
+          systemPrompt: text,
+          updatedAt: new Date(),
+          updatedBy: 'botconf-api',
+        }, { merge: true });
+        savedTo = 'firestore';
+      }
+    } catch (fbErr) {
+      console.warn('[BotConf] Firebase no disponible, guardando en archivo local:', fbErr.message);
+    }
+
+    // Siempre guardar en archivo local como respaldo
+    await saveBotconfLocal(text);
+    // Actualizar caché en memoria al instante
+    _chatbotPromptCache = { text, expiresAt: Date.now() + CHATBOT_PROMPT_CACHE_TTL };
+    res.json({ ok: true, savedTo });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST — fuerza recarga del caché desde Firestore (o archivo local)
+app.post('/api/admin/botconf/reload', async (req, res) => {
+  try {
+    const text = await getCachedCustomPrompt(true);
+    res.json({ ok: true, reloaded: true, hasCustom: text !== null });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Arranque del servidor ────────────────────────────────────────────────────
+const PORT = DEFAULT_PORT;
+app.listen(PORT, '0.0.0.0', () => {
+  printAddresses(PORT);
+});
+

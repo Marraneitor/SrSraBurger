@@ -1,0 +1,6 @@
+/* Tailwind CSS de entrada — SR & SRA BURGER
+   Compilar con: npx tailwindcss -i styles/input.css -o styles/tailwind.min.css --minify
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

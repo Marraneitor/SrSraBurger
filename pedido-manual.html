@@ -3392,6 +3392,18 @@
                     <input type="radio" name="consumo-local-payment" value="Transferencia" class="form-radio text-indigo-600">
                     <span class="font-medium text-gray-800 dark:text-gray-100">🏦 Transferencia</span>
                 </label>
+
+                <!-- Calculadora de cambio (solo Efectivo) -->
+                <div id="consumo-local-cash-section" class="mt-1 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/40 rounded-xl">
+                    <label class="block text-xs font-semibold text-green-800 dark:text-green-300 mb-1">💵 ¿Con cuánto paga?</label>
+                    <input id="consumo-local-cash-input" type="number" min="0" step="10"
+                        placeholder="Ej: 200"
+                        class="w-full px-3 py-2 rounded-lg border border-green-300 dark:border-green-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                    <div id="consumo-local-cambio-display" class="mt-2 hidden">
+                        <span class="text-xs text-gray-500 dark:text-gray-400">Su cambio:</span>
+                        <span id="consumo-local-cambio-valor" class="ml-2 text-base font-bold text-green-600 dark:text-green-400">$0</span>
+                    </div>
+                </div>
             </div>
             <div class="p-5 pt-2 border-t dark:border-white/10 flex flex-col gap-2">
                 <button id="consumo-local-confirm-btn" type="button"
@@ -4469,6 +4481,10 @@
                                     });
                                 }
                                 specificationsStr = specsPieces.join(' | ');
+                                // Fallback: si no hay specs por elección, usar la nota general del combo
+                                if (!specificationsStr && ci.specifications) {
+                                    specificationsStr = String(ci.specifications).trim();
+                                }
                             } else {
                                 // ── Producto individual ──
                                 const parts = [];
@@ -4556,7 +4572,7 @@
                 // ══════════════════════════════════════════════════════
                 // CONSUMO LOCAL: registra venta sin datos de cliente
                 // ══════════════════════════════════════════════════════
-                window.__consumoLocalPlaceOrder = async function(payment) {
+                window.__consumoLocalPlaceOrder = async function(payment, cashAmount) {
                     const cart = readUnifiedCartForManual();
                     if (!cart.length) {
                         alert('El carrito está vacío');
@@ -4607,7 +4623,14 @@
                         subtotalAfterDiscount: Number(subtotal.toFixed(2)),
                         deliveryFee: 0,
                         total: Number(total.toFixed(2)),
-                        notes: 'Consumo Local (sin datos de cliente)',
+                        notes: (() => {
+                            let n = 'Consumo Local (sin datos de cliente)';
+                            if (/efectivo/i.test(payment) && cashAmount > 0) {
+                                const cambio = Math.max(0, cashAmount - total);
+                                n += ` | Pago: $${cashAmount.toFixed(2)} | Cambio: $${cambio.toFixed(2)}`;
+                            }
+                            return n;
+                        })(),
                         deliveryType: 'local',
                         paymentMethod: payment || 'Efectivo',
                         discountAmount: 0,
@@ -4648,6 +4671,13 @@
                     // Reset radio a Efectivo
                     const radios = consumoLocalModal.querySelectorAll('input[name="consumo-local-payment"]');
                     radios.forEach(r => { r.checked = r.value === 'Efectivo'; });
+                    // Reset campo de efectivo
+                    const cashInput = document.getElementById('consumo-local-cash-input');
+                    if (cashInput) cashInput.value = '';
+                    const cambioDisplay = document.getElementById('consumo-local-cambio-display');
+                    if (cambioDisplay) cambioDisplay.classList.add('hidden');
+                    const cashSection = document.getElementById('consumo-local-cash-section');
+                    if (cashSection) cashSection.classList.remove('hidden'); // Efectivo por defecto
                     // Actualizar estilos de labels
                     consumoLocalModal.querySelectorAll('label').forEach(lbl => {
                         const inp = lbl.querySelector('input');
@@ -4711,15 +4741,51 @@
                     });
                 }
 
+                // Mostrar/ocultar sección de efectivo y calcular cambio en tiempo real
+                function _updateConsumoLocalCashUI() {
+                    if (!consumoLocalModal) return;
+                    const selectedPayment = consumoLocalModal.querySelector('input[name="consumo-local-payment"]:checked')?.value || 'Efectivo';
+                    const cashSection = document.getElementById('consumo-local-cash-section');
+                    const cashInput = document.getElementById('consumo-local-cash-input');
+                    const cambioDisplay = document.getElementById('consumo-local-cambio-display');
+                    const cambioValor = document.getElementById('consumo-local-cambio-valor');
+                    if (!cashSection) return;
+                    const isEfectivo = /efectivo/i.test(selectedPayment);
+                    cashSection.classList.toggle('hidden', !isEfectivo);
+                    if (isEfectivo && cashInput && cambioDisplay && cambioValor) {
+                        const pago = parseFloat(cashInput.value) || 0;
+                        const cart = readUnifiedCartForManual();
+                        const total = cart.reduce((s, ci) => s + (Number(ci.price || 0) * (Number(ci.quantity || 1) || 1)), 0);
+                        if (pago > 0) {
+                            const cambio = Math.max(0, pago - total);
+                            cambioValor.textContent = '$' + cambio.toFixed(2);
+                            cambioDisplay.classList.remove('hidden');
+                        } else {
+                            cambioDisplay.classList.add('hidden');
+                        }
+                    }
+                }
+
+                if (consumoLocalModal) {
+                    consumoLocalModal.addEventListener('change', (e) => {
+                        if (e.target.name === 'consumo-local-payment') _updateConsumoLocalCashUI();
+                    });
+                    const cashInput = document.getElementById('consumo-local-cash-input');
+                    if (cashInput) cashInput.addEventListener('input', _updateConsumoLocalCashUI);
+                }
+
                 if (consumoLocalConfirmBtn) {
                     consumoLocalConfirmBtn.addEventListener('click', async () => {
                         const selectedPayment = consumoLocalModal
                             ? consumoLocalModal.querySelector('input[name="consumo-local-payment"]:checked')?.value || 'Efectivo'
                             : 'Efectivo';
+                        const cashInput = document.getElementById('consumo-local-cash-input');
+                        const cashAmount = (cashInput && /efectivo/i.test(selectedPayment))
+                            ? (parseFloat(cashInput.value) || 0) : 0;
                         closeConsumoLocalModal();
                         consumoLocalConfirmBtn.disabled = true;
                         try {
-                            await window.__consumoLocalPlaceOrder(selectedPayment);
+                            await window.__consumoLocalPlaceOrder(selectedPayment, cashAmount);
                         } finally {
                             consumoLocalConfirmBtn.disabled = false;
                         }
@@ -5256,7 +5322,8 @@
               '      "fries": "Gajo" | "Francesas" | null,',
               '      "onionRings": true | false,',
               '      "menuExtras": [ { "id": ID_EXTRA, "quantity": 1 } ],',
-              '      "bonelesGrams": 250 | 500 | 1000 | null',
+              '      "bonelesGrams": 250 | 500 | 1000 | null,',
+              '      "burgerChoices": ["nombre exacto burger 1", "nombre exacto burger 2"]',
               '    }',
               '  ],',
 
@@ -5288,6 +5355,11 @@
               '    * Salsas de boneles ("BBQ Picante", "BBQ Dulce", "Natural", "Parmesano Ranch") → specifications',
               '    * Otras indicaciones de preparación → specifications',
               '- specifications debe omitir lo que ya fue capturado en toppings, fries u onionRings.',
+              'Reglas para combos (productos con "Combo" en el nombre, como "Combo Familiar", "Combo Pareja", etc.):',
+              '- Si se mencionan las hamburguesas elegidas dentro del combo, llénalas en "burgerChoices" con el nombre exacto del menú.',
+              '- Ejemplo: "Combo Pareja: 1 PREMIUM y 1 ALOHA" → burgerChoices: ["PREMIUM BURGER", "ALOHA BURGER"]',
+              '- Si no se especifican, deja burgerChoices: [].',
+              '- Las instrucciones de preparación (sin cebolla, bien cocida) van en specifications, no en burgerChoices.',
               '- Para productos de la categoría "Boneles" (porciones de pollo): si se menciona peso:',
               '    * "500 gramos" / "500g" / "medio kilo" → bonelesGrams = 500',
               '    * "1000 gramos" / "1000g" / "1 kilo" / "1 kg" / "1kg" → bonelesGrams = 1000',
@@ -5369,7 +5441,9 @@
               const friesLine = (!_isBonelesPreview && it.fries) ? ` <span class="text-violet-300 text-xs">🍟 Papas ${escHtml(it.fries)}</span>` : '';
               const onionLine = it.onionRings ? ` <span class="text-violet-300 text-xs">🧅 Aros</span>` : '';
               const extrasLine = it.menuExtras && it.menuExtras.length ? ` <span class="text-violet-300 text-xs">${it.menuExtras.length} extra(s)</span>` : '';
-              return `<div class="flex justify-between gap-2"><span><b>${it.quantity}x</b> ${escHtml(name)}${bonelesLine}${spec}${toppingLine}${friesLine}${onionLine}${extrasLine}</span><span class="text-amber-300 font-semibold">$${sub}</span></div>`;
+              const burgerChoicesLine = (Array.isArray(it.burgerChoices) && it.burgerChoices.length)
+                ? ` <span class="text-green-300 text-xs">🍔 ${it.burgerChoices.map(escHtml).join(', ')}</span>` : '';
+              return `<div class="flex justify-between gap-2"><span><b>${it.quantity}x</b> ${escHtml(name)}${bonelesLine}${burgerChoicesLine}${spec}${toppingLine}${friesLine}${onionLine}${extrasLine}</span><span class="text-amber-300 font-semibold">$${sub}</span></div>`;
             }).join('');
 
             const clientLines = [
@@ -5403,6 +5477,19 @@
             const _extrasRef   = typeof window._srGetMenuExtras === 'function' ? window._srGetMenuExtras() : [];
             const _friesPrice  = typeof window._srGetFriesPrice === 'function' ? window._srGetFriesPrice() : 25;
             const _onionPrice  = typeof window._srGetOnionRingsPrice === 'function' ? window._srGetOnionRingsPrice() : 25;
+            const _menuFlat    = typeof window._srGetMenuFlat === 'function' ? window._srGetMenuFlat() : [];
+
+            // Helper: buscar hamburguesa por nombre aproximado
+            function _findBurgerByName(name) {
+              if (!name) return null;
+              const lower = String(name).toLowerCase().trim();
+              // Buscar en menú plano por coincidencia exacta o parcial
+              const exact = _menuFlat.find(m => m.name.toLowerCase() === lower);
+              if (exact) return typeof window._srFindItemById === 'function' ? window._srFindItemById(exact.id) : exact;
+              const partial = _menuFlat.find(m => m.name.toLowerCase().includes(lower) || lower.includes(m.name.toLowerCase()));
+              if (partial) return typeof window._srFindItemById === 'function' ? window._srFindItemById(partial.id) : partial;
+              return { id: 0, name: String(name).trim(), price: 0, image: '' };
+            }
 
             let added = 0;
             items.forEach(it => {
@@ -5410,6 +5497,47 @@
                 ? window._srFindItemById(it.id)
                 : null;
               if (!menuItem) return;
+
+              // ── Combo: construir item con isCombo + choices ────────────────
+              if (menuItem.isCombo) {
+                const burgerNames = Array.isArray(it.burgerChoices) ? it.burgerChoices : [];
+                const choices = burgerNames.map(name => ({
+                  burger: _findBurgerByName(name),
+                  customizations: [],
+                  fries: null,
+                  specifications: ''
+                }));
+                // Si no se especificaron hamburguesas, generar slots vacíos con "Hamburguesa" por defecto
+                const numBurgers = Number(menuItem.burgerChoices) || 0;
+                if (choices.length < numBurgers) {
+                  const defaultId = Array.isArray(menuItem.availableBurgers) ? menuItem.availableBurgers[0] : 1;
+                  const defaultBurger = (typeof window._srFindItemById === 'function' ? window._srFindItemById(defaultId) : null)
+                    || { id: defaultId, name: 'Hamburguesa', price: 0, image: '' };
+                  while (choices.length < numBurgers) {
+                    choices.push({ burger: defaultBurger, customizations: [], fries: null, specifications: '' });
+                  }
+                }
+                const friesSize = Number(menuItem.id) === 14 ? 'Grandes' : 'Medianas';
+                const qty = Math.max(1, parseInt(it.quantity) || 1);
+                for (let q = 0; q < qty; q++) {
+                  const comboItem = {
+                    id           : Date.now() * 100 + q,
+                    baseItem     : menuItem,
+                    choices      : JSON.parse(JSON.stringify(choices)),
+                    hotdogs      : null,
+                    includedFries: { type: it.fries || 'Gajo', size: friesSize },
+                    price        : menuItem.price || 0,
+                    quantity     : 1,
+                    isCombo      : true,
+                    specifications: it.specifications || ''
+                  };
+                  if (typeof window._srAddCartItem === 'function') {
+                    window._srAddCartItem(comboItem);
+                    added++;
+                  }
+                }
+                return; // saltar lógica normal de ítem individual
+              }
 
               // Detectar si es un ítem de la categoría Boneles (porciones de pollo)
               const _withCat = typeof window._srFindItemByIdWithCategory === 'function'

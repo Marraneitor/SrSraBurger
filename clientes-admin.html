@@ -145,6 +145,7 @@
                 <th class="px-3 py-2 text-left font-semibold">Fecha</th>
                 <th class="px-3 py-2 text-left font-semibold">Detalle</th>
                 <th class="px-3 py-2 text-right font-semibold">Total</th>
+                <th class="px-3 py-2 text-right font-semibold">Puntos</th>
                 <th class="px-3 py-2 text-right font-semibold">Acciones</th>
               </tr>
             </thead>
@@ -152,13 +153,53 @@
           </table>
         </div>
       </div>
-      <div class="px-4 py-2 border-t border-slate-800 text-[11px] text-slate-500">
-        Nota: Al eliminar un pedido solo se borra del historial y del panel de envíos. (Podemos ajustar puntos más adelante si lo necesitas.)
+      <div class="px-4 py-3 border-t border-slate-800 flex items-center justify-between gap-3">
+        <p class="text-[11px] text-slate-500">1 punto por cada $10 gastados. Los puntos se acreditan automáticamente al hacer el pedido.</p>
+        <button id="recalc-all-btn" class="text-[11px] px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-semibold flex items-center gap-1 whitespace-nowrap">
+          <i class="fas fa-calculator"></i> Recalcular todos
+        </button>
       </div>
     </div>
   </div>
 
   <script type="module" src="js/firebase-config.js"></script>
+  <script type="module">
+    import { collection, onSnapshot, query, where } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
+
+    // ── Listener en tiempo real: actualiza puntos cuando llegan nuevos pedidos ──
+    let _unsubOrders = null;
+
+    window._startOrdersPointsListener = function(manager) {
+      if (_unsubOrders) return; // ya está escuchando
+      try {
+        if (!window.firebaseDb) return;
+        const q = query(collection(window.firebaseDb, 'orders'), where('pointsCredited', '==', false));
+        _unsubOrders = onSnapshot(q, async (snap) => {
+          for (const change of snap.docChanges()) {
+            if (change.type !== 'added' && change.type !== 'modified') continue;
+            const order = { id: change.doc.id, ...change.doc.data() };
+            const uid = order.clienteId;
+            const total = Number(order.total || 0);
+            if (!uid || total <= 0) continue;
+            try {
+              const added = await manager.addPointsFromPaidOrderOnce(total, uid, order.id);
+              if (added > 0) {
+                // Refrescar la fila del cliente en la tabla si ya está visible
+                const tr = document.querySelector(`tr[data-client-id="${uid}"]`);
+                if (tr) {
+                  const ptCell = tr.querySelector('td:nth-child(4)');
+                  if (ptCell) {
+                    const snap2 = await manager.getClientById(uid).catch(() => null);
+                    if (snap2) ptCell.textContent = String(snap2.puntos || 0);
+                  }
+                }
+              }
+            } catch(_) { /* no interrumpir listener */ }
+          }
+        });
+      } catch(e) { console.warn('[Puntos live]', e.message); }
+    };
+  </script>
   <script>
     (function() {
       const byId = (id) => document.getElementById(id);
@@ -244,6 +285,11 @@
 
           if (reloadBtn) {
             reloadBtn.addEventListener('click', () => loadClients(manager));
+          }
+
+          // Arrancar listener de puntos en tiempo real
+          if (window._startOrdersPointsListener) {
+            window._startOrdersPointsListener(manager);
           }
 
           if (searchInput) {
@@ -408,11 +454,17 @@
               const detalle = Array.isArray(o.items)
                 ? o.items.map((it) => `${it.quantity || 1}x ${it.name || ''}`).join(', ')
                 : '';
+              const credited = o.pointsCredited === true;
+              const pointsEarned = o.pointsAdded || Math.floor(rawTotal / 10);
+              const puntosCell = credited
+                ? `<span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-900/50 text-emerald-300"><i class="fas fa-check"></i>+${pointsEarned} pts</span>`
+                : `<button class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-900/60 text-yellow-300 hover:bg-yellow-600 hover:text-white transition-colors" data-action="credit-points"><i class="fas fa-coins"></i>Acreditar ${Math.floor(rawTotal/10)} pts</button>`;
               return `
-                <tr data-order-id="${escapeHtml(o.id || '')}" data-order-total="${escapeHtml(rawTotal)}">
+                <tr data-order-id="${escapeHtml(o.id || '')}" data-order-total="${escapeHtml(rawTotal)}" data-credited="${credited ? '1' : '0'}">
                   <td class="px-3 py-2 align-top whitespace-nowrap text-slate-200">${escapeHtml(fecha)}</td>
                   <td class="px-3 py-2 align-top text-slate-300">${escapeHtml(detalle || '—')}</td>
                   <td class="px-3 py-2 align-top text-right font-semibold text-yellow-300">${escapeHtml(total)}</td>
+                  <td class="px-3 py-2 align-top text-right">${puntosCell}</td>
                   <td class="px-3 py-2 align-top text-right">
                     <button class="text-red-400 hover:text-red-200 text-[11px] font-semibold" data-action="delete-order">
                       <i class="fas fa-trash-alt mr-1"></i>Eliminar
@@ -423,8 +475,72 @@
 
             show(ordersModalTable);
 
-            // Delegar clicks en botones de eliminar
+            // ── Botón Recalcular todos ────────────────────────────────
+            const recalcBtn = byId('recalc-all-btn');
+            if (recalcBtn) {
+              recalcBtn.onclick = async function() {
+                recalcBtn.disabled = true;
+                recalcBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Calculando...';
+                let totalAdded = 0;
+                let credited = 0;
+                try {
+                  for (const o of orders) {
+                    if (o.pointsCredited) continue;
+                    const rawTotal = Number(o.total || 0);
+                    if (rawTotal <= 0 || !client.id) continue;
+                    const added = await manager.addPointsFromPaidOrderOnce(rawTotal, client.id, o.id);
+                    if (added > 0) { totalAdded += added; credited++; }
+                  }
+                  await loadClients(manager);
+                  // Re-abrir modal con datos frescos
+                  await openOrdersModal(manager, client);
+                  if (credited > 0) {
+                    alert(`✅ Se acreditaron ${totalAdded} puntos de ${credited} pedido(s) pendientes.`);
+                  } else {
+                    alert('Todos los pedidos ya tienen sus puntos acreditados.');
+                  }
+                } catch(e) {
+                  console.error('Error recalculando puntos:', e);
+                  alert('Hubo un error al recalcular. Revisa la consola.');
+                } finally {
+                  recalcBtn.disabled = false;
+                  recalcBtn.innerHTML = '<i class="fas fa-calculator"></i> Recalcular todos';
+                }
+              };
+            }
+
+            // ── Delegar clicks: acreditar por pedido y eliminar ──────────
             ordersModalBody.onclick = async function(e) {
+              // Acreditar puntos de un pedido individual
+              const btnCredit = e.target.closest('button[data-action="credit-points"]');
+              if (btnCredit) {
+                const tr = btnCredit.closest('tr[data-order-id]');
+                if (!tr) return;
+                const orderId = tr.getAttribute('data-order-id');
+                const totalRaw = Number(tr.getAttribute('data-order-total') || 0);
+                if (!orderId || !client.id) return;
+                btnCredit.disabled = true;
+                btnCredit.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+                try {
+                  const added = await manager.addPointsFromPaidOrderOnce(totalRaw, client.id, orderId);
+                  if (added > 0) {
+                    tr.setAttribute('data-credited', '1');
+                    const ptCell = tr.querySelector('td:nth-child(4)');
+                    if (ptCell) ptCell.innerHTML = `<span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-900/50 text-emerald-300"><i class="fas fa-check"></i>+${added} pts</span>`;
+                    await loadClients(manager);
+                  } else {
+                    btnCredit.disabled = false;
+                    btnCredit.innerHTML = '<i class="fas fa-coins"></i> Ya acreditado';
+                  }
+                } catch(err) {
+                  btnCredit.disabled = false;
+                  btnCredit.innerHTML = '<i class="fas fa-coins"></i> Error';
+                  console.error('Error acreditando puntos:', err);
+                }
+                return;
+              }
+
+              // Eliminar pedido
               const btn = e.target.closest('button[data-action="delete-order"]');
               if (!btn) return;
               const tr = btn.closest('tr[data-order-id]');
@@ -432,6 +548,7 @@
               const orderId = tr.getAttribute('data-order-id');
               if (!orderId) return;
               const totalRaw = Number(tr.getAttribute('data-order-total') || 0);
+              const wasCredited = tr.getAttribute('data-credited') === '1';
 
               const confirmDelete = window.confirm('¿Eliminar este pedido del historial? Esta acción no se puede deshacer.');
               if (!confirmDelete) return;
@@ -440,19 +557,15 @@
                 if (window.firebaseOrderManager && typeof window.firebaseOrderManager.deleteOrder === 'function') {
                   await window.firebaseOrderManager.deleteOrder(orderId);
                 }
-
-                // Restar puntos del cliente en base al total del pedido eliminado
-                try {
-                  if (window.firebaseClientManager && typeof window.firebaseClientManager.removePointsFromOrder === 'function' && totalRaw > 0) {
+                // Solo restar puntos si ya habían sido acreditados
+                if (wasCredited && window.firebaseClientManager && typeof window.firebaseClientManager.removePointsFromOrder === 'function' && totalRaw > 0) {
+                  try {
                     await window.firebaseClientManager.removePointsFromOrder(totalRaw, client.id);
-                    // Recargar lista de clientes para reflejar los nuevos puntos
                     await loadClients(manager);
+                  } catch (pointsErr) {
+                    console.warn('Error ajustando puntos del cliente:', pointsErr);
                   }
-                } catch (pointsErr) {
-                  console.warn('Error ajustando puntos del cliente:', pointsErr);
-                  alert('El pedido se eliminó, pero hubo un problema al ajustar los puntos del cliente.');
                 }
-
                 tr.remove();
                 if (!ordersModalBody.children.length) {
                   hide(ordersModalTable);
