@@ -38,7 +38,8 @@ function updateCheckoutTotals() {
 
 console.log('📦 Constantes globales definidas');
 
-// Función Haversine global — accesible desde cualquier scope
+// Funciones de distancia/zona de entrega globales — accesibles desde cualquier scope
+
 function calculateDistance(lat1, lng1, lat2, lng2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -48,6 +49,34 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
               Math.sin(dLng/2) * Math.sin(dLng/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
+}
+
+function calculateDeliveryPrice(distance) {
+    if (typeof distance !== 'number' || !isFinite(distance)) return null;
+    if (distance <= 0) return 0;
+    if (distance <= MAX_DELIVERY_DISTANCE) {
+        const kmToCharge = Math.max(1, Math.round(distance));
+        return kmToCharge * COSTO_POR_KM;
+    }
+    return null;
+}
+
+function getDeliveryZone(distance) {
+    const price = calculateDeliveryPrice(distance);
+    if (price !== null) {
+        return {
+            zone: `Envío a $${COSTO_POR_KM}/km`,
+            price: price,
+            color: 'green',
+            description: `Tarifa: $${COSTO_POR_KM} por KM (redondeo al entero más cercano)`
+        };
+    }
+    return {
+        zone: 'Fuera de cobertura',
+        price: null,
+        color: 'red',
+        description: `Lo sentimos, no llegamos a ${distance.toFixed(1)} km de distancia`
+    };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
