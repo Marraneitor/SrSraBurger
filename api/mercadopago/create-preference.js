@@ -5,6 +5,8 @@
 // Opcional:
 // - PUBLIC_BASE_URL (para back_urls). Si no se define, se intenta deducir del request.
 
+const { applyCors, checkRateLimit, getClientIp } = require('../_security');
+
 const DEFAULT_PORT = Number(process.env.PORT) || 3000;
 const MP_ACCESS_TOKEN = (process.env.MP_ACCESS_TOKEN || process.env.MERCADOPAGO_ACCESS_TOKEN || '').trim();
 
@@ -122,16 +124,19 @@ async function createMercadoPagoPreference(orderPayload, req) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Max-Age', '86400');
+  applyCors(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).json({ ok: true });
   }
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
+  // Rate limit: máx 10 preferencias/min por IP
+  const ip = getClientIp(req);
+  if (!checkRateLimit(ip, 'mp-create-pref', { max: 10, windowMs: 60000 })) {
+    return res.status(429).json({ ok: false, error: 'Demasiadas solicitudes. Intenta más tarde.' });
   }
 
   try {

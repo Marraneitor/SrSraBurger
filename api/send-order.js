@@ -3,6 +3,8 @@
 // Optional:
 // - PUBLIC_BASE_URL (para link de rastreo)
 
+const { applyCors, checkRateLimit, getClientIp } = require('./_security');
+
 function formatMoney(n) {
   try {
     return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(n || 0));
@@ -100,16 +102,19 @@ function buildOwnerMessage(body) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Max-Age', '86400');
+  applyCors(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).json({ ok: true });
   }
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
+  }
+
+  // Rate limit: máx 5 pedidos/min por IP
+  const ip = getClientIp(req);
+  if (!checkRateLimit(ip, 'send-order', { max: 5, windowMs: 60000 })) {
+    return res.status(429).json({ ok: false, error: 'Demasiadas solicitudes. Intenta más tarde.' });
   }
 
   try {

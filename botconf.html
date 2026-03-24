@@ -211,6 +211,23 @@ Usa el botón 'Plantilla de inicio' para ver un ejemplo."
 
   <!-- ── LOGIC ────────────────────────────────────────────────────────────── -->
   <script type="module">
+    // ── Admin Key helper ──────────────────────────────────────────────────
+    function getAdminKey() {
+      return localStorage.getItem('sr_admin_key') || '';
+    }
+    function promptAdminKey() {
+      let key = getAdminKey();
+      if (!key) {
+        key = prompt('Clave admin requerida (ADMIN_KEY):');
+        if (key) localStorage.setItem('sr_admin_key', key.trim());
+      }
+      return (key || '').trim();
+    }
+    function adminHeaders() {
+      const key = promptAdminKey();
+      return key ? { 'x-admin-key': key } : {};
+    }
+
     // ── Cargar configuración desde la API del servidor ───────────────────
     async function loadConfig() {
       try {
@@ -244,11 +261,14 @@ Usa el botón 'Plantilla de inicio' para ver un ejemplo."
       try {
         const res = await fetch('/api/admin/botconf', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...adminHeaders() },
           body: JSON.stringify({ systemPrompt: text }),
         });
         const data = await res.json();
-        if (!data.ok) throw new Error(data.error || 'Error al guardar');
+        if (!data.ok) {
+          if (res.status === 401 || res.status === 503) localStorage.removeItem('sr_admin_key');
+          throw new Error(data.error || 'Error al guardar');
+        }
 
         showToast('✅ Guardado y activo al instante', 'success');
         showStatus('ok', 'Guardado y activo');
@@ -268,7 +288,7 @@ Usa el botón 'Plantilla de inicio' para ver un ejemplo."
     window.reloadCache = async function () {
       try {
         showStatus('loading', 'Recargando caché...');
-        const r = await fetch('/api/admin/botconf/reload', { method: 'POST' });
+        const r = await fetch('/api/admin/botconf/reload', { method: 'POST', headers: adminHeaders() });
         const d = await r.json();
         if (d.ok) {
           showToast('🔄 Caché recargado — bot usando el contexto actualizado', 'success');

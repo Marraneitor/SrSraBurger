@@ -1,18 +1,23 @@
 // Vercel Serverless Function: reverse geocoding proxy via Nominatim (OpenStreetMap)
 // Used by cliente-location.js when the user moves the pin.
 
+const { applyCors, checkRateLimit, getClientIp } = require('./_security');
+
 module.exports = async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Max-Age', '86400');
+    applyCors(req, res);
 
     if (req.method === 'OPTIONS') {
       return res.status(200).json({ ok: true });
     }
     if (req.method !== 'GET') {
       return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    }
+
+    // Rate limit: máx 30 req/min por IP
+    const ip = getClientIp(req);
+    if (!checkRateLimit(ip, 'reverse-geocode', { max: 30, windowMs: 60000 })) {
+      return res.status(429).json({ ok: false, error: 'Demasiadas solicitudes. Intenta más tarde.' });
     }
 
     const lat = Number((req.query && (req.query.lat ?? req.query.latitude)) || NaN);

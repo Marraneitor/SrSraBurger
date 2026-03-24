@@ -4,6 +4,7 @@
 // Requiere env var: FIREBASE_SERVICE_ACCOUNT_JSON
 
 const firebaseAdmin = require('firebase-admin');
+const { applyCors, requireAdminKey } = require('../_security');
 
 // ── Firebase Admin ────────────────────────────────────────────────────────────
 let _app = null;
@@ -60,9 +61,7 @@ async function getCachedPrompt(forceReload = false) {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(req, res);
 
   if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -80,8 +79,9 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // POST — guarda el prompt
+  // POST — guarda el prompt (requiere ADMIN_KEY)
   if (req.method === 'POST') {
+    if (!requireAdminKey(req, res)) return;
     try {
       const text = String(req.body?.systemPrompt || '').trim();
       if (!text) return res.status(400).json({ ok: false, error: 'systemPrompt no puede estar vacío' });

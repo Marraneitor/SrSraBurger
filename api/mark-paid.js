@@ -2,10 +2,11 @@
 // Requires Firebase Admin credentials via env vars:
 // - FIREBASE_SERVICE_ACCOUNT_JSON (preferred on Vercel)
 //   or GOOGLE_APPLICATION_CREDENTIALS (advanced)
-// Optional:
-// - ADMIN_KEY (requires x-admin-key header)
+// Requires:
+// - ADMIN_KEY (x-admin-key header) — fail-closed si no está configurada
 
 const firebaseAdmin = require('firebase-admin');
+const { applyCors, requireAdminKey } = require('./_security');
 
 let _firebaseAdminApp = null;
 
@@ -31,15 +32,6 @@ function getFirebaseAdminApp() {
   return _firebaseAdminApp;
 }
 
-function requireAdminKey(req, res) {
-  const expected = (process.env.ADMIN_KEY || '').trim();
-  if (!expected) return true; // no auth configured
-  const provided = String(req.headers['x-admin-key'] || '').trim();
-  if (provided && provided === expected) return true;
-  res.status(401).json({ ok: false, error: 'Unauthorized' });
-  return false;
-}
-
 function computePointsFromOrderData(orderData) {
   const pointsEarned = Number(orderData && orderData.pointsEarned);
   if (Number.isFinite(pointsEarned) && pointsEarned >= 0) return Math.floor(pointsEarned);
@@ -58,10 +50,7 @@ function computePointsFromOrderData(orderData) {
 
 module.exports = async (req, res) => {
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-key');
-    res.setHeader('Access-Control-Max-Age', '86400');
+    applyCors(req, res);
 
     if (req.method === 'OPTIONS') {
       return res.status(200).json({ ok: true });

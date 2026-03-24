@@ -216,7 +216,33 @@ Al modificar código JS o HTML aplicar estas optimizaciones:
 
 ---
 
-## 7. Reglas Globales para Copilot / Claude
+## 7. Skills de Seguridad
+
+Al crear o modificar endpoints API (tanto en `server.js` como en `api/*.js`), aplicar estas reglas:
+
+1. **Módulo compartido**: toda función serverless debe usar `api/_security.js` para CORS, rate limiting y autenticación admin.
+2. **CORS restrictivo**: usar `applyCors(req, res)` en vez de `res.setHeader('Access-Control-Allow-Origin', '*')`. En producción definir `ALLOWED_ORIGIN` en las env vars de Vercel.
+3. **Rate limiting**: todo endpoint público debe llamar a `checkRateLimit(ip, endpoint, { max, windowMs })`. Límites recomendados:
+   - Envío de pedidos: `5/min`
+   - Geocoding/reverse: `30/min`
+   - Chat IA: `15/min`
+   - MercadoPago: `10–30/min`
+4. **Auth fail-closed**: `requireAdminKey(req, res)` niega acceso si `ADMIN_KEY` no está configurada (503). Nunca fallar abierto.
+5. **Endpoints admin**: todo POST a `/api/admin/*` y `/api/mark-paid` debe pasar por `requireAdminKey` antes de procesar.
+6. **Sanitización de entrada**: eliminar HTML de inputs de usuario (`String(x).replace(/<[^>]*>/g, '')`), limitar longitud de campos.
+7. **No exponer secretos**: nunca loguear API keys, tokens o credenciales. Los endpoints de config-check solo deben indicar si una variable existe, no su valor.
+8. **Headers de seguridad**: considerar añadir `X-Content-Type-Options: nosniff` y `X-Frame-Options: DENY` en responses sensibles.
+9. **Variables de entorno requeridas en producción**:
+   - `ADMIN_KEY` — clave para endpoints admin (obligatoria, sin ella los endpoints admin devuelven 503)
+   - `ALLOWED_ORIGIN` — dominio permitido para CORS (ej: `https://srburger.vercel.app`)
+   - `FIREBASE_SERVICE_ACCOUNT_JSON` — credenciales Firebase Admin
+   - `GEMINI_API_KEY` — para el chatbot
+   - `MP_ACCESS_TOKEN` — para MercadoPago
+10. **Rate limiting en serverless**: el rate limiter en memoria (`Map`) funciona dentro de una instancia caliente. Para protección global usar Upstash Redis en el futuro.
+
+---
+
+## 8. Reglas Globales para Copilot / Claude
 
 - **No crear archivos markdown de resumen** al terminar una tarea, a menos que el usuario lo pida explícitamente.
 - **No instalar paquetes npm** sin justificación y sin avisar primero.
@@ -229,7 +255,7 @@ Al modificar código JS o HTML aplicar estas optimizaciones:
 
 ---
 
-## 8. Comandos Frecuentes
+## 9. Comandos Frecuentes
 
 ```bash
 # Iniciar servidor local
@@ -242,7 +268,7 @@ npm run dev:lan
 
 ---
 
-## 9. Variables de Entorno
+## 10. Variables de Entorno
 
 El servidor usa `.env` (no commiteado). Variables esperadas:
 

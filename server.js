@@ -54,10 +54,14 @@ function getFirebaseAdminApp() {
 
 function requireAdminKey(req, res) {
   const expected = (process.env.ADMIN_KEY || '').trim();
-  if (!expected) return true; // no auth configured
+  if (!expected) {
+    // Fail-closed: si ADMIN_KEY no está configurada, negar acceso
+    res.status(503).json({ ok: false, error: 'ADMIN_KEY no configurada en el servidor.' });
+    return false;
+  }
   const provided = String(req.get('x-admin-key') || '').trim();
   if (provided && provided === expected) return true;
-  res.status(401).json({ ok: false, error: 'Unauthorized' });
+  res.status(401).json({ ok: false, error: 'No autorizado.' });
   return false;
 }
 
@@ -77,9 +81,35 @@ function computePointsFromOrderData(orderData) {
   return 0;
 }
 
-// Basic CORS for local dev (same-origin will also work)
-app.use(cors());
+// CORS — restringir a ALLOWED_ORIGIN en producción
+const ALLOWED_ORIGIN = (process.env.ALLOWED_ORIGIN || '').trim();
+app.use(cors(ALLOWED_ORIGIN ? { origin: ALLOWED_ORIGIN } : undefined));
 app.use(express.json({ limit: '1mb' }));
+
+// Rate limiting global (en memoria, funciona en servidor local persistente)
+const _globalRateLimit = new Map();
+function rateLimitMiddleware(max, windowMs) {
+  return (req, res, next) => {
+    const ip = String(req.ip || req.socket?.remoteAddress || 'unknown').replace(/^::ffff:/, '');
+    const key = `${req.path}:${ip}`;
+    const now = Date.now();
+    const entry = _globalRateLimit.get(key);
+    if (!entry || entry.resetAt < now) {
+      _globalRateLimit.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    if (entry.count >= max) {
+      return res.status(429).json({ ok: false, error: 'Demasiadas solicitudes. Intenta más tarde.' });
+    }
+    entry.count++;
+    next();
+  };
+}
+// Limpiar entradas expiradas cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _globalRateLimit) { if (v.resetAt < now) _globalRateLimit.delete(k); }
+}, 5 * 60 * 1000);
 
 // Serve static files from the project root
 const staticRoot = __dirname;
@@ -212,8 +242,8 @@ async function handleSendOrder(req, res) {
   }
 }
 
-app.post('/api/send-order', handleSendOrder);
-app.post('/api/send-orden', handleSendOrder);
+app.post('/api/send-order', rateLimitMiddleware(5, 60000), handleSendOrder);
+app.post('/api/send-orden', rateLimitMiddleware(5, 60000), handleSendOrder);
 
 // Crear preferencia de pago en Mercado Pago para "Pago en línea"
 async function createMercadoPagoPreference(orderPayload, req) {
@@ -925,8 +955,9 @@ app.get('/api/admin/botconf', async (req, res) => {
   }
 });
 
-// POST — guarda el prompt (Firestore si está disponible, archivo local como fallback)
+// POST — guarda el prompt (requiere ADMIN_KEY)
 app.post('/api/admin/botconf', async (req, res) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     const text = String(req.body?.systemPrompt || '').trim();
     if (!text) return res.status(400).json({ ok: false, error: 'systemPrompt no puede estar vacío' });
@@ -957,8 +988,9 @@ app.post('/api/admin/botconf', async (req, res) => {
   }
 });
 
-// POST — fuerza recarga del caché desde Firestore (o archivo local)
+// POST — fuerza recarga del caché (requiere ADMIN_KEY)
 app.post('/api/admin/botconf/reload', async (req, res) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     const text = await getCachedCustomPrompt(true);
     res.json({ ok: true, reloaded: true, hasCustom: text !== null });

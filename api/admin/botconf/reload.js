@@ -2,6 +2,7 @@
 // Fuerza recarga del caché del prompt del chatbot desde Firestore
 
 const firebaseAdmin = require('firebase-admin');
+const { applyCors, requireAdminKey } = require('../../_security');
 
 let _app = null;
 function getFirebaseAdminApp() {
@@ -18,12 +19,13 @@ function getFirebaseAdminApp() {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  applyCors(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Método no permitido.' });
   }
+  if (!requireAdminKey(req, res)) return;
   try {
     const admin = getFirebaseAdminApp();
     let hasCustom = false;

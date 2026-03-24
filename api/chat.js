@@ -4,6 +4,7 @@
 //   FIREBASE_SERVICE_ACCOUNT_JSON (opcional — para prompt personalizado desde Firestore)
 
 const firebaseAdmin = require('firebase-admin');
+const { applyCors, getClientIp } = require('./_security');
 
 // ── Firebase Admin (opcional) ────────────────────────────────────────────────
 let _firebaseAdminApp = null;
@@ -109,17 +110,16 @@ async function buildChatSystemPrompt() {
 
 // ── Handler principal ────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
+  applyCors(req, res);
+
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'Método no permitido.' });
   }
 
-  // CORS básico
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+  const ip = getClientIp(req);
   if (!checkChatRateLimit(ip)) {
     return res.status(429).json({ ok: false, error: 'Demasiadas solicitudes. Espera un momento.' });
   }
