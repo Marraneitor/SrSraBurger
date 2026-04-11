@@ -51,3 +51,6 @@ node_modules/
 
 # Google Maps key local (no subir)
 js/gmaps-key.local.js
+
+# WhatsApp auth (credentials - DO NOT COMMIT)
+data/wa-auth/

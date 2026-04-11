@@ -7,6 +7,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const firebaseAdmin = require('firebase-admin');
+const { getInstance: getWAService } = require('./services/whatsapp');
 
 // Cargar siempre el .env del directorio del proyecto (evita fallos si se ejecuta desde otra ruta)
 dotenv.config({ path: nodePath.join(__dirname, '.env') });
@@ -999,9 +1000,368 @@ app.post('/api/admin/botconf/reload', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RUTAS API — WhatsApp (Baileys)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Extrae datos comunes del objeto order de Firestore.
+ * Soporta los distintos nombres de campo que usa el frontend.
+ */
+function parseOrderFields(order) {
+  const customer     = order.customer || order.cliente || {};
+  const orderNumber  = String(order.orderNumber || order.order_number || order.id || '').trim();
+  const deliveryType = String(order.deliveryType || order.type || order.tipoEntrega || '').toLowerCase();
+  const isDelivery   = deliveryType === 'delivery' || deliveryType === 'domicilio';
+  const payment      = String(order.paymentMethod || order.payment || order.metodoPago || 'Efectivo').trim();
+  const notesRaw     = String(order.notes || order.notas || '');
+  const items        = Array.isArray(order.items) ? order.items : [];
+  const total        = Number(order.total || 0);
+  const subtotal     = Number(order.subtotal || 0);
+  const deliveryCost = Number(order.deliveryCost || order.costoEnvio || order.delivery || 0);
+
+  // Extraer cambio desde campo notes (ej: "Pago: $100 | Cambio: $10")
+  let pagoCon = 0;
+  let cambio  = 0;
+  const pagoMatch   = notesRaw.match(/Pago(?:\s+con)?\s*:\s*\$?([\d.,]+)/i);
+  const cambioMatch = notesRaw.match(/Cambio\s*:\s*\$?([\d.,]+)/i);
+  if (pagoMatch)   pagoCon = parseFloat(pagoMatch[1].replace(',', '.'))   || 0;
+  if (cambioMatch) cambio  = parseFloat(cambioMatch[1].replace(',', '.')) || 0;
+  if (!cambio && pagoCon > 0 && total > 0 && /efectivo/i.test(payment)) {
+    cambio = Math.max(0, pagoCon - total);
+  }
+
+  // Nota limpia (sin la parte de cambio/pago que ya se extrae arriba)
+  const notasClean = notesRaw
+    .replace(/Pago(?:\s+con)?\s*:\s*\$?[\d.,]+/gi, '')
+    .replace(/Cambio\s*:\s*\$?[\d.,]+/gi, '')
+    .replace(/\|\s*\|/g, '|')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
+
+  // Link de Maps
+  const coords = customer.coordinates || null;
+  let mapsUrl = '';
+  const RESTAURANT_LAT = 17.9919;
+  const RESTAURANT_LNG = -94.3529;
+  if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
+    // Ruta desde restaurante hasta cliente
+    mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${RESTAURANT_LAT},${RESTAURANT_LNG}&destination=${coords.lat},${coords.lng}&travelmode=driving`;
+  } else if (customer.address || customer.direccion) {
+    const addr = encodeURIComponent(customer.address || customer.direccion || '');
+    mapsUrl = `https://www.google.com/maps/search/?api=1&query=${addr}`;
+  }
+
+  return {
+    orderNumber, deliveryType, isDelivery, payment,
+    customer, items, total, subtotal, deliveryCost,
+    pagoCon, cambio, notasClean, mapsUrl,
+  };
+}
+
+/**
+ * Mensaje para el grupo de COCINA — enfocado en los productos del pedido.
+ */
+function buildKitchenMessage(order) {
+  const { orderNumber, deliveryType, payment, customer, items, total, subtotal, deliveryCost, cambio, pagoCon, notasClean } = parseOrderFields(order);
+
+  let horaMx;
+  try {
+    horaMx = new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'short', timeStyle: 'short', hour12: false }).format(new Date());
+  } catch (_) { horaMx = new Date().toISOString(); }
+
+  const isDelivery  = deliveryType === 'delivery' || deliveryType === 'domicilio';
+  const entregaLabel = isDelivery ? '🛵 A domicilio' : '🏠 Para recoger';
+  const short = orderNumber ? `#${orderNumber.slice(-6).toUpperCase()}` : '';
+
+  const lines = [];
+  lines.push(`🍔 *NUEVO PEDIDO ${short}* — SR & SRA BURGER`);
+  lines.push(`🕐 ${horaMx}`);
+  lines.push(`📦 Entrega: ${entregaLabel}`);
+  if (customer.name || customer.nombre) lines.push(`👤 Cliente: ${customer.name || customer.nombre}`);
+  lines.push('─────────────────');
+  lines.push('*PRODUCTOS:*');
+
+  if (items.length) {
+    items.forEach((item) => {
+      const qty  = Number(item.quantity || 1) || 1;
+      const name = String(item.name || 'Producto').trim();
+      lines.push(`▪ ${qty}x ${name}`);
+      const custom = String(item.customizations || item.specifications || '').trim();
+      if (custom) {
+        custom.split('|').map(s => s.trim()).filter(Boolean).forEach(s => lines.push(`   • ${s}`));
+      }
+      if (item.notes) lines.push(`   📝 ${item.notes}`);
+    });
+  } else {
+    lines.push('(sin items)');
+  }
+
+  lines.push('─────────────────');
+  if (subtotal && deliveryCost) {
+    lines.push(`Subtotal: ${formatMoney(subtotal)}`);
+    lines.push(`Envío: ${formatMoney(deliveryCost)}`);
+  }
+  lines.push(`💰 *TOTAL: ${formatMoney(total)}*`);
+  lines.push(`💳 Pago: ${payment}`);
+  if (/efectivo/i.test(payment)) {
+    if (pagoCon > 0) lines.push(`   Paga con: ${formatMoney(pagoCon)}`);
+    if (cambio  > 0) lines.push(`   🔄 Cambio: ${formatMoney(cambio)}`);
+  }
+  if (notasClean) lines.push(`📝 Nota: ${notasClean}`);
+
+  return lines.join('\n');
+}
+
+/**
+ * Mensaje para el grupo de REPARTIDORES — enfocado en datos de entrega + Maps.
+ */
+function buildDeliveryMessage(order) {
+  const { orderNumber, payment, customer, total, cambio, pagoCon, notasClean, mapsUrl } = parseOrderFields(order);
+
+  let horaMx;
+  try {
+    horaMx = new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', timeStyle: 'short', hour12: false }).format(new Date());
+  } catch (_) { horaMx = new Date().toISOString(); }
+
+  const short = orderNumber ? `#${orderNumber.slice(-6).toUpperCase()}` : '';
+
+  const lines = [];
+  lines.push(`🛵 *ENVÍO ${short}* — SR & SRA BURGER`);
+  lines.push(`🕐 ${horaMx}`);
+  lines.push('─────────────────');
+  lines.push('*DATOS DEL CLIENTE:*');
+  if (customer.name || customer.nombre)   lines.push(`👤 ${customer.name || customer.nombre}`);
+  if (customer.phone || customer.telefono) lines.push(`📞 ${customer.phone || customer.telefono}`);
+  if (customer.address || customer.direccion) lines.push(`📍 ${customer.address || customer.direccion}`);
+  if (mapsUrl) {
+    lines.push('');
+    lines.push(`🗺️ *Ruta Maps:*`);
+    lines.push(mapsUrl);
+  }
+  lines.push('─────────────────');
+  lines.push(`💰 *TOTAL A COBRAR: ${formatMoney(total)}*`);
+  lines.push(`💳 Método de pago: ${payment}`);
+  if (/efectivo/i.test(payment)) {
+    if (pagoCon > 0) lines.push(`   Paga con: ${formatMoney(pagoCon)}`);
+    if (cambio  > 0) lines.push(`   🔄 *Llevar cambio de: ${formatMoney(cambio)}*`);
+    else              lines.push(`   ⚠️ Sin info de cambio (confirmar con cliente)`);
+  }
+  if (notasClean) lines.push(`📝 Nota: ${notasClean}`);
+
+  return lines.join('\n');
+}
+
+// Clientes SSE suscritos a eventos de WhatsApp
+const _waSSEClients = new Set();
+
+// GET /api/whatsapp/config — estado actual + config guardada
+app.get('/api/whatsapp/config', (_req, res) => {
+  try {
+    const wa = getWAService();
+    res.json({ ok: true, ...wa.getStatus() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/whatsapp/events — SSE en tiempo real (qr, connected, disconnected, reconnecting)
+app.get('/api/whatsapp/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Enviar estado inicial
+  try {
+    const wa = getWAService();
+    const status = wa.getStatus();
+    if (status.connected) {
+      send('connected', { phoneNumber: status.phoneNumber });
+    } else if (status.hasQr) {
+      send('qr', { qrDataUrl: status.qrDataUrl });
+    } else {
+      send('reconnecting', {});
+    }
+
+    const onQr          = (qrDataUrl) => send('qr', { qrDataUrl });
+    const onConnected   = (d) => send('connected', d);
+    const onDisconnected = (d) => send('disconnected', d);
+    const onReconnecting = (d) => send('reconnecting', d);
+
+    wa.on('qr',           onQr);
+    wa.on('connected',    onConnected);
+    wa.on('disconnected', onDisconnected);
+    wa.on('reconnecting', onReconnecting);
+
+    _waSSEClients.add(res);
+
+    req.on('close', () => {
+      wa.off('qr',           onQr);
+      wa.off('connected',    onConnected);
+      wa.off('disconnected', onDisconnected);
+      wa.off('reconnecting', onReconnecting);
+      _waSSEClients.delete(res);
+    });
+  } catch (e) {
+    send('disconnected', { error: e.message });
+    res.end();
+  }
+});
+
+// GET /api/whatsapp/groups — lista de grupos (solo si está conectado)
+app.get('/api/whatsapp/groups', async (_req, res) => {
+  try {
+    const wa = getWAService();
+    const groups = await wa.getGroups();
+    res.json({ ok: true, groups });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/whatsapp/set-group — guarda grupo de cocina o repartidores
+app.post('/api/whatsapp/set-group', (req, res) => {
+  try {
+    const { groupId, groupName, type } = req.body || {};
+    if (!groupId || !groupName) return res.status(400).json({ ok: false, error: 'groupId y groupName requeridos' });
+    const roleType = (type === 'delivery') ? 'delivery' : 'orders';
+    getWAService().saveConfig(String(groupId), String(groupName).slice(0, 200), roleType);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/whatsapp/send-test — mensaje de prueba al grupo cocina
+app.post('/api/whatsapp/send-test', async (_req, res) => {
+  try {
+    await getWAService().sendToGroup('🧪 Mensaje de prueba desde el panel — SR & SRA BURGER');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/whatsapp/send-test-delivery — mensaje de prueba al grupo repartidores
+app.post('/api/whatsapp/send-test-delivery', async (_req, res) => {
+  try {
+    await getWAService().sendToDeliveryGroup('🛵 Mensaje de prueba (repartidores) desde el panel — SR & SRA BURGER');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/whatsapp/logout — cierra sesión de WhatsApp
+app.delete('/api/whatsapp/logout', async (_req, res) => {
+  try {
+    await getWAService().logout();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/whatsapp/notify-order — envía un pedido ya guardado a los grupos configurados
+// Acepta param `target`: 'kitchen' | 'delivery' | undefined (ambos)
+app.post('/api/whatsapp/notify-order', async (req, res) => {
+  try {
+    const { order, forceAll, target } = req.body || {};
+    if (!order) return res.status(400).json({ ok: false, error: 'order requerido' });
+
+    const wa = getWAService();
+    if (!wa.connected) return res.status(503).json({ ok: false, error: 'WhatsApp no conectado' });
+
+    const deliveryType = String(order.deliveryType || order.type || order.tipoEntrega || '').toLowerCase();
+    const isDelivery   = deliveryType === 'delivery' || deliveryType === 'domicilio';
+
+    const sendKitchen  = !target || target === 'kitchen';
+    const sendDelivery = target === 'delivery' || (!target && (isDelivery || forceAll));
+
+    // ── Cocina ────────────────────────────────────────────────────────────
+    if (sendKitchen) {
+      const kitchenMsg = buildKitchenMessage(order);
+      await wa.sendToGroup(kitchenMsg);
+      // También enviar a contactos individuales de cocina
+      try { await wa.sendToContacts(kitchenMsg, 'kitchen'); } catch (_) {}
+    }
+
+    // ── Repartidores ──────────────────────────────────────────────────────
+    let deliveryOk    = false;
+    let deliveryError = null;
+    if (sendDelivery) {
+      const deliveryMsg = buildDeliveryMessage(order);
+      try {
+        await wa.sendToDeliveryGroup(deliveryMsg);
+        deliveryOk = true;
+      } catch (e) {
+        deliveryError = e.message;
+      }
+      // También enviar a contactos individuales de repartidores
+      try { await wa.sendToContacts(deliveryMsg, 'delivery'); } catch (_) {}
+    }
+
+    res.json({ ok: true, delivery: deliveryOk, deliveryError });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/whatsapp/add-contact — agrega un contacto individual
+app.post('/api/whatsapp/add-contact', (req, res) => {
+  try {
+    const { phone, name, role } = req.body || {};
+    if (!phone) return res.status(400).json({ ok: false, error: 'phone requerido' });
+    getWAService().addContact({ phone: String(phone), name: String(name || phone).slice(0, 100), role: role || 'kitchen' });
+    res.json({ ok: true, contacts: getWAService().getContacts() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/whatsapp/remove-contact — elimina un contacto
+app.delete('/api/whatsapp/remove-contact', (req, res) => {
+  try {
+    const { phone, role } = req.body || {};
+    if (!phone || !role) return res.status(400).json({ ok: false, error: 'phone y role requeridos' });
+    getWAService().removeContact(String(phone), role);
+    res.json({ ok: true, contacts: getWAService().getContacts() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/whatsapp/contacts — lista de contactos configurados
+app.get('/api/whatsapp/contacts', (_req, res) => {
+  try {
+    res.json({ ok: true, contacts: getWAService().getContacts() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/whatsapp/send-test-contact — mensaje de prueba a un contacto individual
+app.post('/api/whatsapp/send-test-contact', async (req, res) => {
+  try {
+    const { phone } = req.body || {};
+    if (!phone) return res.status(400).json({ ok: false, error: 'phone requerido' });
+    await getWAService().sendToPhone(phone, '🧪 Mensaje de prueba desde el panel — SR & SRA BURGER');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── Arranque del servidor ────────────────────────────────────────────────────
 const PORT = DEFAULT_PORT;
 app.listen(PORT, '0.0.0.0', () => {
   printAddresses(PORT);
+  // Iniciar servicio de WhatsApp al arrancar
+  try { getWAService().init(); } catch (e) { console.error('WhatsApp init error:', e.message); }
 });
 

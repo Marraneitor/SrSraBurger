@@ -190,6 +190,16 @@
               <p id="active-delivery-group-name" class="font-bold text-blue-300 text-sm truncate">Sin configurar</p>
             </div>
           </div>
+          <!-- Contactos individuales -->
+          <div class="flex items-center gap-2 border-t border-white/5 pt-3 mt-1">
+            <div class="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
+              <i class="fas fa-user text-purple-400 text-xs"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Contactos individuales</p>
+              <p id="active-contacts-count" class="font-bold text-purple-300 text-sm truncate">0 contactos</p>
+            </div>
+          </div>
         </div>
 
         <!-- Botones de prueba -->
@@ -304,6 +314,52 @@
         <i class="fas fa-circle-notch text-green-400 text-xl spinner"></i>
         <p class="text-sm text-gray-400 mt-2">Cargando grupos…</p>
       </div>
+    </div>
+
+    <!-- ── Contactos individuales ──────────────────────────────────────── -->
+    <div id="contacts-section" class="card rounded-3xl p-6 space-y-4">
+      <div>
+        <h2 class="font-poppins font-bold text-lg">Contactos individuales</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Agrega números de teléfono que recibirán los pedidos directamente (además de los grupos).</p>
+      </div>
+
+      <!-- Formulario para agregar contacto -->
+      <div class="flex flex-col sm:flex-row gap-2">
+        <div class="flex-1 relative">
+          <i class="fas fa-phone absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+          <input id="contact-phone" type="tel" placeholder="Ej: 5219221593688"
+            class="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-gray-800/60 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40 placeholder-gray-500">
+        </div>
+        <div class="flex-1 relative">
+          <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+          <input id="contact-name" type="text" placeholder="Nombre (opcional)"
+            class="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-gray-800/60 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40 placeholder-gray-500">
+        </div>
+        <select id="contact-role"
+          class="px-3 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-gray-800/60 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/40">
+          <option value="kitchen">🍳 Cocina</option>
+          <option value="delivery">🛵 Repartidores</option>
+        </select>
+        <button id="add-contact-btn"
+          class="px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-200"
+          style="background: linear-gradient(135deg, #9333ea, #7e22ce); color:#fff;"
+          onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 8px 22px rgba(147,51,234,.35)'"
+          onmouseout="this.style.transform=''; this.style.boxShadow=''">
+          <i class="fas fa-plus mr-1"></i>Agregar
+        </button>
+      </div>
+
+      <p id="contact-error" class="text-xs text-red-400 hidden"></p>
+
+      <!-- Lista de contactos configurados -->
+      <div id="contacts-empty" class="text-center py-6 text-gray-400 text-sm">
+        <i class="fas fa-address-book text-2xl mb-3 opacity-30 block"></i>
+        No hay contactos configurados.
+      </div>
+
+      <ul id="contacts-list" class="hidden space-y-2 max-h-72 overflow-y-auto pr-1">
+        <!-- Contactos dinámicos -->
+      </ul>
     </div>
 
     <!-- ── Log de notificaciones enviadas ────────────────────────────────── -->
@@ -728,6 +784,161 @@
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
         .replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
     }
+
+    // ── Contactos individuales ──────────────────────────────────────────
+    let allContacts = [];
+    const contactsListEl  = document.getElementById('contacts-list');
+    const contactsEmptyEl = document.getElementById('contacts-empty');
+    const contactsCountEl = document.getElementById('active-contacts-count');
+    const contactPhoneEl  = document.getElementById('contact-phone');
+    const contactNameEl   = document.getElementById('contact-name');
+    const contactRoleEl   = document.getElementById('contact-role');
+    const contactErrorEl  = document.getElementById('contact-error');
+    const addContactBtn   = document.getElementById('add-contact-btn');
+
+    async function loadContacts() {
+      try {
+        const r = await fetch('/api/whatsapp/contacts');
+        const j = await r.json();
+        if (j.ok) {
+          allContacts = j.contacts || [];
+          renderContacts();
+        }
+      } catch (_) {}
+    }
+
+    function renderContacts() {
+      const kitchenCount  = allContacts.filter(c => c.role === 'kitchen').length;
+      const deliveryCount = allContacts.filter(c => c.role === 'delivery').length;
+      contactsCountEl.textContent = `${allContacts.length} contacto${allContacts.length !== 1 ? 's' : ''} (${kitchenCount} cocina, ${deliveryCount} envíos)`;
+
+      if (!allContacts.length) {
+        contactsListEl.classList.add('hidden');
+        contactsEmptyEl.classList.remove('hidden');
+        return;
+      }
+      contactsEmptyEl.classList.add('hidden');
+      contactsListEl.classList.remove('hidden');
+      contactsListEl.innerHTML = '';
+
+      allContacts.forEach(c => {
+        const isKitchen = c.role === 'kitchen';
+        const roleIcon  = isKitchen ? 'fa-utensils' : 'fa-motorcycle';
+        const roleColor = isKitchen ? 'yellow' : 'blue';
+        const roleLabel = isKitchen ? 'Cocina' : 'Repartidores';
+
+        const li = document.createElement('li');
+        li.className = 'flex items-center justify-between gap-3 p-3 rounded-2xl border border-gray-200 dark:border-white/8 transition-all duration-150 hover:bg-white/4';
+        li.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center shrink-0">
+              <i class="fas fa-user text-purple-400 text-sm"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="font-semibold text-sm truncate">${escapeHtml(c.name || c.phone)}</p>
+              <p class="text-xs text-gray-400">+${escapeHtml(c.phone)}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-${roleColor}-500/20 text-${roleColor}-300 border border-${roleColor}-500/30">
+              <i class="fas ${roleIcon} text-[8px]"></i> ${roleLabel}
+            </span>
+            <button class="contact-test-btn p-1.5 rounded-lg text-green-400 hover:bg-green-500/15 transition text-xs" title="Enviar prueba" data-phone="${escapeHtml(c.phone)}">
+              <i class="fab fa-whatsapp"></i>
+            </button>
+            <button class="contact-del-btn p-1.5 rounded-lg text-red-400 hover:bg-red-500/15 transition text-xs" title="Eliminar" data-phone="${escapeHtml(c.phone)}" data-role="${c.role}">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        `;
+        contactsListEl.appendChild(li);
+      });
+
+      // Event delegation for test and delete buttons
+      contactsListEl.querySelectorAll('.contact-del-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const phone = btn.dataset.phone;
+          const role  = btn.dataset.role;
+          try {
+            const r = await fetch('/api/whatsapp/remove-contact', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone, role }),
+            });
+            const j = await r.json();
+            if (!j.ok) throw new Error(j.error);
+            allContacts = j.contacts || [];
+            renderContacts();
+            addLog('🗑️', `Contacto eliminado: ${phone}`, 'text-red-400');
+          } catch (e) {
+            addLog('❌', `Error eliminando contacto: ${e.message}`, 'text-red-400');
+          }
+        });
+      });
+
+      contactsListEl.querySelectorAll('.contact-test-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const phone = btn.dataset.phone;
+          btn.innerHTML = '<i class="fas fa-circle-notch spinner text-xs"></i>';
+          btn.disabled = true;
+          try {
+            const r = await fetch('/api/whatsapp/send-test-contact', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone }),
+            });
+            const j = await r.json();
+            if (!j.ok) throw new Error(j.error);
+            addLog('📤', `Prueba enviada a +${phone}`, 'text-green-400');
+          } catch (e) {
+            addLog('❌', `Error enviando prueba a +${phone}: ${e.message}`, 'text-red-400');
+          } finally {
+            btn.innerHTML = '<i class="fab fa-whatsapp"></i>';
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    addContactBtn.addEventListener('click', async () => {
+      const phone = contactPhoneEl.value.trim().replace(/\D/g, '');
+      const name  = contactNameEl.value.trim();
+      const role  = contactRoleEl.value;
+
+      contactErrorEl.classList.add('hidden');
+
+      if (!phone || phone.length < 10) {
+        contactErrorEl.textContent = 'Ingresa un número de teléfono válido (mínimo 10 dígitos con código de país).';
+        contactErrorEl.classList.remove('hidden');
+        return;
+      }
+
+      addContactBtn.disabled = true;
+      addContactBtn.innerHTML = '<i class="fas fa-circle-notch spinner mr-1"></i>Agregando…';
+      try {
+        const r = await fetch('/api/whatsapp/add-contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, name: name || phone, role }),
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error);
+        allContacts = j.contacts || [];
+        renderContacts();
+        contactPhoneEl.value = '';
+        contactNameEl.value  = '';
+        addLog('👤', `Contacto agregado: ${name || phone} (${role === 'kitchen' ? 'Cocina' : 'Repartidores'})`, 'text-purple-400');
+      } catch (e) {
+        contactErrorEl.textContent = `Error: ${e.message}`;
+        contactErrorEl.classList.remove('hidden');
+      } finally {
+        addContactBtn.disabled = false;
+        addContactBtn.innerHTML = '<i class="fas fa-plus mr-1"></i>Agregar';
+      }
+    });
+
+    // Cargar contactos al iniciar
+    loadContacts();
 
     // Exponer addLog globalmente para que controldeenvios.html lo llame si está en la misma ventana
     window._notifiAddLog = addLog;

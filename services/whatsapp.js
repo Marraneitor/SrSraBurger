@@ -29,12 +29,13 @@ class WhatsAppService extends EventEmitter {
   constructor() {
     super();
     this.sock          = null;
-    this.qrRaw         = null;   // string raw del QR (para re-enviar a nuevos clientes SSE)
-    this.qrDataUrl     = null;   // PNG base64 del QR
+    this.qrRaw         = null;
+    this.qrDataUrl     = null;
     this.connected     = false;
     this.phoneNumber   = '';
     this._reconnTimer  = null;
     this._initialized  = false;
+    this._connecting   = false;
     this._config       = this._loadConfig();
   }
 
@@ -42,10 +43,12 @@ class WhatsAppService extends EventEmitter {
   _loadConfig() {
     try {
       if (fs.existsSync(CONFIG_FILE)) {
-        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        if (!Array.isArray(cfg.contacts)) cfg.contacts = [];
+        return cfg;
       }
     } catch (_) {}
-    return { groupId: null, groupName: null, deliveryGroupId: null, deliveryGroupName: null };
+    return { groupId: null, groupName: null, deliveryGroupId: null, deliveryGroupName: null, contacts: [] };
   }
 
   /**
@@ -59,10 +62,7 @@ class WhatsAppService extends EventEmitter {
     } else {
       this._config = { ...this._config, groupId, groupName };
     }
-    try {
-      fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
-      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this._config, null, 2));
-    } catch (e) { console.error('Error guardando config WA:', e.message); }
+    this._saveConfigFile();
   }
 
   getConfig()   { return this._config; }
@@ -83,14 +83,30 @@ class WhatsAppService extends EventEmitter {
     await this._connect();
   }
 
+  // ── Destruir socket activo ──────────────────────────────────────────────
+  _destroySock() {
+    if (!this.sock) return;
+    try { this.sock.ws?.close(); } catch (_) {}
+    try { this.sock.ev?.removeAllListeners(); } catch (_) {}
+    this.sock = null;
+  }
+
   // ── Conexión / reconexión ───────────────────────────────────────────────
   async _connect() {
+    // Evitar solapamiento de llamadas concurrentes
+    if (this._connecting) return;
+    this._connecting = true;
+
+    if (this._reconnTimer) { clearTimeout(this._reconnTimer); this._reconnTimer = null; }
+    this._destroySock();
+
     try {
       const {
         makeWASocket,
         useMultiFileAuthState,
         fetchLatestBaileysVersion,
         DisconnectReason,
+        Browsers,
       } = await import('@whiskeysockets/baileys');
 
       fs.mkdirSync(AUTH_DIR, { recursive: true });
@@ -100,11 +116,19 @@ class WhatsAppService extends EventEmitter {
 
       this.sock = makeWASocket({
         version,
-        auth    : state,
-        browser : ['SR Burger Admin', 'Chrome', '10.0'],
-        logger  : baileysLogger,
-        getMessage: async () => undefined, // Evita errores de messages.update sin store
+        auth                     : state,
+        browser                  : Browsers.ubuntu('Desktop'),
+        logger                   : baileysLogger,
+        syncFullHistory          : false,
+        connectTimeoutMs         : 60_000,
+        keepAliveIntervalMs      : 30_000,
+        retryRequestDelayMs      : 500,
+        defaultQueryTimeoutMs    : 60_000,
+        generateHighQualityLinkPreview: false,
+        getMessage               : async () => undefined,
       });
+
+      this._connecting = false;
 
       // Guardar credenciales cuando cambian
       this.sock.ev.on('creds.update', saveCreds);
@@ -129,7 +153,6 @@ class WhatsAppService extends EventEmitter {
           this.connected = true;
           this.qrRaw     = null;
           this.qrDataUrl = null;
-          // Intentar obtener número de teléfono del usuario conectado
           try {
             const jid = this.sock.user?.id || '';
             this.phoneNumber = jid.split(':')[0].split('@')[0];
@@ -141,49 +164,62 @@ class WhatsAppService extends EventEmitter {
         if (connection === 'close') {
           const code      = lastDisconnect?.error?.output?.statusCode;
           const loggedOut = code === DisconnectReason.loggedOut;
+          const replaced  = code === DisconnectReason.connectionReplaced;
 
           this.connected   = false;
           this.phoneNumber = '';
-          console.log(`🔌 [WhatsApp] Desconectado. loggedOut=${loggedOut}`);
+          console.log(`🔌 [WhatsApp] Desconectado. código=${code} loggedOut=${loggedOut} replaced=${replaced}`);
 
-          // Limpiar auth si fue logout explícito
+          this._destroySock();
+
           if (loggedOut) {
             this._clearAuth();
-            this.emit('disconnected', { loggedOut });
-          } else {
-            // Reconexion automática — no mostrar estado "desconectado" definitivo
+            this.emit('disconnected', { loggedOut: true });
+            this._scheduleReconnect(2000);
+          } else if (replaced) {
+            // Sesión reemplazada por otra instancia — esperar más antes de reconectar
+            console.log('⚠️  [WhatsApp] Sesión reemplazada por otro cliente. Reintentando en 15s…');
             this.emit('reconnecting', {});
+            this._scheduleReconnect(15_000);
+          } else {
+            this.emit('reconnecting', {});
+            this._scheduleReconnect(5000);
           }
-
-          // En ambos casos reconectar (si fue logout, mostrará nuevo QR)
-          const delay = loggedOut ? 2000 : 5000;
-          this._reconnTimer = setTimeout(() => this._connect(), delay);
         }
       });
 
     } catch (err) {
+      this._connecting = false;
       console.error('❌ [WhatsApp] Error iniciando servicio:', err.message);
-      this._initialized = false; // permitir reintento
-      this._reconnTimer = setTimeout(() => {
-        this._initialized = true;
-        this._connect();
-      }, 8000);
+      this._initialized = false;
+      this._scheduleReconnect(8000);
     }
+  }
+
+  _scheduleReconnect(delay) {
+    if (this._reconnTimer) clearTimeout(this._reconnTimer);
+    this._reconnTimer = setTimeout(() => {
+      this._initialized = true;
+      this._connecting  = false;
+      this._connect();
+    }, delay);
   }
 
   // ── Cerrar sesión manualmente ───────────────────────────────────────────
   async logout() {
     if (this._reconnTimer) { clearTimeout(this._reconnTimer); this._reconnTimer = null; }
     try { await this.sock?.logout(); } catch (_) {}
+    this._destroySock();
     this._clearAuth();
-    this.connected   = false;
-    this.phoneNumber = '';
-    this.qrRaw       = null;
-    this.qrDataUrl   = null;
+    this.connected    = false;
+    this.phoneNumber  = '';
+    this.qrRaw        = null;
+    this.qrDataUrl    = null;
     this._initialized = false;
+    this._connecting  = false;
     this.emit('disconnected', { loggedOut: true });
     console.log('🚪 [WhatsApp] Sesión cerrada. Generando nuevo QR...');
-    setTimeout(() => this.init(), 1500);
+    this._scheduleReconnect(1500);
   }
 
   _clearAuth() {
@@ -246,6 +282,85 @@ class WhatsAppService extends EventEmitter {
   async sendRaw(jid, text) {
     if (!this.connected || !this.sock) throw new Error('WhatsApp no conectado');
     await this.sock.sendMessage(jid, { text });
+  }
+
+  // ── Gestión de contactos individuales ─────────────────────────────────
+  /**
+   * Agrega o actualiza un contacto en la config.
+   * @param {{ phone: string, name: string, role: 'kitchen'|'delivery' }} contact
+   */
+  addContact(contact) {
+    const phone = String(contact.phone).replace(/\D/g, '');
+    const name  = String(contact.name || phone).slice(0, 100);
+    const role  = contact.role === 'delivery' ? 'delivery' : 'kitchen';
+    if (!phone) throw new Error('Teléfono requerido');
+
+    const contacts = Array.isArray(this._config.contacts) ? [...this._config.contacts] : [];
+    // Evitar duplicados por phone+role
+    const idx = contacts.findIndex(c => c.phone === phone && c.role === role);
+    if (idx >= 0) {
+      contacts[idx] = { phone, name, role };
+    } else {
+      contacts.push({ phone, name, role });
+    }
+    this._config = { ...this._config, contacts };
+    this._saveConfigFile();
+  }
+
+  /**
+   * Elimina un contacto de la config.
+   * @param {string} phone
+   * @param {'kitchen'|'delivery'} role
+   */
+  removeContact(phone, role) {
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const contacts = Array.isArray(this._config.contacts) ? this._config.contacts : [];
+    this._config = {
+      ...this._config,
+      contacts: contacts.filter(c => !(c.phone === cleanPhone && c.role === role)),
+    };
+    this._saveConfigFile();
+  }
+
+  /** Devuelve los contactos configurados, opcionalmente filtrados por role */
+  getContacts(role) {
+    const contacts = Array.isArray(this._config.contacts) ? this._config.contacts : [];
+    return role ? contacts.filter(c => c.role === role) : contacts;
+  }
+
+  /** Enviar mensaje a todos los contactos con un rol dado */
+  async sendToContacts(text, role) {
+    if (!this.connected || !this.sock) throw new Error('WhatsApp no está conectado');
+    const contacts = this.getContacts(role);
+    if (!contacts.length) return [];
+
+    const results = [];
+    for (const c of contacts) {
+      const jid = `${c.phone}@s.whatsapp.net`;
+      try {
+        await this.sock.sendMessage(jid, { text });
+        console.log(`[WA] ✅ Mensaje enviado a contacto ${c.name} (${c.phone})`);
+        results.push({ phone: c.phone, name: c.name, ok: true });
+      } catch (err) {
+        console.error(`[WA] ❌ Error enviando a contacto ${c.name} (${c.phone}):`, err.message);
+        results.push({ phone: c.phone, name: c.name, ok: false, error: err.message });
+      }
+    }
+    return results;
+  }
+
+  /** Enviar mensaje directo a un teléfono */
+  async sendToPhone(phone, text) {
+    if (!this.connected || !this.sock) throw new Error('WhatsApp no conectado');
+    const jid = `${String(phone).replace(/\D/g, '')}@s.whatsapp.net`;
+    await this.sock.sendMessage(jid, { text });
+  }
+
+  _saveConfigFile() {
+    try {
+      fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify(this._config, null, 2));
+    } catch (e) { console.error('Error guardando config WA:', e.message); }
   }
 }
 

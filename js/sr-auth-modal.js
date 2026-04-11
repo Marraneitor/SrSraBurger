@@ -41,7 +41,10 @@
       case 'auth/user-not-found':
         return 'Correo o contraseña incorrectos.';
       case 'auth/configuration-not-found':
+      case 'auth/operation-not-allowed':
         return 'El inicio de sesión por correo/contraseña no está habilitado en Firebase. El administrador debe activarlo en Authentication > Métodos de acceso.';
+      case 'PHONE_REQUIRED':
+        return 'El teléfono es obligatorio. Ingresa un número válido.';
       default:
         return defaultMsg || 'Ocurrió un error inesperado. Intenta de nuevo.';
     }
@@ -298,6 +301,7 @@
             try { regForm.reset(); } catch (_) {}
             // onAuthChange cierra el modal si quedó autenticado
           } catch (err) {
+            console.error('[registro] error:', err && err.code, err);
             if (regError) {
               setText(regError, mapAuthError(err, 'Ocurrió un error al registrar la cuenta.'));
               show(regError);

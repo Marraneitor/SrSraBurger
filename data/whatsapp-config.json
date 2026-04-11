@@ -2,5 +2,12 @@
   "groupId": "120363403695104887@g.us",
   "groupName": "Krustaceo Kascarudo 🧽⭐️🐙🐿️",
   "deliveryGroupId": "120363423978623387@g.us",
-  "deliveryGroupName": "Envíos"
+  "deliveryGroupName": "Envíos",
+  "contacts": [
+    {
+      "phone": "5219221258259",
+      "name": "Balyit",
+      "role": "delivery"
+    }
+  ]
 }

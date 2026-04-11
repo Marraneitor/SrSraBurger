@@ -807,7 +807,10 @@
           case 'auth/user-not-found':
             return 'Correo o contraseña incorrectos.';
           case 'auth/configuration-not-found':
+          case 'auth/operation-not-allowed':
             return 'El inicio de sesión por correo/contraseña no está habilitado en Firebase. El administrador debe activarlo en Authentication > Métodos de acceso.';
+          case 'PHONE_REQUIRED':
+            return 'El teléfono es obligatorio. Ingresa un número válido.';
           default:
             return defaultMsg || 'Ocurrió un error inesperado. Intenta de nuevo.';
         }

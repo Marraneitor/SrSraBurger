@@ -125,7 +125,7 @@
         /* Barra de controles fija a un costado para no estorbar arriba */
         .kitchen-toolbar {
             position: fixed;
-            top: 6rem; /* debajo del header */
+            top: 3.5rem; /* debajo del sr-shell topbar */
             right: 1rem;
             display: flex;
             flex-direction: column;
@@ -143,25 +143,12 @@
             }
         }
 
-        /* Barra lateral de filtros (Todos, Pendientes, etc.) */
+        /* Barra de filtros (ahora inline, no fija) */
         .kitchen-filter-bar {
-            position: fixed;
-            top: 5.8rem; /* alineado con la parte superior de stats */
-            left: 11.5rem; /* a la derecha de las tarjetas de estado */
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            flex-wrap: wrap;
             gap: 0.5rem;
-            z-index: 35;
-        }
-
-        @media (max-width: 1024px) {
-            .kitchen-filter-bar {
-                position: static;
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 0.75rem;
-                margin-bottom: 1.5rem;
-            }
         }
 
         /* Barra lateral de tarjetas de estado (Pendientes, Preparando, etc.) */
@@ -621,85 +608,34 @@
         .order-card button {
             pointer-events: auto;
         }
+
+        /* ── Full-width layout for kitchen ── */
+        #orders-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #orders-container .order-card {
+            width: 100%;
+        }
     </style>
     </head>
-    <body class="bg-gray-50 min-h-screen">
-    <header class="bg-white shadow-sm">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center shadow-md">
-                        <i class="fas fa-hamburger text-white text-xl"></i>
-                    </div>
-                    <div>
-                        <div class="font-poppins text-lg font-bold">SR &amp; SRA BURGER</div>
-                        <div class="text-xs text-gray-500">Modo Cocina</div>
-                    </div>
-                </div>
-                <!-- La barra de controles ahora es lateral fija, no ocupa altura extra arriba -->
-                <div class="flex items-center gap-2 kitchen-toolbar">
-                    <button onclick="toggleKitchenMode()" class="btn-primary top-control-btn">Modo Cocina</button>
-                    <button onclick="toggleFullscreen()" class="btn-info top-control-btn">Pantalla Completa</button>
-                    <button onclick="zoomOut()" class="btn-primary top-control-btn" title="Reducir tamaño">A-</button>
-                    <button onclick="zoomIn()" class="btn-primary top-control-btn" title="Aumentar tamaño">A+</button>
-                    <button onclick="refreshOrders()" class="btn-primary top-control-btn">
-                        <i class="fas fa-sync-alt mr-1"></i>Actualizar
-                    </button>
-                    <a href="repartidor.html" class="btn-success top-control-btn">
-                        <i class="fas fa-motorcycle mr-1"></i>Repartidor
-                    </a>
-                    <!-- Botón WhatsApp Notificaciones -->
-                    <a href="notifi.html" id="wa-status-btn" class="top-control-btn inline-flex items-center gap-1.5"
-                       style="background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.35);color:#4ade80;"
-                       title="Configurar notificaciones WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                        <span id="wa-status-label">WA</span>
-                        <span id="wa-status-dot" class="w-2 h-2 rounded-full bg-gray-400 flex-shrink-0"></span>
-                    </a>
-                    <a href="paginaburger.html" class="btn-info top-control-btn">
-                        <i class="fas fa-arrow-left mr-1"></i>Volver al Menú
-                    </a>
-                </div>
-            </div>
-        </div>
-    </header>
+    <body class="min-h-screen">
+    <!-- WA status (ocultos, usados por JS) -->
+    <span id="wa-status-btn" class="hidden"></span>
+    <span id="wa-status-label" class="hidden">WA</span>
+    <span id="wa-status-dot" class="hidden"></span>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Stats Cards -->
-        <div class="kitchen-stats-bar mb-8">
-            <div class="card-modern kitchen-stat-card text-center">
-                <div class="w-9 h-9 bg-yellow-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <i class="fas fa-clock text-yellow-600 text-lg"></i>
-                </div>
-                <h3 class="font-bold text-gray-100" id="pending-count">0</h3>
-                <p class="text-gray-400 font-medium">Pendientes</p>
-            </div>
-            <div class="card-modern kitchen-stat-card text-center">
-                <div class="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <i class="fas fa-utensils text-blue-600 text-lg"></i>
-                </div>
-                <h3 class="font-bold text-gray-100" id="preparing-count">0</h3>
-                <p class="text-gray-400 font-medium">Preparando</p>
-            </div>
-            <div class="card-modern kitchen-stat-card text-center">
-                <div class="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <i class="fas fa-truck text-green-600 text-lg"></i>
-                </div>
-                <h3 class="font-bold text-gray-100" id="delivering-count">0</h3>
-                <p class="text-gray-400 font-medium">En Camino</p>
-            </div>
-            <div class="card-modern kitchen-stat-card text-center">
-                <div class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <i class="fas fa-check-circle text-gray-600 text-lg"></i>
-                </div>
-                <h3 class="font-bold text-gray-100" id="completed-count">0</h3>
-                <p class="text-gray-400 font-medium">Completados</p>
-            </div>
-        </div>
+    <main class="w-full px-2 sm:px-4 pt-2 pb-8">
+        <!-- Stats ocultos (usados por JS, sin mostrar) -->
+        <span id="pending-count" class="hidden">0</span>
+        <span id="preparing-count" class="hidden">0</span>
+        <span id="delivering-count" class="hidden">0</span>
+        <span id="completed-count" class="hidden">0</span>
 
         <!-- Filter Buttons -->
-        <div class="mb-8">
+        <div class="mb-3">
             <div class="flex items-center gap-2 mb-2">
                 <button id="toggle-filter-btn" onclick="toggleFilterBar()"
                     title="Mostrar / ocultar menú de filtros"
@@ -759,37 +695,24 @@
         </script>
 
         <!-- Orders Container -->
-        <div id="orders-container" class="space-y-6">
+        <div id="orders-container">
             <!-- Las órdenes se cargarán aquí dinámicamente -->
         </div>
 
         <!-- Empty State -->
         <div id="empty-state" class="text-center py-16 hidden">
-            <div class="w-24 h-24 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-inbox text-gray-400 text-3xl"></i>
+            <div class="w-24 h-24 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-inbox text-gray-500 text-3xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-gray-600 mb-2">No hay pedidos</h3>
+            <h3 class="text-xl font-bold text-gray-300 mb-2">No hay pedidos</h3>
             <p class="text-gray-500">Los nuevos pedidos aparecerán aquí automáticamente.</p>
         </div>
     </main>
 
-    <!-- Floating Stats (Mobile) -->
-    <div class="floating-stats md:hidden">
-        <div class="flex justify-between items-center">
-            <div class="text-center">
-                <div class="text-lg font-bold text-yellow-600" id="mobile-pending">0</div>
-                <div class="text-xs text-gray-600">Pendientes</div>
-            </div>
-            <div class="text-center">
-                <div class="text-lg font-bold text-blue-600" id="mobile-preparing">0</div>
-                <div class="text-xs text-gray-600">Preparando</div>
-            </div>
-            <div class="text-center">
-                <div class="text-lg font-bold text-green-600" id="mobile-delivering">0</div>
-                <div class="text-xs text-gray-600">En Camino</div>
-            </div>
-        </div>
-    </div>
+    <!-- Stats móvil (ocultos, usados por JS) -->
+    <span id="mobile-pending" class="hidden">0</span>
+    <span id="mobile-preparing" class="hidden">0</span>
+    <span id="mobile-delivering" class="hidden">0</span>
 
     <!-- Notification Toast -->
     <div id="notification" class="notification"></div>
@@ -981,32 +904,41 @@
         }
 
         /**
-         * Reenvía manualmente un pedido a los grupos de WhatsApp configurados.
+         * Envía a un grupo específico vía /api/whatsapp/notify-order con target explícito.
          */
-        async function sendOrderToWhatsApp(orderId) {
+        async function _sendToGroup(orderId, target) {
             const order = orders.find(o => o.id === orderId);
             if (!order) return;
-            const btn = document.querySelector(`[data-wa-btn="${orderId}"]`);
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando…';
-            }
+            const attr = target === 'kitchen' ? `[data-wa-kitchen-btn="${orderId}"]` : `[data-wa-delivery-btn="${orderId}"]`;
+            const btn  = document.querySelector(attr);
+            const origHTML = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
             try {
-                await sendWhatsAppOrderNotification(order, true);
+                const resp = await fetch('/api/whatsapp/notify-order', {
+                    method : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body   : JSON.stringify({ order, target }),
+                });
+                const j = await resp.json();
+                if (!j.ok) throw new Error(j.error || 'Error');
                 if (btn) {
-                    btn.innerHTML = '<i class="fab fa-whatsapp mr-2"></i>Enviado ✓';
-                    setTimeout(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fab fa-whatsapp mr-2"></i>Enviar a grupos';
-                    }, 3000);
+                    btn.innerHTML = '<i class="fas fa-check"></i> ✓';
+                    setTimeout(() => { btn.disabled = false; btn.innerHTML = origHTML; }, 3000);
                 }
             } catch (e) {
                 console.error('Error enviando WA:', e);
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fab fa-whatsapp mr-2"></i>Enviar a grupos';
-                }
+                if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
             }
+        }
+
+        function sendToKitchen(orderId)  { _sendToGroup(orderId, 'kitchen');  }
+        function sendToDelivery(orderId) { _sendToGroup(orderId, 'delivery'); }
+
+        /** Compat: enviar a ambos grupos (usado por la notificación automática al llegar pedido) */
+        async function sendOrderToWhatsApp(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if (!order) return;
+            await sendWhatsAppOrderNotification(order, true);
         }
 
         // Inicializar Modo Cocina por defecto para facilitar lectura
@@ -1370,14 +1302,14 @@
         }
         function renderBadges(list, color, orderId, itemIndex, subKey) {
             if (!list || !list.length) return '';
-            const cls = color === 'green' ? 'bg-green-100 text-green-800 border-green-200' : 
-                       color === 'blue' ? 'bg-blue-100 text-blue-800 border-blue-200' : 
-                       color === 'amber' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                       color === 'red' ? 'bg-red-100 text-red-800 border-red-200' :
-                       color === 'orange' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                       color === 'purple' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                       color === 'pink' ? 'bg-pink-100 text-pink-800 border-pink-200' :
-                       'bg-gray-100 text-gray-800 border-gray-200';
+            const cls = color === 'green' ? 'bg-green-900/40 text-green-300 border-green-700' : 
+                       color === 'blue' ? 'bg-blue-900/40 text-blue-300 border-blue-700' : 
+                       color === 'amber' ? 'bg-amber-900/40 text-amber-300 border-amber-700' :
+                       color === 'red' ? 'bg-red-900/40 text-red-300 border-red-700' :
+                       color === 'orange' ? 'bg-orange-900/40 text-orange-300 border-orange-700' :
+                       color === 'purple' ? 'bg-purple-900/40 text-purple-300 border-purple-700' :
+                       color === 'pink' ? 'bg-pink-900/40 text-pink-300 border-pink-700' :
+                       'bg-gray-800 text-gray-300 border-gray-600';
             return `<div class="mt-1 flex flex-wrap gap-1">${list.map((v, idx) => {
                 const key = subKey ? `${subKey}_${idx}` : `badge_${idx}`;
                 const isChecked = isItemChecked(orderId, itemIndex, key);
@@ -1395,9 +1327,9 @@
                     const colorMap = { 'amber': 'yellow', 'purple': 'purple', 'blue': 'blue', 'green': 'green', 'red': 'red', 'orange': 'orange', 'pink': 'pink' };
                     const badgeColor = colorMap[comboConfigEmpty.color] || 'gray';
                     return `
-                        <div class="mt-2 p-3 rounded-lg border-2 border-${comboConfigEmpty.color}-200 bg-${comboConfigEmpty.color}-50">
-                            <div class="text-sm text-gray-700 font-semibold mb-2 flex items-center">
-                                <i class="fas fa-box text-${comboConfigEmpty.color}-600 mr-2"></i>
+                        <div class="mt-2 p-3 rounded-lg border border-gray-700 bg-gray-800/60">
+                            <div class="text-sm text-gray-300 font-semibold mb-2 flex items-center">
+                                <i class="fas fa-box text-${comboConfigEmpty.color}-400 mr-2"></i>
                                 Elementos del ${comboConfigEmpty.name}:
                             </div>
                             <div class="space-y-2">
@@ -1405,8 +1337,8 @@
                                     const itemKey = `${comboConfigEmpty.key}_${comboItem.type}_${idx}`;
                                     const isChecked = isItemChecked(orderId, itemIndex, itemKey);
                                     return `<div class="flex items-center space-x-2">
-                                        <span class="text-xs text-gray-600 font-medium">${comboItem.icon} ${comboItem.name}:</span>
-                                        <span class="text-xs px-2 py-0.5 rounded-full border bg-${badgeColor}-100 text-${badgeColor}-800 border-${badgeColor}-200 breakdown-item ${isChecked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleItemChecked('${orderId}', ${itemIndex}, '${itemKey}')">Listo</span>
+                                        <span class="text-xs text-gray-400 font-medium">${comboItem.icon} ${comboItem.name}:</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full border bg-green-900/40 text-green-300 border-green-700 breakdown-item ${isChecked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleItemChecked('${orderId}', ${itemIndex}, '${itemKey}')">Listo</span>
                                     </div>`;
                                 }).join('')}
                             </div>
@@ -1432,9 +1364,9 @@
             // Si es combo: mantener checklist visual + también mostrar detalles (papas/salsas/etc.)
             const comboChecklistHtml = comboConfig ? (() => {
                 return `
-                    <div class="mt-2 p-3 rounded-lg border-2 border-${comboConfig.color}-200 bg-${comboConfig.color}-50">
-                        <div class="text-sm text-gray-700 font-semibold mb-2 flex items-center">
-                            <i class="fas fa-${comboConfig.type === 'duo' ? 'users' : 'box'} text-${comboConfig.color}-600 mr-2"></i>
+                    <div class="mt-2 p-3 rounded-lg border border-gray-700 bg-gray-800/60">
+                        <div class="text-sm text-gray-300 font-semibold mb-2 flex items-center">
+                            <i class="fas fa-${comboConfig.type === 'duo' ? 'users' : 'box'} text-${comboConfig.color}-400 mr-2"></i>
                             Elementos del ${comboConfig.name}:
                         </div>
                         <div class="space-y-2">
@@ -1453,8 +1385,8 @@
                                 const badgeColor = colorMap[comboConfig.color] || 'gray';
                                 return `
                                     <div class="flex items-center space-x-2">
-                                        <span class="text-xs text-gray-600 font-medium">${comboItem.icon} ${comboItem.name}:</span>
-                                        <span class="text-xs px-2 py-0.5 rounded-full border bg-${badgeColor}-100 text-${badgeColor}-800 border-${badgeColor}-200 breakdown-item ${isChecked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleItemChecked('${orderId}', ${itemIndex}, '${itemKey}')">Listo</span>
+                                        <span class="text-xs text-gray-400 font-medium">${comboItem.icon} ${comboItem.name}:</span>
+                                        <span class="text-xs px-2 py-0.5 rounded-full border bg-green-900/40 text-green-300 border-green-700 breakdown-item ${isChecked ? 'checked' : ''}" onclick="event.stopPropagation(); toggleItemChecked('${orderId}', ${itemIndex}, '${itemKey}')">Listo</span>
                                     </div>
                                 `;
                             }).join('')}
@@ -1503,25 +1435,25 @@
                             <div class="p-2 rounded-lg border border-gray-600 bg-gray-700" style="background:#1e293b;border-color:#374151;">
                                 <div class="text-sm font-semibold" style="color:#f1f5f9;">${icon} ${ch.qty}x ${displayName}</div>
                                 ${(shouldInlineComboSpecifications() && choiceSpecs[chIdx]) ? `<div class=\"mt-1 text-xs md:text-sm text-red-600 font-extrabold\">${escapeHtml(choiceSpecs[chIdx])}</div>` : ''}
-                                ${ch.toppings && ch.toppings.length ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Toppings:</span>${renderBadges(ch.toppings, 'amber', orderId, itemIndex, 'toppings_' + chIdx)}</div>` : ''}
-                                ${ch.fries ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Papas:</span>${renderBadges([friesLabelForContext(item, ch.fries, ch.portionGrams, { comboKey: comboConfig && comboConfig.key })], 'blue', orderId, itemIndex, 'fries_' + chIdx)}</div>` : ''}
-                                ${ch.sauce ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Salsa:</span>${renderBadges([ch.sauce], 'pink', orderId, itemIndex, 'sauce_' + chIdx)}</div>` : ''}
-                                ${ch.onionRings ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Acompañamientos:</span>${renderBadges([onionLabel], 'green', orderId, itemIndex, 'onion_' + chIdx)}</div>` : ''}
-                                ${ch.extras && ch.extras.length ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Extras:</span>${renderBadges(ch.extras.map(e => `${e.quantity}x ${e.name}`), 'amber', orderId, itemIndex, 'extras_' + chIdx)}</div>` : ''}
+                                ${ch.toppings && ch.toppings.length ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Toppings:</span>${renderBadges(ch.toppings, 'amber', orderId, itemIndex, 'toppings_' + chIdx)}</div>` : ''}
+                                ${ch.fries ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Papas:</span>${renderBadges([friesLabelForContext(item, ch.fries, ch.portionGrams, { comboKey: comboConfig && comboConfig.key })], 'blue', orderId, itemIndex, 'fries_' + chIdx)}</div>` : ''}
+                                ${ch.sauce ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Salsa:</span>${renderBadges([ch.sauce], 'pink', orderId, itemIndex, 'sauce_' + chIdx)}</div>` : ''}
+                                ${ch.onionRings ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Acompañamientos:</span>${renderBadges([onionLabel], 'green', orderId, itemIndex, 'onion_' + chIdx)}</div>` : ''}
+                                ${ch.extras && ch.extras.length ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Extras:</span>${renderBadges(ch.extras.map(e => `${e.quantity}x ${e.name}`), 'amber', orderId, itemIndex, 'extras_' + chIdx)}</div>` : ''}
                             </div>
                         `; }).join('')}
                         ${comboChecklistHtml}
                         ${includePieces.length ? `
-                            <div class=\"p-3 rounded-lg border-2 border-amber-200 bg-amber-50\">
-                                <div class=\"text-sm text-gray-700 font-semibold mb-2 flex items-center\">
+                            <div class=\"p-3 rounded-lg border border-gray-700 bg-gray-800/60\">
+                                <div class=\"text-sm text-gray-300 font-semibold mb-2 flex items-center\">
                                     <i class=\"fas fa-box text-amber-600 mr-2\"></i>
                                     ${comboConfig ? `Elementos del ${comboConfig.name}:` : 'Incluye:'}
                                 </div>
                                 <div class=\"space-y-2\">
-                                    ${friesBadges.length ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-600 font-medium\">🍟 Papas:</span>${renderBadges(friesBadges, 'blue', orderId, itemIndex, 'include_fries')}</div>` : ''}
-                                    ${sauceBadges.length ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-600 font-medium\">🥫 Salsa:</span>${renderBadges([sauceBadges[0]], 'pink', orderId, itemIndex, 'include_sauce')}</div>` : ''}
-                                    ${hasOnion ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-600 font-medium\">🧅 ${escapeHtml(onionLabel)}:</span>${renderBadges(['Listo'], 'green', orderId, itemIndex, 'include_onion')}</div>` : ''}
-                                    ${drinkBadges.length ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-600 font-medium\">🥤 Coca-Cola 3L:</span>${renderBadges(['Listo'], 'green', orderId, itemIndex, 'include_drinks')}</div>` : ''}
+                                    ${friesBadges.length ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-400 font-medium\">🍟 Papas:</span>${renderBadges(friesBadges, 'blue', orderId, itemIndex, 'include_fries')}</div>` : ''}
+                                    ${sauceBadges.length ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-400 font-medium\">🥫 Salsa:</span>${renderBadges([sauceBadges[0]], 'pink', orderId, itemIndex, 'include_sauce')}</div>` : ''}
+                                    ${hasOnion ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-400 font-medium\">🧅 ${escapeHtml(onionLabel)}:</span>${renderBadges(['Listo'], 'green', orderId, itemIndex, 'include_onion')}</div>` : ''}
+                                    ${drinkBadges.length ? `<div class=\"flex items-center space-x-2\"><span class=\"text-xs text-gray-400 font-medium\">🥤 Coca-Cola 3L:</span>${renderBadges(['Listo'], 'green', orderId, itemIndex, 'include_drinks')}</div>` : ''}
                                 </div>
                             </div>
                         ` : ''}
@@ -1534,11 +1466,11 @@
             
             return `
                 <div class="mt-1">
-                    ${d.toppings && d.toppings.length ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Toppings:</span>${renderBadges(d.toppings, 'amber', orderId, itemIndex, 'toppings')}</div>` : ''}
-                    ${d.fries ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Papas:</span>${renderBadges([friesLabelForContext(item, d.fries, d.portionGrams, { comboKey: comboConfig && comboConfig.key })], 'blue', orderId, itemIndex, 'fries')}</div>` : ''}
-                    ${d.sauce ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Salsa:</span>${renderBadges([d.sauce], 'pink', orderId, itemIndex, 'sauce')}</div>` : ''}
-                    ${d.onionRings ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Acompañamientos:</span>${renderBadges(['Aros de Cebolla'], 'green', orderId, itemIndex, 'onion')}</div>` : ''}
-                    ${d.extras && d.extras.length ? `<div class=\"text-xs text-gray-600 mt-1\"><span class=\"font-semibold\">Extras:</span>${renderBadges(d.extras.map(e => `${e.quantity}x ${e.name}`), 'amber', orderId, itemIndex, 'extras')}</div>` : ''}
+                    ${d.toppings && d.toppings.length ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Toppings:</span>${renderBadges(d.toppings, 'amber', orderId, itemIndex, 'toppings')}</div>` : ''}
+                    ${d.fries ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Papas:</span>${renderBadges([friesLabelForContext(item, d.fries, d.portionGrams, { comboKey: comboConfig && comboConfig.key })], 'blue', orderId, itemIndex, 'fries')}</div>` : ''}
+                    ${d.sauce ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Salsa:</span>${renderBadges([d.sauce], 'pink', orderId, itemIndex, 'sauce')}</div>` : ''}
+                    ${d.onionRings ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Acompañamientos:</span>${renderBadges(['Aros de Cebolla'], 'green', orderId, itemIndex, 'onion')}</div>` : ''}
+                    ${d.extras && d.extras.length ? `<div class=\"text-xs text-gray-400 mt-1\"><span class=\"font-semibold\">Extras:</span>${renderBadges(d.extras.map(e => `${e.quantity}x ${e.name}`), 'amber', orderId, itemIndex, 'extras')}</div>` : ''}
                 </div>
             `;
         }
@@ -1972,10 +1904,14 @@
         // Obtener botones de acción según el estado (botonera táctil)
         function getActionButtons(order) {
             const waButton = `
-                <button data-wa-btn="${order.id}" onclick="sendOrderToWhatsApp('${order.id}')" class="w-full kitchen-action-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:12px;padding:0.75rem 1rem;font-weight:600;cursor:pointer;transition:all 0.2s;">
-                    <i class="fab fa-whatsapp mr-2"></i>
-                    Enviar a grupos
-                </button>
+                <div style="display:flex;gap:6px;">
+                  <button data-wa-kitchen-btn="${order.id}" onclick="sendToKitchen('${order.id}')" class="kitchen-action-btn" style="flex:1;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:12px;padding:0.75rem 0.5rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-size:0.82rem;">
+                    <i class="fas fa-utensils mr-1"></i>Cocina
+                  </button>
+                  <button data-wa-delivery-btn="${order.id}" onclick="sendToDelivery('${order.id}')" class="kitchen-action-btn" style="flex:1;background:linear-gradient(135deg,#2196F3,#1565C0);color:#fff;border:none;border-radius:12px;padding:0.75rem 0.5rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-size:0.82rem;">
+                    <i class="fas fa-motorcycle mr-1"></i>Envíos
+                  </button>
+                </div>
             `;
 
             const locationButton = `
@@ -3225,7 +3161,7 @@
                             <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
                         </div>
                         <h3 class="text-lg font-bold text-gray-900 mb-2">¿Eliminar Pedido?</h3>
-                        <p class="text-gray-600 mb-2">¿Estás seguro de que quieres eliminar el pedido #${order.id.slice(-6)}?</p>
+                        <p class="text-gray-300 mb-2">¿Estás seguro de que quieres eliminar el pedido #${order.id.slice(-6)}?</p>
                         <p class="text-sm text-gray-500 mb-6">Cliente: ${order.customer.name} - Total: $${effectiveTotal.toFixed(2)}</p>
                         <div class="flex space-x-3">
                             <button onclick="cancelDelete()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition duration-300">
