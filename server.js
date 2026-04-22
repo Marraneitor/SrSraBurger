@@ -3,6 +3,7 @@
 
 const nodePath = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -111,6 +112,74 @@ setInterval(() => {
   const now = Date.now();
   for (const [k, v] of _globalRateLimit) { if (v.resetAt < now) _globalRateLimit.delete(k); }
 }, 5 * 60 * 1000);
+
+// Registro por código WhatsApp (OTP en memoria)
+const _authCodeStore = new Map();
+const AUTH_CODE_TTL_MS = 10 * 60 * 1000;
+const AUTH_CODE_RESEND_MS = 20 * 1000;
+const AUTH_CODE_MAX_ATTEMPTS = 5;
+const AUTH_USERS_FILE = nodePath.join(__dirname, 'data', 'clientes-phone-auth.json');
+
+function normalizePhoneDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function sanitizeName(value) {
+  return String(value || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
+}
+
+function generateNumericCode(size = 6) {
+  let code = '';
+  for (let i = 0; i < size; i++) code += String(Math.floor(Math.random() * 10));
+  return code;
+}
+
+function hashPassword(password, saltHex) {
+  const salt = saltHex || crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return { salt, hash };
+}
+
+function verifyPassword(password, salt, expectedHash) {
+  if (!password || !salt || !expectedHash) return false;
+  try {
+    const hash = crypto.scryptSync(String(password), String(salt), 64).toString('hex');
+    const a = Buffer.from(hash, 'hex');
+    const b = Buffer.from(String(expectedHash), 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch (_) {
+    return false;
+  }
+}
+
+function loadPhoneAuthUsers() {
+  try {
+    if (!fs.existsSync(AUTH_USERS_FILE)) return {};
+    const raw = fs.readFileSync(AUTH_USERS_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch (_) {
+    return {};
+  }
+}
+
+function savePhoneAuthUsers(users) {
+  try {
+    fs.mkdirSync(nodePath.dirname(AUTH_USERS_FILE), { recursive: true });
+    fs.writeFileSync(AUTH_USERS_FILE, JSON.stringify(users || {}, null, 2));
+  } catch (e) {
+    console.error('[auth-phone] Error guardando usuarios locales:', e.message);
+  }
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [phone, entry] of _authCodeStore.entries()) {
+    if (!entry || entry.expiresAt < now) _authCodeStore.delete(phone);
+  }
+}, 60 * 1000);
 
 // Serve static files from the project root
 const staticRoot = __dirname;
@@ -764,7 +833,7 @@ No necesitas cuenta para pedir, pero con una cuenta puedes:
 ✅ Obtener 10% de descuento en tu primera compra 🎁
 Pasos para registrarse:
 1. Pulsa el ícono de persona 🧑 en la barra superior → "Mi cuenta" (o ve directamente a cliente.html).
-2. Selecciona "Registrarse" e ingresa tu nombre, correo y contraseña.
+2. Selecciona "Registrarse" e ingresa tu nombre, teléfono y contraseña.
 3. ¡Ya puedes pedir con tu dirección guardada y acumular puntos!
 ━━━━ 3. MENÚ Y PRECIOS ━━━━
 🍔 HAMBURGUESAS
@@ -1003,6 +1072,379 @@ app.post('/api/admin/botconf/reload', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════
 // RUTAS API — WhatsApp (Baileys)
 // ═══════════════════════════════════════════════════════════════════════════
+
+// POST /api/auth/send-code — envía código de verificación al teléfono por WhatsApp
+app.post('/api/auth/send-code', rateLimitMiddleware(5, 60 * 1000), async (req, res) => {
+  try {
+    const nombre = sanitizeName(req.body && req.body.nombre);
+    const telefono = normalizePhoneDigits(req.body && req.body.telefono);
+    const password = String(req.body && req.body.password || '');
+    console.log(`[send-code] Petición recibida → nombre="${nombre}" teléfono="${telefono}" (${telefono.length} dígitos)`);
+
+    if (!nombre || nombre.length < 2) {
+      return res.status(400).json({ ok: false, error: 'Nombre inválido.' });
+    }
+    if (!telefono || telefono.length < 10 || telefono.length > 13) {
+      return res.status(400).json({ ok: false, error: 'Teléfono inválido. Usa lada y 10 dígitos.' });
+    }
+
+    const wa = getWAService();
+    if (!wa.connected) {
+      return res.status(503).json({ ok: false, error: 'WhatsApp no está conectado. Abre notifi.html y escanea el QR.' });
+    }
+
+    const now = Date.now();
+    const prev = _authCodeStore.get(telefono);
+    const users = loadPhoneAuthUsers();
+    const alreadyRegistered = !!users[telefono];
+    const hasActivePending = !!(prev && prev.expiresAt > now);
+
+    if (alreadyRegistered && !hasActivePending) {
+      return res.status(409).json({ ok: false, error: 'Este número ya está registrado. Inicia sesión con tu contraseña.' });
+    }
+
+    if (prev && prev.lastSentAt && (now - prev.lastSentAt) < AUTH_CODE_RESEND_MS) {
+      const waitSec = Math.ceil((AUTH_CODE_RESEND_MS - (now - prev.lastSentAt)) / 1000);
+      return res.status(429).json({ ok: false, error: `Espera ${waitSec}s para pedir otro código.` });
+    }
+
+    let passwordSalt = null;
+    let passwordHash = null;
+    let passwordPlain = null;
+    if (hasActivePending && prev.passwordSalt && prev.passwordHash && !password) {
+      passwordSalt = prev.passwordSalt;
+      passwordHash = prev.passwordHash;
+      passwordPlain = prev.passwordPlain || null;
+    } else {
+      if (!password || password.length < 6) {
+        return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' });
+      }
+      const hashed = hashPassword(password);
+      passwordSalt = hashed.salt;
+      passwordHash = hashed.hash;
+      passwordPlain = password;
+    }
+
+    const code = generateNumericCode(6);
+    const entry = {
+      code,
+      name: nombre,
+      phone: telefono,
+      passwordSalt,
+      passwordHash,
+      passwordPlain,
+      attempts: 0,
+      lastSentAt: now,
+      expiresAt: now + AUTH_CODE_TTL_MS,
+    };
+
+    const mensaje = [
+      '🍔 *SR & SRA BURGER*',
+      '',
+      `Bienvenido, ${nombre}.`,
+      `Tu código de confirmación es: *${code}*`,
+      '',
+      'Este código vence en 10 minutos.',
+      'Si no solicitaste este código, ignora este mensaje.'
+    ].join('\n');
+
+    await wa.sendToPhone(telefono, mensaje);
+    _authCodeStore.set(telefono, entry);
+    console.log(`[send-code] Código ${code} guardado para ${telefono}. Vence en 10 min.`);
+
+    return res.json({ ok: true, expiresInSec: Math.floor(AUTH_CODE_TTL_MS / 1000) });
+  } catch (e) {
+    console.error('[send-code] Error:', e && e.message, e && e.stack);
+    return res.status(500).json({ ok: false, error: e.message || 'No se pudo enviar el código.' });
+  }
+});
+
+// POST /api/auth/verify-code — verifica código y devuelve sesión local por teléfono
+app.post('/api/auth/verify-code', rateLimitMiddleware(20, 60 * 1000), async (req, res) => {
+  try {
+    const telefono = normalizePhoneDigits(req.body && req.body.telefono);
+    const codigo = normalizePhoneDigits(req.body && req.body.codigo);
+    const nombreInput = sanitizeName(req.body && req.body.nombre);
+
+    if (!telefono || telefono.length < 10 || telefono.length > 13) {
+      return res.status(400).json({ ok: false, error: 'Teléfono inválido.' });
+    }
+    if (!codigo || codigo.length < 4 || codigo.length > 8) {
+      return res.status(400).json({ ok: false, error: 'Código inválido.' });
+    }
+
+    const entry = _authCodeStore.get(telefono);
+    if (!entry) {
+      return res.status(400).json({ ok: false, error: 'No hay código activo para este número. Solicita uno nuevo.' });
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      _authCodeStore.delete(telefono);
+      return res.status(400).json({ ok: false, error: 'El código expiró. Solicita uno nuevo.' });
+    }
+
+    if (entry.attempts >= AUTH_CODE_MAX_ATTEMPTS) {
+      _authCodeStore.delete(telefono);
+      return res.status(429).json({ ok: false, error: 'Demasiados intentos. Solicita un código nuevo.' });
+    }
+
+    if (String(entry.code) !== String(codigo)) {
+      entry.attempts += 1;
+      _authCodeStore.set(telefono, entry);
+      return res.status(400).json({ ok: false, error: 'Código incorrecto.' });
+    }
+
+    _authCodeStore.delete(telefono);
+
+    const nombre = entry.name || nombreInput || `Cliente ${telefono.slice(-4)}`;
+    const uid = `wa_${telefono}`;
+    const nowIso = new Date().toISOString();
+
+    const users = loadPhoneAuthUsers();
+    users[telefono] = {
+      uid,
+      nombre,
+      telefono,
+      passwordSalt: entry.passwordSalt,
+      passwordHash: entry.passwordHash,
+      passwordPlain: entry.passwordPlain || (users[telefono] && users[telefono].passwordPlain) || null,
+      authType: 'phone_password',
+      updatedAt: nowIso,
+      createdAt: (users[telefono] && users[telefono].createdAt) || nowIso,
+    };
+    savePhoneAuthUsers(users);
+
+    const session = {
+      uid,
+      nombre,
+      telefono,
+      authType: 'phone_password',
+      verifiedAt: new Date().toISOString(),
+    };
+
+    // Si Firebase Admin está configurado, guardar/actualizar cliente para panel y puntos.
+    try {
+      const adminApp = getFirebaseAdminApp();
+      if (adminApp) {
+        const db = firebaseAdmin.firestore(adminApp);
+        const nowTs = firebaseAdmin.firestore.FieldValue.serverTimestamp();
+        await db.collection('clientes').doc(uid).set({
+          nombre,
+          telefono,
+          telefonoDigits: telefono,
+          authType: 'phone_password',
+          updatedAt: nowTs,
+          createdAt: nowTs,
+          puntos: 0,
+        }, { merge: true });
+      }
+    } catch (err) {
+      console.warn('[auth-code] No se pudo actualizar Firestore:', err.message);
+    }
+
+    return res.json({ ok: true, session });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || 'No se pudo verificar el código.' });
+  }
+});
+
+// POST /api/auth/login-phone — login con número y contraseña
+app.post('/api/auth/login-phone', rateLimitMiddleware(10, 60 * 1000), async (req, res) => {
+  try {
+    const telefono = normalizePhoneDigits(req.body && req.body.telefono);
+    const password = String(req.body && req.body.password || '');
+
+    if (!telefono || telefono.length < 10 || telefono.length > 13) {
+      return res.status(400).json({ ok: false, error: 'Teléfono inválido.' });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ ok: false, error: 'Contraseña inválida.' });
+    }
+
+    const users = loadPhoneAuthUsers();
+    const user = users[telefono];
+    if (!user) {
+      return res.status(404).json({ ok: false, error: 'Este número no está registrado.' });
+    }
+
+    const ok = verifyPassword(password, user.passwordSalt, user.passwordHash);
+    if (!ok) {
+      return res.status(401).json({ ok: false, error: 'Número o contraseña incorrectos.' });
+    }
+
+    return res.json({
+      ok: true,
+      session: {
+        uid: user.uid || `wa_${telefono}`,
+        nombre: user.nombre || `Cliente ${telefono.slice(-4)}`,
+        telefono,
+        authType: 'phone_password',
+        verifiedAt: new Date().toISOString(),
+      }
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || 'No se pudo iniciar sesión.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Recuperación de contraseña por WhatsApp
+// ─────────────────────────────────────────────────────────────────────────────
+
+// POST /api/auth/recover-send-code — envía código a un número YA registrado
+app.post('/api/auth/recover-send-code', rateLimitMiddleware(5, 60 * 1000), async (req, res) => {
+  try {
+    const telefono = normalizePhoneDigits(req.body && req.body.telefono);
+    if (!telefono || telefono.length < 10 || telefono.length > 13) {
+      return res.status(400).json({ ok: false, error: 'Teléfono inválido. Usa lada y 10 dígitos.' });
+    }
+
+    const users = loadPhoneAuthUsers();
+    const user = users[telefono];
+    if (!user) {
+      return res.status(404).json({ ok: false, error: 'Este número no está registrado.' });
+    }
+    if (!user.passwordPlain) {
+      return res.status(409).json({ ok: false, error: 'Este número fue registrado antes de habilitar la recuperación. Por favor inicia sesión y vuelve a registrarte para crear una nueva contraseña.' });
+    }
+
+    const wa = getWAService();
+    if (!wa.connected) {
+      return res.status(503).json({ ok: false, error: 'WhatsApp no está conectado.' });
+    }
+
+    const now = Date.now();
+    const prevKey = `recover:${telefono}`;
+    const prev = _authCodeStore.get(prevKey);
+    if (prev && prev.lastSentAt && (now - prev.lastSentAt) < AUTH_CODE_RESEND_MS) {
+      const waitSec = Math.ceil((AUTH_CODE_RESEND_MS - (now - prev.lastSentAt)) / 1000);
+      return res.status(429).json({ ok: false, error: `Espera ${waitSec}s para pedir otro código.` });
+    }
+
+    const code = generateNumericCode(6);
+    const entry = {
+      type: 'recover',
+      code,
+      phone: telefono,
+      attempts: 0,
+      lastSentAt: now,
+      expiresAt: now + AUTH_CODE_TTL_MS,
+    };
+
+    const mensaje = [
+      '🍔 *SR & SRA BURGER*',
+      '',
+      `Hola ${user.nombre || ''}.`,
+      `Tu código para recuperar tu contraseña es: *${code}*`,
+      '',
+      'Este código vence en 10 minutos.',
+      'Si no solicitaste recuperar tu contraseña, ignora este mensaje.'
+    ].join('\n');
+
+    await wa.sendToPhone(telefono, mensaje);
+    _authCodeStore.set(prevKey, entry);
+    console.log(`[recover-send-code] Código ${code} enviado a ${telefono}.`);
+
+    return res.json({ ok: true, expiresInSec: Math.floor(AUTH_CODE_TTL_MS / 1000) });
+  } catch (e) {
+    console.error('[recover-send-code] Error:', e && e.message);
+    return res.status(500).json({ ok: false, error: e.message || 'No se pudo enviar el código.' });
+  }
+});
+
+// POST /api/auth/recover-verify-code — devuelve la contraseña en claro si el código coincide
+app.post('/api/auth/recover-verify-code', rateLimitMiddleware(20, 60 * 1000), async (req, res) => {
+  try {
+    const telefono = normalizePhoneDigits(req.body && req.body.telefono);
+    const codigo = normalizePhoneDigits(req.body && req.body.codigo);
+    if (!telefono || telefono.length < 10 || telefono.length > 13) {
+      return res.status(400).json({ ok: false, error: 'Teléfono inválido.' });
+    }
+    if (!codigo || codigo.length < 4 || codigo.length > 8) {
+      return res.status(400).json({ ok: false, error: 'Código inválido.' });
+    }
+
+    const key = `recover:${telefono}`;
+    const entry = _authCodeStore.get(key);
+    if (!entry) {
+      return res.status(400).json({ ok: false, error: 'No hay código activo para este número. Solicita uno nuevo.' });
+    }
+    if (Date.now() > entry.expiresAt) {
+      _authCodeStore.delete(key);
+      return res.status(400).json({ ok: false, error: 'El código expiró. Solicita uno nuevo.' });
+    }
+    if (entry.attempts >= AUTH_CODE_MAX_ATTEMPTS) {
+      _authCodeStore.delete(key);
+      return res.status(429).json({ ok: false, error: 'Demasiados intentos. Solicita un código nuevo.' });
+    }
+    if (String(entry.code) !== String(codigo)) {
+      entry.attempts += 1;
+      _authCodeStore.set(key, entry);
+      return res.status(400).json({ ok: false, error: 'Código incorrecto.' });
+    }
+
+    _authCodeStore.delete(key);
+    const users = loadPhoneAuthUsers();
+    const user = users[telefono];
+    if (!user || !user.passwordPlain) {
+      return res.status(404).json({ ok: false, error: 'No se encontró la contraseña almacenada para este número.' });
+    }
+
+    return res.json({ ok: true, password: user.passwordPlain, nombre: user.nombre || '' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || 'No se pudo verificar el código.' });
+  }
+});
+
+// GET /api/admin/phone-users — lista usuarios con contraseña (panel ADMIN)
+app.get('/api/admin/phone-users', (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+  try {
+    const users = loadPhoneAuthUsers();
+    const list = Object.values(users).map((u) => ({
+      uid: u.uid,
+      telefono: u.telefono,
+      nombre: u.nombre,
+      password: u.passwordPlain || null,
+      createdAt: u.createdAt || null,
+      updatedAt: u.updatedAt || null,
+    }));
+    return res.json({ ok: true, users: list });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/admin/phone-users — borra una entrada de auth por teléfono (panel ADMIN)
+app.delete('/api/admin/phone-users', (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+  try {
+    const tel = String((req.body && req.body.telefono) || req.query.telefono || '').replace(/\D/g, '');
+    if (!tel) return res.status(400).json({ ok: false, error: 'telefono requerido' });
+    const users = loadPhoneAuthUsers();
+    // Buscar por clave directa o por campo telefono dentro del registro
+    let removed = false;
+    if (users[tel]) {
+      delete users[tel];
+      removed = true;
+    } else {
+      for (const key of Object.keys(users)) {
+        const u = users[key];
+        if (u && String(u.telefono || '').replace(/\D/g, '') === tel) {
+          delete users[key];
+          removed = true;
+        }
+      }
+    }
+    if (removed) savePhoneAuthUsers(users);
+    // Limpiar cualquier código pendiente
+    try { _authCodeStore.delete(tel); } catch (_) {}
+    try { _authCodeStore.delete('recover:' + tel); } catch (_) {}
+    return res.json({ ok: true, removed });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 /**
  * Extrae datos comunes del objeto order de Firestore.

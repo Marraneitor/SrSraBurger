@@ -74,6 +74,21 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0.85rem 1.5rem; gap: 1rem;
     }
+    .mobile-menu-btn {
+      display: none;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: #FCD34D;
+      border-radius: 12px;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      min-height: 40px;
+    }
     .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
     .brand-icon {
       width: 42px; height: 42px;
@@ -132,6 +147,7 @@
       gap: 0.5rem; flex-wrap: wrap;
       padding: 0.5rem 1.5rem 0;
       position: relative; z-index: 1;
+      transition: transform .28s ease, opacity .28s ease;
     }
     .pill {
       display: inline-flex; align-items: center; gap: 0.4rem;
@@ -145,6 +161,41 @@
     }
     .pill:hover { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: var(--amber); }
     .pill.active { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.35); color: var(--amber); }
+
+    .mobile-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,0.6);
+      backdrop-filter: blur(2px);
+      z-index: 130;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease;
+    }
+
+    .fab-dock {
+      position: fixed;
+      right: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+      z-index: 140;
+      display: none;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .fab-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 46px;
+      min-height: 46px;
+      border-radius: 999px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--amber), var(--amber-dark));
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 8px 22px rgba(245,158,11,0.35);
+      text-decoration: none;
+      font-size: 1rem;
+    }
 
     /* SECTION LABEL */
     .section-label {
@@ -327,11 +378,58 @@
       .bento-front .card-wide  { grid-column: 1 / -1; grid-row: auto; }
       .bento-admin .card-w2    { grid-column: 1 / -1; }
       .bento-reports .card-tall{ grid-row: auto; }
+
+      .topbar-inner { padding: 0.75rem 1rem; }
+      .mobile-menu-btn { display: inline-flex; }
+      .topbar-status { display: none; }
+
+      .pill-nav {
+        position: fixed;
+        top: 0;
+        right: 0;
+        z-index: 150;
+        width: min(84vw, 320px);
+        height: 100dvh;
+        padding: calc(1rem + env(safe-area-inset-top, 0px)) 0.8rem calc(1rem + env(safe-area-inset-bottom, 0px));
+        background: rgba(6,13,28,0.98);
+        border-left: 1px solid rgba(245,158,11,0.2);
+        box-shadow: -12px 0 35px rgba(0,0,0,0.45);
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0.6rem;
+        transform: translateX(105%);
+        opacity: 0;
+        pointer-events: none;
+      }
+      .pill {
+        width: 100%;
+        justify-content: flex-start;
+        min-height: 44px;
+        font-size: 0.85rem;
+      }
+      body.mobile-nav-open .pill-nav {
+        transform: translateX(0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+      body.mobile-nav-open .mobile-overlay {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .fab-dock { display: flex; }
     }
     @media (max-width: 580px) {
       .bento-front, .bento-ops, .bento-admin, .bento-reports, .bento-otros { grid-template-columns: 1fr; }
-      .pill-nav { display: none; }
       .hero { padding: 2rem 1rem 1.25rem; }
+      .hero-sub { font-size: 0.92rem; }
+      .bc { padding: 1.1rem; border-radius: 16px; }
+      .bc-title { font-size: 0.95rem; }
+      .bc-desc { font-size: 0.8rem; line-height: 1.5; }
+      .bc-btn { min-height: 40px; }
+      .brand-text .main { font-size: 0.98rem; }
+      .brand-text .sub { font-size: 0.65rem; }
     }
 
     /* SCROLLBAR */
@@ -359,8 +457,13 @@
         <span class="dot"></span>
         Sistema activo
       </div>
+      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" aria-label="Abrir menu rapido">
+        <i class="fas fa-bars"></i> Menu
+      </button>
     </div>
   </nav>
+
+  <div id="mobile-overlay" class="mobile-overlay" aria-hidden="true"></div>
 
   <!-- QUICK PILLS -->
   <div class="pill-nav">
@@ -747,6 +850,12 @@
     </div>
   </footer>
 
+  <div class="fab-dock" aria-label="Accesos rapidos">
+    <a class="fab-link" href="controldeenvios.html" title="Envíos"><i class="fas fa-motorcycle"></i></a>
+    <a class="fab-link" href="pedido-manual.html" title="Pedido Manual"><i class="fas fa-clipboard-check"></i></a>
+    <a class="fab-link" href="notifi.html" title="Notifi"><i class="fab fa-whatsapp"></i></a>
+  </div>
+
   <script>
     // Scroll reveal
     const io = new IntersectionObserver((entries) => {
@@ -785,6 +894,7 @@
         e.preventDefault();
         const target = document.querySelector(pill.getAttribute('href'));
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.body.classList.remove('mobile-nav-open');
       });
     });
 
@@ -797,6 +907,28 @@
         card.style.transform = `translateY(-6px) scale(1.015) perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg)`;
       });
       card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+    });
+
+    // Mobile menu toggle
+    const menuBtn = document.getElementById('mobile-menu-btn');
+    const overlay = document.getElementById('mobile-overlay');
+    const closeMobileMenu = () => document.body.classList.remove('mobile-nav-open');
+
+    if (menuBtn) {
+      menuBtn.addEventListener('click', () => {
+        document.body.classList.toggle('mobile-nav-open');
+      });
+    }
+    if (overlay) {
+      overlay.addEventListener('click', closeMobileMenu);
+    }
+
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') closeMobileMenu();
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 900) closeMobileMenu();
     });
   </script>
 </body>

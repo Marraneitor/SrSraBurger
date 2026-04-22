@@ -20,8 +20,8 @@ export const RESTAURANT_CONFIG = {
   
   // ===== LOGO =====
   logo: {
-    type: 'emoji', // Opciones: 'emoji', 'url', 'svg'
-    value: '🍔', // Para emoji: el emoji. Para url: ruta de la imagen. Para svg: código SVG
+    type: 'url', // Opciones: 'emoji', 'url', 'svg'
+    value: './123-modified-thermal-88mm-bw.jpg', // Para emoji: el emoji. Para url: ruta de la imagen. Para svg: código SVG
     alt: 'SR & SRA BURGER Logo'
   },
 

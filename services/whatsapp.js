@@ -352,8 +352,49 @@ class WhatsAppService extends EventEmitter {
   /** Enviar mensaje directo a un teléfono */
   async sendToPhone(phone, text) {
     if (!this.connected || !this.sock) throw new Error('WhatsApp no conectado');
-    const jid = `${String(phone).replace(/\D/g, '')}@s.whatsapp.net`;
-    await this.sock.sendMessage(jid, { text });
+    let digits = String(phone || '').replace(/\D/g, '');
+    // Normalizar para México: si son 10 dígitos, anteponer 52.
+    if (digits.length === 10) {
+      digits = '52' + digits;
+    } else if (digits.length === 11 && digits.startsWith('1')) {
+      digits = '52' + digits.slice(1);
+    }
+
+    // Probar varios formatos posibles de WhatsApp MX:
+    //   - 52 + 10 dígitos (formato actual)
+    //   - 521 + 10 dígitos (formato viejo, aún usado por cuentas antiguas)
+    const base10 = digits.startsWith('521') ? digits.slice(3)
+                  : digits.startsWith('52')  ? digits.slice(2)
+                  : digits;
+    const candidates = Array.from(new Set([
+      '52' + base10,
+      '521' + base10,
+      digits,
+    ]));
+
+    let resolvedJid = null;
+    if (typeof this.sock.onWhatsApp === 'function') {
+      for (const candidate of candidates) {
+        try {
+          const result = await this.sock.onWhatsApp(candidate);
+          if (Array.isArray(result) && result.length && result[0] && result[0].exists) {
+            resolvedJid = result[0].jid || `${candidate}@s.whatsapp.net`;
+            console.log(`📡 [WhatsApp] Número ${candidate} existe → JID ${resolvedJid}`);
+            break;
+          }
+        } catch (_) { /* probar siguiente */ }
+      }
+    }
+
+    const jid = resolvedJid || `${digits}@s.whatsapp.net`;
+    console.log(`📤 [WhatsApp] Enviando a ${jid}`);
+    try {
+      await this.sock.sendMessage(jid, { text });
+      console.log(`✅ [WhatsApp] Mensaje enviado a ${jid}`);
+    } catch (err) {
+      console.error(`❌ [WhatsApp] Error enviando a ${jid}:`, err && err.message);
+      throw err;
+    }
   }
 
   _saveConfigFile() {

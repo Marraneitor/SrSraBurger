@@ -2369,6 +2369,27 @@ if (false) {
             updateCheckoutTotals(); // Nueva función para actualizar totales
             handlePaymentMethodChange(); // Configurar método de pago inicial
             validateCheckoutForm();
+            // Mostrar CTA de cuenta si el cliente no tiene sesión iniciada
+            try {
+                const authCta = document.getElementById('checkout-auth-cta');
+                if (authCta) {
+                    let hasSession = false;
+                    try {
+                        const raw = localStorage.getItem('sr_verified_customer_session');
+                        if (raw) {
+                            const parsed = JSON.parse(raw);
+                            hasSession = !!(parsed && parsed.uid);
+                        }
+                    } catch(_) {}
+                    // Por defecto visible; ocultar solo si ya hay sesión verificada
+                    if (hasSession) {
+                        authCta.classList.add('hidden');
+                    } else {
+                        authCta.classList.remove('hidden');
+                        authCta.style.display = '';
+                    }
+                }
+            } catch(_) {}
         });
 
         // Cerrar modal de checkout

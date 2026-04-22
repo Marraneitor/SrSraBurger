@@ -259,6 +259,91 @@
             box-shadow: var(--shadow-hover);
         }
 
+        /* Mobile premium buttons: elegant black style for account and quick actions */
+        .mobile-elegant-btn {
+            border: 1px solid rgba(15, 23, 42, 0.22) !important;
+            background: linear-gradient(145deg, #0f172a, #020617) !important;
+            color: #f8fafc !important;
+            box-shadow: 0 8px 20px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease !important;
+        }
+
+        .mobile-elegant-btn i {
+            color: #e2e8f0 !important;
+        }
+
+        .mobile-elegant-btn:hover,
+        .mobile-elegant-btn:focus-visible {
+            border-color: rgba(22, 163, 74, 0.45) !important;
+            box-shadow: 0 10px 24px rgba(2, 6, 23, 0.38), 0 0 0 2px rgba(22, 163, 74, 0.18) !important;
+            transform: translateY(-1px);
+        }
+
+        .mobile-elegant-btn:active {
+            transform: scale(0.97);
+        }
+
+        #mobile-menu {
+            background: linear-gradient(180deg, #0b1220 0%, #020617 100%) !important;
+            border-right: 1px solid rgba(148, 163, 184, 0.18);
+        }
+
+        #mobile-menu .mobile-menu-link {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.85rem 0.9rem;
+            border-radius: 0.9rem;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: rgba(15, 23, 42, 0.72);
+            color: #e5e7eb;
+            transition: all 170ms ease;
+        }
+
+        #mobile-menu .mobile-menu-link i {
+            color: #22c55e;
+            margin-top: 2px;
+        }
+
+        #mobile-menu .mobile-menu-link:hover {
+            border-color: rgba(22, 163, 74, 0.42);
+            background: rgba(15, 23, 42, 0.95);
+            transform: translateY(-1px);
+        }
+
+        .mobile-menu-link-title {
+            font-weight: 800;
+            color: #f8fafc;
+            line-height: 1.15;
+            letter-spacing: -0.01em;
+        }
+
+        .mobile-menu-link-sub {
+            margin-top: 0.2rem;
+            font-size: 0.74rem;
+            color: #94a3b8;
+            line-height: 1.25;
+        }
+
+        .mobile-elegant-promo {
+            border: 1px solid rgba(22, 163, 74, 0.4) !important;
+            background: linear-gradient(145deg, #111827 0%, #030712 100%) !important;
+            color: #ecfdf5 !important;
+            box-shadow: 0 10px 22px rgba(3, 7, 18, 0.38), 0 0 0 1px rgba(22, 163, 74, 0.18) inset !important;
+            transform: none !important;
+        }
+
+        .mobile-elegant-promo i {
+            color: #22c55e;
+            animation: none !important;
+        }
+
+        .mobile-elegant-promo .promo-badge {
+            background: rgba(22, 163, 74, 0.2);
+            color: #86efac;
+            border: 1px solid rgba(22, 163, 74, 0.45);
+        }
+
         .btn-primary::before {
             content: '';
             position: absolute;
@@ -2653,11 +2738,11 @@
                     </button>
                 </nav>
                 <div class="flex items-center space-x-2 sm:space-x-4">
-                    <button id="theme-toggle" type="button" class="p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/15 transition-colors" aria-label="Cambiar tema">
+                    <button id="theme-toggle" type="button" class="mobile-elegant-btn p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/15 transition-colors" aria-label="Cambiar tema">
                         <i class="fas fa-moon text-gray-700 dark:hidden"></i>
                         <i class="fas fa-sun text-yellow-300 hidden dark:inline"></i>
                     </button>
-                    <a href="cliente.html" id="mobile-account-btn" data-sr-auth-open="1" class="lg:hidden p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Mi cuenta / Iniciar sesión">
+                    <a href="cliente.html" id="mobile-account-btn" data-sr-auth-open="1" class="mobile-elegant-btn lg:hidden p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Mi cuenta / Iniciar sesión">
                         <i class="fas fa-user text-gray-700 text-sm sm:text-base"></i>
                     </a>
                     <button id="open-cart-btn" class="btn-primary flex items-center space-x-2 sm:space-x-3 shadow-lg text-sm sm:text-base px-3 py-2 sm:px-6 sm:py-3" aria-label="Abrir carrito de compras">
@@ -2665,7 +2750,7 @@
                         <span class="hidden sm:inline font-semibold">Carrito</span>
                         <span id="cart-count" class="bg-white text-yellow-600 text-xs sm:text-sm font-bold rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center shadow-sm">0</span>
                     </button>
-                    <button id="mobile-menu-btn" class="lg:hidden p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Abrir menú de navegación">
+                    <button id="mobile-menu-btn" class="mobile-elegant-btn lg:hidden p-2 sm:p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors" aria-label="Abrir menú de navegación">
                         <i class="fas fa-bars text-gray-700 text-sm sm:text-base"></i>
                     </button>
                 </div>
@@ -2686,35 +2771,47 @@
                         <h2 class="text-lg font-bold font-poppins text-gray-900">SR & SRA <span class="text-yellow-600">BURGER</span></h2>
                     </div>
                 </div>
-                <button id="close-mobile-menu" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+                <button id="close-mobile-menu" class="mobile-elegant-btn p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
                     <i class="fas fa-times text-gray-700"></i>
                 </button>
             </div>
 
             <!-- Navegación del menú móvil -->
             <nav class="space-y-4">
-                <a href="cliente.html" data-sr-auth-open="1" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
-                    <i class="fas fa-user text-gray-600 group-hover:text-yellow-600"></i>
-                    <span class="text-gray-800 font-medium group-hover:text-yellow-600">Mi cuenta / Iniciar sesión</span>
+                <a href="cliente.html" data-sr-auth-open="1" class="mobile-menu-link group">
+                    <i class="fas fa-user"></i>
+                    <span>
+                        <span class="mobile-menu-link-title">Mi cuenta</span>
+                        <span class="mobile-menu-link-sub">Guarda dirección, acelera tu pedido y acumula puntos.</span>
+                    </span>
                 </a>
-                <a href="#menu" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
-                    <i class="fas fa-utensils text-gray-600 group-hover:text-yellow-600"></i>
-                    <span class="text-gray-800 font-medium group-hover:text-yellow-600">Menú</span>
+                <a href="#menu" class="mobile-menu-link group">
+                    <i class="fas fa-utensils"></i>
+                    <span>
+                        <span class="mobile-menu-link-title">Menú</span>
+                        <span class="mobile-menu-link-sub">Explora recomendaciones y pide en segundos.</span>
+                    </span>
                 </a>
-                <a href="#nosotros" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
-                    <i class="fas fa-users text-gray-600 group-hover:text-yellow-600"></i>
-                    <span class="text-gray-800 font-medium group-hover:text-yellow-600">Nosotros</span>
+                <a href="#nosotros" class="mobile-menu-link group">
+                    <i class="fas fa-users"></i>
+                    <span>
+                        <span class="mobile-menu-link-title">Nosotros</span>
+                        <span class="mobile-menu-link-sub">Conoce nuestra historia y por qué nos prefieren.</span>
+                    </span>
                 </a>
-                <a href="#contacto" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
-                    <i class="fas fa-phone text-gray-600 group-hover:text-yellow-600"></i>
-                    <span class="text-gray-800 font-medium group-hover:text-yellow-600">Contacto</span>
+                <a href="#contacto" class="mobile-menu-link group">
+                    <i class="fas fa-phone"></i>
+                    <span>
+                        <span class="mobile-menu-link-title">Contacto</span>
+                        <span class="mobile-menu-link-sub">Resuelve dudas o pide ayuda al instante.</span>
+                    </span>
                 </a>
                 
                 <!-- Botón de ofertas en menú móvil -->
-                <button id="mobile-promotions-btn" class="w-full flex items-center space-x-3 p-3 rounded-xl bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 text-white hover:from-red-600 hover:via-orange-600 hover:to-yellow-600 transition-all transform hover:scale-105">
-                    <i class="fas fa-fire animate-bounce"></i>
-                    <span class="font-bold">OFERTAS HOT</span>
-                    <div class="bg-white text-red-600 px-2 py-1 rounded-full text-xs font-black animate-pulse ml-auto">NUEVO</div>
+                <button id="mobile-promotions-btn" class="mobile-elegant-promo w-full flex items-center space-x-3 p-3 rounded-xl bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 text-white hover:from-red-600 hover:via-orange-600 hover:to-yellow-600 transition-all transform hover:scale-105">
+                    <i class="fas fa-fire"></i>
+                    <span class="font-bold">Ver ofertas del día</span>
+                    <div class="promo-badge px-2 py-1 rounded-full text-xs font-black ml-auto">Ahorra</div>
                 </button>
 
             </nav>
@@ -3569,11 +3666,14 @@
                         <span id="checkout-sticky-total" class="font-black text-xl text-green-600 dark:text-green-400 font-poppins" style="letter-spacing:-0.03em">$0</span>
                     </div>
                 </div>
+                <a id="checkout-auth-cta" href="cliente.html" data-sr-auth-open="1" class="w-full mb-2 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-extrabold shadow-lg shadow-orange-500/30 hover:from-yellow-600 hover:to-orange-600 active:scale-[0.99] transition-all duration-200" aria-label="Crear cuenta o iniciar sesión">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Crear cuenta o iniciar sesión (10% OFF)</span>
+                </a>
                 <button id="send-whatsapp-btn" class="cart-checkout-btn" disabled>
                     <i class="fab fa-whatsapp text-lg"></i>
                     <span>Confirmar por WhatsApp</span>
                 </button>
-                <p class="text-center text-xs text-gray-400 mt-2">Ctrl+Enter para confirmar r\u00e1pido</p>
             </div>
         </div>
     </div>
@@ -4109,49 +4209,65 @@
 
                 <!-- Login -->
                 <div id="sr-auth-view-login">
+                    <!-- Toggle método -->
+                    <div class="flex gap-2 mb-3 p-1 bg-white/5 rounded-2xl">
+                        <button type="button" data-login-mode="phone" class="sr-login-mode-btn flex-1 px-3 py-2 rounded-xl text-sm font-bold transition bg-white/15 text-white">
+                            <i class="fas fa-mobile-screen-button mr-1"></i> Teléfono
+                        </button>
+                        <button type="button" data-login-mode="email" class="sr-login-mode-btn flex-1 px-3 py-2 rounded-xl text-sm font-bold transition text-white/70 hover:text-white">
+                            <i class="fas fa-envelope mr-1"></i> Correo
+                        </button>
+                    </div>
                     <form id="sr-auth-login-form" class="space-y-3">
                         <div>
-                            <label class="block text-xs font-semibold text-white/70 mb-1">Correo</label>
-                            <input id="sr-auth-login-correo" type="email" autocomplete="email" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="correo@ejemplo.com" />
+                            <label id="sr-auth-login-correo-label" class="block text-xs font-semibold text-white/70 mb-1">Teléfono</label>
+                            <input id="sr-auth-login-correo" type="tel" autocomplete="tel" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="9221234567" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-white/70 mb-1">Contraseña</label>
                             <input id="sr-auth-login-pass" type="password" autocomplete="current-password" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="••••••••" />
                         </div>
                         <p id="sr-auth-login-error" class="hidden text-xs text-red-300"></p>
-                        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                        <div class="pt-1">
                             <button id="sr-auth-login-submit" type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 font-black">
                                 Entrar
                                 <span id="sr-auth-login-spinner" class="hidden w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin"></span>
                             </button>
-                            <button id="sr-auth-forgot-btn" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 font-bold">
-                                Olvidé mi contraseña
-                                <span id="sr-auth-forgot-spinner" class="hidden w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                            </button>
                         </div>
-                        <p id="sr-auth-forgot-success" class="hidden text-xs text-green-300"></p>
-                        <div class="text-xs text-white/60 pt-2">
-                            ¿Necesitas direcciones guardadas? Puedes usar <a href="cliente.html" class="underline hover:text-white">Mi cuenta</a> para administrar direcciones.
+                        <div class="text-xs text-white/60 pt-2 flex items-center justify-between gap-2">
+                            <button type="button" id="sr-auth-forgot-btn" class="text-yellow-300 hover:text-yellow-200 underline-offset-2 hover:underline">¿Olvidaste tu contraseña?</button>
+                            <a href="cliente.html" class="underline hover:text-white">Mi cuenta</a>
                         </div>
                     </form>
                 </div>
 
                 <!-- Registro -->
                 <div id="sr-auth-view-register" class="hidden">
+                    <!-- Toggle método de registro -->
+                    <div class="flex gap-2 mb-3 p-1 bg-white/5 rounded-2xl">
+                        <button type="button" data-reg-mode="phone" class="sr-reg-mode-btn flex-1 px-3 py-2 rounded-xl text-sm font-bold transition bg-white/15 text-white">
+                            <i class="fab fa-whatsapp mr-1"></i> Teléfono
+                        </button>
+                        <button type="button" data-reg-mode="email" class="sr-reg-mode-btn flex-1 px-3 py-2 rounded-xl text-sm font-bold transition text-white/70 hover:text-white">
+                            <i class="fas fa-envelope mr-1"></i> Correo
+                        </button>
+                    </div>
                     <form id="sr-auth-reg-form" class="space-y-3">
                         <div>
                             <label class="block text-xs font-semibold text-white/70 mb-1">Nombre completo</label>
                             <input id="sr-auth-reg-nombre" type="text" autocomplete="name" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="Tu nombre" />
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-white/70 mb-1">Correo</label>
-                                <input id="sr-auth-reg-correo" type="email" autocomplete="email" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="correo@ejemplo.com" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-white/70 mb-1">Teléfono</label>
-                                <input id="sr-auth-reg-telefono" type="tel" autocomplete="tel" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="9221234567" />
-                            </div>
+                        <div id="sr-auth-reg-correo-row" class="hidden">
+                            <label class="block text-xs font-semibold text-white/70 mb-1">Correo electrónico</label>
+                            <input id="sr-auth-reg-correo" type="email" autocomplete="email" class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="tucorreo@ejemplo.com" />
+                        </div>
+                        <div id="sr-auth-reg-correo2-row" class="hidden">
+                            <label class="block text-xs font-semibold text-white/70 mb-1">Confirmar correo</label>
+                            <input id="sr-auth-reg-correo2" type="email" autocomplete="email" class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="Repite tu correo" />
+                        </div>
+                        <div>
+                            <label id="sr-auth-reg-telefono-label" class="block text-xs font-semibold text-white/70 mb-1">Teléfono con WhatsApp</label>
+                            <input id="sr-auth-reg-telefono" type="tel" autocomplete="tel" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="9221234567" />
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
@@ -4160,19 +4276,80 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-white/70 mb-1">Confirmar</label>
-                                <input id="sr-auth-reg-pass2" type="password" autocomplete="new-password" minlength="6" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="Repite tu contraseña" />
+                                <input id="sr-auth-reg-pass2" type="password" autocomplete="new-password" minlength="6" required class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="Repite tu clave" />
                             </div>
                         </div>
                         <p id="sr-auth-reg-error" class="hidden text-xs text-red-300"></p>
                         <p id="sr-auth-reg-success" class="hidden text-xs text-green-300"></p>
                         <button id="sr-auth-reg-submit" type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 font-black">
-                            Crear cuenta
+                            <span id="sr-auth-reg-submit-text">Enviar código por WhatsApp</span>
                             <span id="sr-auth-reg-spinner" class="hidden w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin"></span>
                         </button>
-                        <div class="text-xs text-white/60 pt-2">
-                            Al registrarte, tu cuenta se usa para guardar tu historial y direcciones.
+                        <div id="sr-auth-reg-hint" class="text-xs text-white/60 pt-2">
+                            Te enviaremos un código de confirmación por WhatsApp para activar tu cuenta.
                         </div>
                     </form>
+
+                    <div id="sr-auth-verify-modal" class="hidden fixed inset-0 z-[85] bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+                        <div class="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <div>
+                                    <p class="text-sm font-black text-white">Confirma tu código</p>
+                                    <p class="text-xs text-white/60">Ingresa el código enviado por WhatsApp</p>
+                                </div>
+                                <button id="sr-auth-verify-close" type="button" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20">✕</button>
+                            </div>
+                            <div class="space-y-3">
+                                <input id="sr-auth-verify-code" type="text" inputmode="numeric" maxlength="8" class="w-full rounded-xl px-4 py-3 text-center tracking-[0.22em] font-black bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="000000" />
+                                <p id="sr-auth-verify-error" class="hidden text-xs text-red-300"></p>
+                                <p id="sr-auth-verify-success" class="hidden text-xs text-green-300"></p>
+                                <button id="sr-auth-verify-submit" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 font-black">
+                                    Confirmar código
+                                    <span id="sr-auth-verify-spinner" class="hidden w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin"></span>
+                                </button>
+                                <button id="sr-auth-verify-resend" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 font-bold">
+                                    Reenviar código
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Olvidé Contraseña -->
+                    <div id="sr-auth-forgot-modal" class="hidden fixed inset-0 z-[85] bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+                        <div class="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <div>
+                                    <p class="text-sm font-black text-white">Recuperar contraseña</p>
+                                    <p class="text-xs text-white/60" id="sr-auth-forgot-step-label">Te enviaremos un código por WhatsApp.</p>
+                                </div>
+                                <button id="sr-auth-forgot-close" type="button" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20">✕</button>
+                            </div>
+                            <!-- Paso 1: pedir teléfono -->
+                            <div id="sr-auth-forgot-step1" class="space-y-3">
+                                <input id="sr-auth-forgot-phone" type="tel" inputmode="numeric" maxlength="13" class="w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="9221234567" />
+                                <p id="sr-auth-forgot-error" class="hidden text-xs text-red-300"></p>
+                                <button id="sr-auth-forgot-send" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 font-black">
+                                    Obtener código
+                                    <span id="sr-auth-forgot-send-spin" class="hidden w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin"></span>
+                                </button>
+                            </div>
+                            <!-- Paso 2: pedir código -->
+                            <div id="sr-auth-forgot-step2" class="hidden space-y-3">
+                                <input id="sr-auth-forgot-code" type="text" inputmode="numeric" maxlength="8" class="w-full rounded-xl px-4 py-3 text-center tracking-[0.22em] font-black bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="000000" />
+                                <p id="sr-auth-forgot-error2" class="hidden text-xs text-red-300"></p>
+                                <button id="sr-auth-forgot-verify" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 font-black">
+                                    Ver mi contraseña
+                                    <span id="sr-auth-forgot-verify-spin" class="hidden w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin"></span>
+                                </button>
+                            </div>
+                            <!-- Paso 3: mostrar contraseña -->
+                            <div id="sr-auth-forgot-step3" class="hidden space-y-3">
+                                <p class="text-xs text-white/60">Tu contraseña es:</p>
+                                <div id="sr-auth-forgot-result" class="w-full text-center font-mono font-black text-yellow-300 text-2xl bg-white/5 border border-white/10 rounded-xl py-4 select-all"></div>
+                                <button id="sr-auth-forgot-done" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 font-bold">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4300,7 +4477,7 @@
             })();
         </script>
         <!-- SKILL-01: defer — no bloquea el parser HTML; el script corre tras DOMContentLoaded -->
-        <script src="js/script.js.backup?v=2026-02-27a" defer></script>
+        <script src="js/script.js.backup?v=2026-04-21f" defer></script>
 
         <!-- UX enhancements: sticky category nav, cart badge pop, checkout prefill -->
         <script>

@@ -1,0 +1,13 @@
+{
+  "9221393994": {
+    "uid": "wa_9221393994",
+    "nombre": "Joel Maciel Villalobos",
+    "telefono": "9221393994",
+    "passwordSalt": "f456fd8a932610638f2fa231f108df92",
+    "passwordHash": "69252d4851d9cee4f7f737b8b2206ed6a295bc10ff3719ea3c9d1ea5135506d6f8526aab268140c80d452b5fd90c37fce31c672558ebae17a383be6c0282e70b",
+    "passwordPlain": "123123",
+    "authType": "phone_password",
+    "updatedAt": "2026-04-22T05:55:57.540Z",
+    "createdAt": "2026-04-22T05:55:57.540Z"
+  }
+}

@@ -2067,6 +2067,89 @@
             return extra;
         }
 
+        function getRuntimeRestaurantConfig() {
+            const fallback = {
+                name: 'SR & SRA BURGER',
+                contact: {
+                    address: {
+                        city: 'Minatitlan',
+                        state: 'Veracruz'
+                    }
+                },
+                logo: {
+                    type: 'url',
+                    value: './123-modified-thermal-88mm-bw.jpg',
+                    alt: 'SR & SRA BURGER Logo'
+                },
+                legal: {
+                    businessName: 'SR & SRA BURGER'
+                }
+            };
+
+            try {
+                const raw = localStorage.getItem('RESTAURANT_CONFIG');
+                if (!raw) return fallback;
+                const parsed = JSON.parse(raw);
+                return {
+                    ...fallback,
+                    ...parsed,
+                    contact: {
+                        ...fallback.contact,
+                        ...(parsed.contact || {}),
+                        address: {
+                            ...fallback.contact.address,
+                            ...((parsed.contact && parsed.contact.address) || {})
+                        }
+                    },
+                    logo: {
+                        ...fallback.logo,
+                        ...(parsed.logo || {})
+                    },
+                    legal: {
+                        ...fallback.legal,
+                        ...(parsed.legal || {})
+                    }
+                };
+            } catch (_) {
+                return fallback;
+            }
+        }
+
+        function getTicketBranding() {
+            const config = getRuntimeRestaurantConfig();
+            const rawLogo = config.logo || {};
+            const logo = (
+                (!rawLogo.type || rawLogo.type === 'emoji')
+                && (!rawLogo.value || String(rawLogo.value).trim() === '🍔')
+            )
+                ? {
+                    type: 'url',
+                    value: './123-modified-thermal-88mm-bw.jpg',
+                    alt: rawLogo.alt || 'SR & SRA BURGER Logo'
+                }
+                : rawLogo;
+            const businessName = String(config.legal?.businessName || config.name || 'SR & SRA BURGER').trim();
+            const printTitle = businessName.replace(/\s*&\s*/g, ' Y ');
+            const city = String(config.contact?.address?.city || '').trim();
+            const state = String(config.contact?.address?.state || '').trim();
+            const subtitle = [city, state].filter(Boolean).join(', ');
+
+            let logoHtml = '';
+            if (logo.type === 'url' && logo.value) {
+                logoHtml = `<img class="ticket-brand-logo-img" src="${escapeHtml(String(logo.value))}" alt="${escapeHtml(String(logo.alt || businessName))}">`;
+            } else if (logo.type === 'svg' && logo.value) {
+                logoHtml = `<div class="ticket-brand-logo-svg">${String(logo.value)}</div>`;
+            } else if (logo.value) {
+                logoHtml = `<div class="ticket-brand-logo-emoji">${escapeHtml(String(logo.value))}</div>`;
+            }
+
+            return {
+                title: printTitle,
+                subtitle,
+                logoHtml
+            };
+        }
+
         function buildPrintableTicketHtml(order, qrOverrideSrc, mode = 'customer') {
             const now = new Date();
             const fechaCompacta = (() => {
@@ -2244,11 +2327,8 @@
                 const entregaLabel = isDelivery ? 'Domicilio' : isLocal ? 'Consumo Local' : 'Recoger en local';
 
                 // ── ENCABEZADO ──
-                custLines.push(center('SR Y SRA BURGER'));
-                custLines.push(center('Minatitlan, Veracruz'));
-                custLines.push(SEP);
                 custLines.push(lr(`Orden #${orderShort}`, fechaCompacta));
-                custLines.push(SEP);
+                custLines.push('');
 
                 // ── CLIENTE ──
                 const cust = order.customer || order.cliente || {};
@@ -2265,11 +2345,11 @@
                     wrap(`DIR: ${custAddr}`, PAPER_CHARS).forEach(l => custLines.push(l));
                 }
                 custLines.push(`ENTREGA: ${entregaLabel}`);
-                custLines.push(SEP);
+                custLines.push('');
 
                 // ── PRODUCTOS ──
                 custLines.push('PRODUCTOS');
-                custLines.push(SEP);
+                custLines.push('');
 
                 items.forEach((item) => {
                     const qty = Number(item.quantity || 1) || 1;
@@ -2311,11 +2391,11 @@
                     const details = [custom, specs].filter(Boolean).join(' | ')
                         .split('|').map(s => s.trim()).filter(Boolean);
                     details.forEach(d => {
-                        wrap(`- ${d}`, PAPER_CHARS - 2).forEach(dl => custLines.push('  ' + dl));
+                        wrap(d, PAPER_CHARS - 2).forEach(dl => custLines.push('  ' + dl));
                     });
                 });
 
-                custLines.push(SEP);
+                custLines.push('');
 
                 // ── TOTALES ──
                 if (subtotalNumber > 0) {
@@ -2332,9 +2412,9 @@
                 if (deliveryFeeNumber > 0) {
                     custLines.push(lr('Envio', '$' + money(deliveryFeeNumber)));
                 }
-                custLines.push(SEP);
+                custLines.push('');
                 custLines.push(lr('TOTAL', '$' + money(totalNumber)));
-                custLines.push(SEP);
+                custLines.push('');
 
                 // ── PAGO ──
                 custLines.push(lr('Metodo de pago', paymentMethod));
@@ -2352,15 +2432,15 @@
                     .replace(/Descuento manual:.*$/mi, '')
                     .trim();
                 if (extraNotes) {
-                    custLines.push(SEP);
+                    custLines.push('');
                     wrap('Nota: ' + extraNotes, PAPER_CHARS).forEach(l => custLines.push(l));
                 }
 
                 // ── FOOTER ──
-                custLines.push(SEP);
+                custLines.push('');
                 custLines.push(center('GRACIAS POR SU PREFERENCIA'));
                 custLines.push(center('Vuelva pronto!'));
-                custLines.push(SEP);
+                custLines.push('');
 
                 const custHeightMm = (() => {
                     const lineCount = custLines.length;
@@ -2674,6 +2754,13 @@
 
                 function buildPrintableTicketHtmlFromLines(lines, estimatedHeightMm, order, mode = 'customer') {
                         const safe = (Array.isArray(lines) ? lines : []).map(l => escapeHtml(l)).join('\n');
+                        const branding = mode === 'customer' ? getTicketBranding() : null;
+                        const brandingHtml = branding ? `
+            <div class="ticket-brand-header">
+                ${branding.logoHtml ? `<div class="ticket-brand-logo">${branding.logoHtml}</div>` : ''}
+                <div class="ticket-brand-title">${escapeHtml(branding.title)}</div>
+                ${branding.subtitle ? `<div class="ticket-brand-subtitle">${escapeHtml(branding.subtitle)}</div>` : ''}
+            </div>` : '';
 
                     // Ticket ligero: sin <base>, sin fuentes externas, sin QR, sin sombras.
 
@@ -2704,10 +2791,57 @@
                 padding: 3mm 3mm;
         box-sizing: border-box;
       }
+            .ticket-brand-header {
+                text-align: center;
+                padding-bottom: 1.8mm;
+                margin-bottom: 1.8mm;
+                border-bottom: 1px dashed #000;
+            }
+            .ticket-brand-logo {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 10mm;
+                margin-bottom: 1mm;
+            }
+            .ticket-brand-logo-img {
+                max-width: 25.5mm;
+                max-height: 15.8mm;
+                width: auto;
+                height: auto;
+                object-fit: contain;
+            }
+            .ticket-brand-logo-emoji,
+            .ticket-brand-logo-svg {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .ticket-brand-logo-emoji {
+                font-size: 20px;
+                line-height: 1;
+            }
+            .ticket-brand-logo-svg svg {
+                max-width: 25.5mm;
+                max-height: 15.8mm;
+            }
+            .ticket-brand-title {
+                font-family: "Arial Black", Arial, Helvetica, sans-serif;
+                font-size: 13px;
+                font-weight: 900;
+                letter-spacing: 1.3px;
+                line-height: 1.05;
+                text-transform: uppercase;
+            }
+            .ticket-brand-subtitle {
+                font-size: 9px;
+                letter-spacing: 0.5px;
+                margin-top: 0.8mm;
+            }
       pre {
                 margin: 0;
-                font-size: 11.5px;
-                line-height: 1.12;
+                                font-size: 12.2px;
+                                line-height: 1.16;
         white-space: pre-wrap;
         word-break: break-word;
       }
@@ -2719,6 +2853,7 @@
   </head>
   <body>
         <div class="paper">
+                ${brandingHtml}
                         <pre>${safe}</pre>
         </div>
   </body>

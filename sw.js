@@ -6,13 +6,15 @@
  * Versiona el cache incrementando CACHE_VERSION al desplegar cambios.
  */
 
-const CACHE_VERSION = 'sr-v1';
+const CACHE_VERSION = 'sr-v6';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const IMAGE_CACHE   = `${CACHE_VERSION}-images`;
 
 // Assets locales que se pre-cachean en el install
 const PRECACHE_URLS = [
   '/paginaburger.html',
+  '/codigosacc.html',
+  '/codigoacc.html',
   '/js/script.js.backup',
   '/js/firebase-config.js',
   '/js/spa-router.js',

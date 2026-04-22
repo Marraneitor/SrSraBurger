@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmar codigo - SR & SRA BURGER</title>
+
+  <script>
+    (function() {
+      try {
+        var saved = localStorage.getItem('sr_theme');
+        var theme = saved || 'dark';
+        document.documentElement.classList.toggle('dark', theme !== 'light');
+      } catch (_) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Poppins:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --primary-gold: #16A34A;
+      --primary-gold-dark: #15803D;
+      --primary-red: #0B1220;
+      --text-primary: #0F172A;
+      --text-secondary: #64748B;
+      --bg-light: #FFFFFF;
+      --bg-section: #F8F9FA;
+      --border-radius: 24px;
+      --transition: all 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --shadow-hover: 0 18px 45px rgba(15, 23, 42, 0.14);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background:
+        radial-gradient(1200px 500px at -10% -10%, rgba(22, 163, 74, 0.25), transparent 55%),
+        radial-gradient(900px 380px at 110% -10%, rgba(11, 18, 32, 0.35), transparent 50%),
+        linear-gradient(160deg, #04070c 0%, #0b1220 55%, #0a0f1a 100%);
+      min-height: 100vh;
+    }
+
+    .auth-card {
+      background: rgba(7, 11, 20, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    .btn-black {
+      background: linear-gradient(135deg, #111827, #000000);
+      transition: var(--transition);
+    }
+
+    .btn-black:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+    }
+  </style>
+</head>
+<body class="text-slate-100">
+  <main class="min-h-screen flex items-center justify-center px-4 py-8">
+    <section class="auth-card w-full max-w-md rounded-3xl p-6 sm:p-8">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+          <i class="fa-solid fa-shield-halved text-lg"></i>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Verificacion segura</p>
+          <h1 class="font-poppins font-extrabold text-2xl leading-tight">Confirma tu codigo</h1>
+        </div>
+      </div>
+
+      <p class="text-sm text-slate-300 mb-5">
+        Te enviamos un codigo por WhatsApp. Ingresalo para activar tu cuenta y finalizar pedidos.
+      </p>
+
+      <form id="code-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1" for="acc-name">Nombre</label>
+          <input id="acc-name" type="text" class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/60" placeholder="Tu nombre" autocomplete="name" required />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1" for="acc-phone">Telefono</label>
+          <input id="acc-phone" type="tel" class="w-full rounded-2xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/60" placeholder="9221234567" autocomplete="tel" required />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1" for="acc-code">Codigo</label>
+          <input id="acc-code" type="text" inputmode="numeric" class="w-full rounded-2xl px-4 py-3 text-center tracking-[0.25em] font-black bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/60" placeholder="000000" maxlength="8" required />
+        </div>
+
+        <p id="acc-error" class="hidden text-xs text-red-300"></p>
+        <p id="acc-success" class="hidden text-xs text-emerald-300"></p>
+
+        <button id="acc-submit" type="submit" class="btn-black w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-black text-white">
+          <i class="fa-solid fa-check"></i>
+          Confirmar codigo
+          <span id="acc-spinner" class="hidden w-4 h-4 border-2 border-white/35 border-t-white rounded-full animate-spin"></span>
+        </button>
+
+        <button id="acc-resend" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 font-bold transition-all duration-200">
+          <i class="fa-solid fa-paper-plane"></i>
+          Reenviar codigo por WhatsApp
+        </button>
+      </form>
+
+      <div class="mt-5 text-center">
+        <a href="paginaburger.html" class="text-xs text-slate-400 hover:text-white transition-all">Volver al menu</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search || '');
+      const nextRaw = params.get('next') || 'paginaburger.html';
+      const nextPath = /^[a-zA-Z0-9_\-./]+$/.test(nextRaw) ? nextRaw : 'paginaburger.html';
+
+      const byId = (id) => document.getElementById(id);
+      const form = byId('code-form');
+      const nameInput = byId('acc-name');
+      const phoneInput = byId('acc-phone');
+      const codeInput = byId('acc-code');
+      const submitBtn = byId('acc-submit');
+      const spinner = byId('acc-spinner');
+      const resendBtn = byId('acc-resend');
+      const errorEl = byId('acc-error');
+      const successEl = byId('acc-success');
+
+      function showError(msg) {
+        errorEl.textContent = String(msg || '');
+        errorEl.classList.toggle('hidden', !msg);
+      }
+
+      function showSuccess(msg) {
+        successEl.textContent = String(msg || '');
+        successEl.classList.toggle('hidden', !msg);
+      }
+
+      function cleanPhone(v) {
+        return String(v || '').replace(/\D/g, '');
+      }
+
+      try {
+        const p = cleanPhone(params.get('phone') || '');
+        const n = String(params.get('name') || '').trim();
+        const pendingName = String(sessionStorage.getItem('sr_auth_pending_name') || '').trim();
+        const pendingPhone = cleanPhone(sessionStorage.getItem('sr_auth_pending_phone') || '');
+
+        nameInput.value = n || pendingName || '';
+        phoneInput.value = p || pendingPhone || '';
+      } catch (_) {}
+
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          showError('');
+          showSuccess('');
+
+          const nombre = String(nameInput.value || '').trim();
+          const telefono = cleanPhone(phoneInput.value);
+          const codigo = cleanPhone(codeInput.value);
+
+          if (!nombre || !telefono || !codigo) {
+            showError('Completa nombre, telefono y codigo.');
+            return;
+          }
+
+          submitBtn.disabled = true;
+          spinner.classList.remove('hidden');
+
+          try {
+            const resp = await fetch('/api/auth/verify-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nombre, telefono, codigo })
+            });
+
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data || !data.ok || !data.session) {
+              throw new Error((data && data.error) ? String(data.error) : 'Codigo invalido.');
+            }
+
+            const session = data.session;
+            localStorage.setItem('sr_verified_customer_session', JSON.stringify(session));
+            localStorage.setItem('customerName', session.nombre || nombre);
+            localStorage.setItem('customerPhone', session.telefono || telefono);
+            sessionStorage.removeItem('sr_auth_pending_name');
+            sessionStorage.removeItem('sr_auth_pending_phone');
+
+            showSuccess('Cuenta verificada. Redirigiendo...');
+            setTimeout(() => {
+              window.location.href = nextPath;
+            }, 400);
+          } catch (err) {
+            showError(err && err.message ? err.message : 'No se pudo verificar el codigo.');
+          } finally {
+            submitBtn.disabled = false;
+            spinner.classList.add('hidden');
+          }
+        });
+      }
+
+      if (resendBtn) {
+        resendBtn.addEventListener('click', async () => {
+          showError('');
+          showSuccess('');
+
+          const nombre = String(nameInput.value || '').trim();
+          const telefono = cleanPhone(phoneInput.value);
+          if (!nombre || !telefono) {
+            showError('Escribe nombre y telefono para reenviar.');
+            return;
+          }
+
+          resendBtn.disabled = true;
+          try {
+            const resp = await fetch('/api/auth/send-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nombre, telefono })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data.ok) {
+              throw new Error((data && data.error) ? String(data.error) : 'No se pudo reenviar el codigo.');
+            }
+            showSuccess('Codigo reenviado por WhatsApp.');
+          } catch (err) {
+            showError(err && err.message ? err.message : 'No se pudo reenviar el codigo.');
+          } finally {
+            resendBtn.disabled = false;
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

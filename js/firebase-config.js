@@ -1484,6 +1484,18 @@ class FirebaseClientManager {
         }
     }
 
+    // Eliminar cuenta de cliente (panel ADMIN)
+    async deleteClient(uid) {
+        if (!uid) throw new Error('Se requiere el ID del cliente para eliminar su cuenta.');
+        const ref = doc(this.clientsCollection, uid);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+            throw new Error('No se encontró el perfil del cliente.');
+        }
+        await deleteDoc(ref);
+        return true;
+    }
+
     // Resetear puntos de un cliente (por ejemplo, desde panel admin)
     async resetClientPoints(uid) {
         if (!uid) throw new Error('Se requiere el ID del cliente para resetear puntos.');

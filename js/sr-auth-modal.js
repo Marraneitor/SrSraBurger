@@ -105,6 +105,15 @@
     const regError = byId('sr-auth-reg-error');
     const regSuccess = byId('sr-auth-reg-success');
 
+    const verifyModal = byId('sr-auth-verify-modal');
+    const verifyCloseBtn = byId('sr-auth-verify-close');
+    const verifyCodeInput = byId('sr-auth-verify-code');
+    const verifyError = byId('sr-auth-verify-error');
+    const verifySuccess = byId('sr-auth-verify-success');
+    const verifySubmitBtn = byId('sr-auth-verify-submit');
+    const verifySpinner = byId('sr-auth-verify-spinner');
+    const verifyResendBtn = byId('sr-auth-verify-resend');
+
     const forgotBtn = byId('sr-auth-forgot-btn');
     const forgotSpinner = byId('sr-auth-forgot-spinner');
     const forgotSuccess = byId('sr-auth-forgot-success');
@@ -119,6 +128,19 @@
 
     let manager = null;
     let currentUser = null;
+    let pendingRegister = null;
+
+    function getLocalSession() {
+      try {
+        const raw = localStorage.getItem('sr_verified_customer_session');
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !parsed.uid) return null;
+        return parsed;
+      } catch (_) {
+        return null;
+      }
+    }
 
     function setTab(tab) {
       const t = tab === 'register' ? 'register' : 'login';
@@ -135,12 +157,21 @@
     }
 
     function open(tab) {
+      const localSession = getLocalSession();
+      if (!currentUser && localSession) {
+        currentUser = {
+          uid: localSession.uid,
+          displayName: localSession.nombre || '',
+          phoneNumber: localSession.telefono || ''
+        };
+      }
+
       // Si ya hay sesión, mostrar vista simple de "sesión iniciada".
       if (currentUser && viewLoggedIn) {
         hide(viewLogin);
         hide(viewRegister);
         show(viewLoggedIn);
-        setText(loggedInName, currentUser.displayName || currentUser.email || 'Sesión iniciada');
+        setText(loggedInName, currentUser.displayName || currentUser.phoneNumber || currentUser.email || 'Sesión iniciada');
       } else {
         hide(viewLoggedIn);
         setTab(tab || 'login');
@@ -157,7 +188,7 @@
       document.body.classList.add('overflow-hidden');
 
       // Focus
-      const first = (tab === 'register') ? byId('sr-auth-reg-correo') : byId('sr-auth-login-correo');
+      const first = (tab === 'register') ? byId('sr-auth-reg-telefono') : byId('sr-auth-login-correo');
       try { first && first.focus(); } catch (_) {}
     }
 
@@ -165,6 +196,26 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       document.body.classList.remove('overflow-hidden');
+      if (verifyModal) {
+        verifyModal.classList.add('hidden');
+        verifyModal.classList.remove('flex');
+      }
+    }
+
+    function openVerifyModal() {
+      if (!verifyModal) return;
+      verifyError && hide(verifyError);
+      verifySuccess && hide(verifySuccess);
+      if (verifyCodeInput) verifyCodeInput.value = '';
+      verifyModal.classList.remove('hidden');
+      verifyModal.classList.add('flex');
+      setTimeout(() => { try { verifyCodeInput && verifyCodeInput.focus(); } catch (_) {} }, 60);
+    }
+
+    function closeVerifyModal() {
+      if (!verifyModal) return;
+      verifyModal.classList.add('hidden');
+      verifyModal.classList.remove('flex');
     }
 
     function openFromLink(ev) {
@@ -192,6 +243,13 @@
       ev.stopPropagation();
     });
 
+    if (verifyCloseBtn) verifyCloseBtn.addEventListener('click', closeVerifyModal);
+    if (verifyModal) {
+      verifyModal.addEventListener('click', (ev) => {
+        if (ev.target === verifyModal) closeVerifyModal();
+      });
+    }
+
     // Tab buttons
     tabLoginBtn && tabLoginBtn.addEventListener('click', () => {
       hide(viewLoggedIn);
@@ -202,6 +260,64 @@
       setTab('register');
     });
 
+    // ── Toggle método de LOGIN (teléfono / correo) ──────────────────────
+    let loginMode = 'phone'; // 'phone' | 'email'
+    const loginCorreoInput = byId('sr-auth-login-correo');
+    const loginCorreoLabel = byId('sr-auth-login-correo-label');
+    function setLoginMode(mode) {
+      loginMode = mode === 'email' ? 'email' : 'phone';
+      document.querySelectorAll('.sr-login-mode-btn').forEach((b) => {
+        const active = b.getAttribute('data-login-mode') === loginMode;
+        b.classList.toggle('bg-white/15', active);
+        b.classList.toggle('text-white', active);
+        b.classList.toggle('text-white/70', !active);
+      });
+      if (loginCorreoLabel) loginCorreoLabel.textContent = loginMode === 'email' ? 'Correo electrónico' : 'Teléfono';
+      if (loginCorreoInput) {
+        loginCorreoInput.type = loginMode === 'email' ? 'email' : 'tel';
+        loginCorreoInput.placeholder = loginMode === 'email' ? 'tucorreo@ejemplo.com' : '9221234567';
+        loginCorreoInput.autocomplete = loginMode === 'email' ? 'email' : 'tel';
+        loginCorreoInput.value = '';
+      }
+      if (loginError) hide(loginError);
+    }
+    document.querySelectorAll('.sr-login-mode-btn').forEach((b) => {
+      b.addEventListener('click', () => setLoginMode(b.getAttribute('data-login-mode')));
+    });
+
+    // ── Toggle método de REGISTRO (teléfono / correo) ───────────────────
+    let regMode = 'phone'; // 'phone' | 'email'
+    const regCorreoRow = byId('sr-auth-reg-correo-row');
+    const regCorreoInput = byId('sr-auth-reg-correo');
+    const regCorreo2Row = byId('sr-auth-reg-correo2-row');
+    const regCorreo2Input = byId('sr-auth-reg-correo2');
+    const regSubmitText = byId('sr-auth-reg-submit-text');
+    const regHint = byId('sr-auth-reg-hint');
+    const regTelefonoLabel = byId('sr-auth-reg-telefono-label');
+    function setRegMode(mode) {
+      regMode = mode === 'email' ? 'email' : 'phone';
+      document.querySelectorAll('.sr-reg-mode-btn').forEach((b) => {
+        const active = b.getAttribute('data-reg-mode') === regMode;
+        b.classList.toggle('bg-white/15', active);
+        b.classList.toggle('text-white', active);
+        b.classList.toggle('text-white/70', !active);
+      });
+      if (regCorreoRow) regCorreoRow.classList.toggle('hidden', regMode !== 'email');
+      if (regCorreo2Row) regCorreo2Row.classList.toggle('hidden', regMode !== 'email');
+      if (regCorreoInput) regCorreoInput.required = (regMode === 'email');
+      if (regCorreo2Input) regCorreo2Input.required = (regMode === 'email');
+      if (regSubmitText) regSubmitText.textContent = regMode === 'email' ? 'Crear cuenta' : 'Enviar código por WhatsApp';
+      if (regHint) regHint.textContent = regMode === 'email'
+        ? 'Crearemos tu cuenta con correo + contraseña. El teléfono se usa para tus pedidos.'
+        : 'Te enviaremos un código de confirmación por WhatsApp para activar tu cuenta.';
+      if (regTelefonoLabel) regTelefonoLabel.textContent = regMode === 'email' ? 'Teléfono (para tus pedidos)' : 'Teléfono con WhatsApp';
+      if (regError) hide(regError);
+      if (regSuccess) hide(regSuccess);
+    }
+    document.querySelectorAll('.sr-reg-mode-btn').forEach((b) => {
+      b.addEventListener('click', () => setRegMode(b.getAttribute('data-reg-mode')));
+    });
+
     // Attach to any link/button requesting auth modal
     document.querySelectorAll('[data-sr-auth-open="1"]').forEach((el) => {
       el.addEventListener('click', openFromLink);
@@ -210,34 +326,53 @@
     // Wait for firebase manager
     waitForClientManager((m) => {
       manager = m;
-      if (!manager) return;
 
-      try {
-        manager.onAuthChange((u) => {
-          currentUser = u || null;
-          if (currentUser) {
-            // Si modal está abierto en login/register, cerrarlo automáticamente.
-            if (!modal.classList.contains('hidden')) {
-              close();
-              toast('Sesión iniciada');
+      if (manager) {
+        try {
+          manager.onAuthChange((u) => {
+            currentUser = u || null;
+            if (currentUser) {
+              // Si modal está abierto en login/register, cerrarlo automáticamente.
+              if (!modal.classList.contains('hidden')) {
+                close();
+                toast('Sesión iniciada');
+              }
             }
-          }
-        });
-      } catch (_) {}
+          });
+        } catch (_) {}
+      }
 
       // Login
       if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
           e.preventDefault();
           loginError && hide(loginError);
-          forgotSuccess && hide(forgotSuccess);
 
-          const correo = (byId('sr-auth-login-correo') && byId('sr-auth-login-correo').value || '').trim();
+          const rawId = String((byId('sr-auth-login-correo') && byId('sr-auth-login-correo').value) || '').trim();
           const pass = (byId('sr-auth-login-pass') && byId('sr-auth-login-pass').value) || '';
 
-          if (!correo || !pass) {
+          if (!rawId || !pass) {
             if (loginError) {
-              setText(loginError, 'Escribe tu correo y contraseña.');
+              setText(loginError, 'Escribe tu teléfono o correo y contraseña.');
+              show(loginError);
+            }
+            return;
+          }
+
+          // Modo según toggle
+          const isEmail = (loginMode === 'email');
+          const telefono = rawId.replace(/\D/g, '');
+
+          if (isEmail && !/@/.test(rawId)) {
+            if (loginError) {
+              setText(loginError, 'Ingresa un correo válido (ej: tucorreo@ejemplo.com).');
+              show(loginError);
+            }
+            return;
+          }
+          if (!isEmail && telefono.length < 10) {
+            if (loginError) {
+              setText(loginError, 'Ingresa un teléfono válido (mínimo 10 dígitos).');
               show(loginError);
             }
             return;
@@ -246,11 +381,73 @@
           loginBtn && (loginBtn.disabled = true);
           loginSpinner && show(loginSpinner);
           try {
-            await manager.login(correo, pass);
-            // onAuthChange cierra el modal
+            let session = null;
+
+            if (isEmail) {
+              // Login con correo + contraseña vía Firebase Auth
+              if (!manager || typeof manager.login !== 'function') {
+                throw new Error('El inicio de sesión con correo aún no está disponible. Recarga la página.');
+              }
+              const fbUser = await manager.login(rawId, pass);
+              if (!fbUser) throw new Error('No se pudo iniciar sesión con ese correo.');
+              // Intentar leer datos del cliente para obtener nombre/telefono
+              let nombre = fbUser.displayName || '';
+              let tel = fbUser.phoneNumber || '';
+              try {
+                if (typeof manager.getClient === 'function') {
+                  const data = await manager.getClient(fbUser.uid);
+                  if (data) {
+                    nombre = data.nombre || nombre;
+                    tel = data.telefono || tel;
+                  }
+                }
+              } catch (_) {}
+              session = {
+                uid: fbUser.uid,
+                nombre,
+                telefono: tel,
+                correo: fbUser.email || rawId,
+                authType: 'email_password'
+              };
+            } else {
+              // Login con teléfono + contraseña vía endpoint local
+              const resp = await fetch('/api/auth/login-phone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telefono, password: pass })
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (!resp.ok || !data || !data.ok || !data.session) {
+                throw new Error((data && data.error) ? String(data.error) : 'No se pudo iniciar sesión.');
+              }
+              session = data.session;
+            }
+
+            try {
+              localStorage.setItem('sr_verified_customer_session', JSON.stringify(session));
+              localStorage.setItem('customerName', session.nombre || '');
+              localStorage.setItem('customerPhone', session.telefono || telefono || '');
+            } catch (_) {}
+
+            currentUser = {
+              uid: session.uid,
+              displayName: session.nombre || '',
+              phoneNumber: session.telefono || telefono || '',
+              email: session.correo || (isEmail ? rawId : '')
+            };
+
+            // Mostrar vista "Sesión iniciada como ..." dentro del modal
+            if (viewLoggedIn) {
+              hide(viewLogin);
+              hide(viewRegister);
+              show(viewLoggedIn);
+              setText(loggedInName, currentUser.displayName || currentUser.phoneNumber || currentUser.email || 'Sesión iniciada');
+            }
+            loginError && hide(loginError);
+            toast('Sesión iniciada');
           } catch (err) {
             if (loginError) {
-              setText(loginError, mapAuthError(err, 'No se pudo iniciar sesión.'));
+              setText(loginError, err && err.message ? String(err.message) : mapAuthError(err, 'No se pudo iniciar sesión.'));
               show(loginError);
             }
           } finally {
@@ -268,14 +465,30 @@
           regSuccess && hide(regSuccess);
 
           const nombre = (byId('sr-auth-reg-nombre') && byId('sr-auth-reg-nombre').value || '').trim();
-          const correo = (byId('sr-auth-reg-correo') && byId('sr-auth-reg-correo').value || '').trim();
           const telefono = (byId('sr-auth-reg-telefono') && byId('sr-auth-reg-telefono').value || '').trim();
           const pass = (byId('sr-auth-reg-pass') && byId('sr-auth-reg-pass').value) || '';
           const pass2 = (byId('sr-auth-reg-pass2') && byId('sr-auth-reg-pass2').value) || '';
+          const phoneDigits = String(telefono || '').replace(/\D/g, '');
 
-          if (!nombre || !correo || !telefono || !pass || !pass2) {
+          if (!nombre || !phoneDigits || !pass || !pass2) {
             if (regError) {
-              setText(regError, 'Completa todos los campos para crear tu cuenta.');
+              setText(regError, 'Completa nombre, teléfono y contraseña.');
+              show(regError);
+            }
+            return;
+          }
+
+          if (phoneDigits.length < 10) {
+            if (regError) {
+              setText(regError, 'Tu teléfono debe tener al menos 10 dígitos.');
+              show(regError);
+            }
+            return;
+          }
+
+          if (pass.length < 6) {
+            if (regError) {
+              setText(regError, 'La contraseña debe tener al menos 6 caracteres.');
               show(regError);
             }
             return;
@@ -293,17 +506,79 @@
           regSpinner && show(regSpinner);
 
           try {
-            await manager.registerClient({ nombre, correo, telefono, password: pass });
+            if (regMode === 'email') {
+              // Registro vía Firebase Auth (correo + contraseña)
+              const correo = (regCorreoInput && regCorreoInput.value || '').trim();
+              const correo2 = (regCorreo2Input && regCorreo2Input.value || '').trim();
+              if (!correo || !/@/.test(correo)) {
+                throw new Error('Ingresa un correo válido.');
+              }
+              if (correo !== correo2) {
+                throw new Error('Los correos no coinciden.');
+              }
+              if (!manager || typeof manager.registerClient !== 'function') {
+                throw new Error('El registro con correo aún no está disponible. Recarga la página.');
+              }
+              const uid = await manager.registerClient({
+                nombre,
+                correo,
+                telefono,
+                password: pass
+              });
+              const session = {
+                uid,
+                nombre,
+                telefono: phoneDigits,
+                correo,
+                authType: 'email_password'
+              };
+              try {
+                localStorage.setItem('sr_verified_customer_session', JSON.stringify(session));
+                localStorage.setItem('customerName', nombre);
+                localStorage.setItem('customerPhone', phoneDigits);
+              } catch (_) {}
+              currentUser = { uid, displayName: nombre, phoneNumber: phoneDigits, email: correo };
+              if (viewLoggedIn) {
+                hide(viewLogin);
+                hide(viewRegister);
+                show(viewLoggedIn);
+                setText(loggedInName, nombre || correo);
+              }
+              toast('Cuenta creada');
+              return;
+            }
+
+            // Registro vía teléfono + WhatsApp (flujo OTP)
+            const resp = await fetch('/api/auth/send-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nombre, telefono: phoneDigits, password: pass })
+            });
+
+            let data = null;
+            try { data = await resp.json(); } catch (_) {}
+            if (!resp.ok || !data || !data.ok) {
+              const msg = (data && data.error) ? String(data.error) : 'No se pudo enviar el código.';
+              throw new Error(msg);
+            }
+
+            try {
+              sessionStorage.setItem('sr_auth_pending_name', nombre);
+              sessionStorage.setItem('sr_auth_pending_phone', phoneDigits);
+              sessionStorage.setItem('sr_auth_pending_password', pass);
+            } catch (_) {}
+
+            pendingRegister = { nombre, telefono: phoneDigits, password: pass };
+
             if (regSuccess) {
-              setText(regSuccess, 'Cuenta creada correctamente.');
+              setText(regSuccess, 'Código enviado por WhatsApp.');
               show(regSuccess);
             }
-            try { regForm.reset(); } catch (_) {}
-            // onAuthChange cierra el modal si quedó autenticado
+            openVerifyModal();
           } catch (err) {
             console.error('[registro] error:', err && err.code, err);
             if (regError) {
-              setText(regError, mapAuthError(err, 'Ocurrió un error al registrar la cuenta.'));
+              setText(regError, mapAuthError(err, err && err.message ? String(err.message) : 'Ocurrió un error al crear la cuenta.'));
               show(regError);
             }
           } finally {
@@ -313,61 +588,104 @@
         });
       }
 
-      // Forgot password
-      if (forgotBtn) {
-        forgotBtn.addEventListener('click', async () => {
-          loginError && hide(loginError);
-          forgotSuccess && hide(forgotSuccess);
+      if (verifySubmitBtn) {
+        verifySubmitBtn.addEventListener('click', async () => {
+          if (!pendingRegister) return;
+          verifyError && hide(verifyError);
+          verifySuccess && hide(verifySuccess);
 
-          const correoEl = byId('sr-auth-login-correo');
-          const correo = (correoEl && correoEl.value || '').trim();
-          if (!correo) {
-            if (loginError) {
-              setText(loginError, 'Escribe tu correo para enviarte el enlace de recuperación.');
-              show(loginError);
+          const codigo = String((verifyCodeInput && verifyCodeInput.value) || '').replace(/\D/g, '');
+          if (!codigo) {
+            if (verifyError) {
+              setText(verifyError, 'Ingresa el código que recibiste por WhatsApp.');
+              show(verifyError);
             }
-            try { correoEl && correoEl.focus(); } catch (_) {}
             return;
           }
 
-          if (correoEl && typeof correoEl.checkValidity === 'function' && !correoEl.checkValidity()) {
-            if (loginError) {
-              setText(loginError, 'Ingresa un correo válido.');
-              show(loginError);
-            }
-            try { correoEl.focus(); } catch (_) {}
-            return;
-          }
-
-          forgotBtn.disabled = true;
-          forgotSpinner && show(forgotSpinner);
+          verifySubmitBtn.disabled = true;
+          verifySpinner && show(verifySpinner);
           try {
-            if (typeof manager.sendPasswordReset !== 'function') {
-              throw new Error('La recuperación de contraseña no está disponible.');
+            const resp = await fetch('/api/auth/verify-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nombre: pendingRegister.nombre,
+                telefono: pendingRegister.telefono,
+                codigo
+              })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data || !data.ok || !data.session) {
+              throw new Error((data && data.error) ? String(data.error) : 'Código inválido.');
             }
-            await manager.sendPasswordReset(correo);
-            if (forgotSuccess) {
-              setText(forgotSuccess, 'Te enviamos un enlace de recuperación. Revisa tu correo (también Spam).');
-              show(forgotSuccess);
+
+            localStorage.setItem('sr_verified_customer_session', JSON.stringify(data.session));
+            localStorage.setItem('customerName', data.session.nombre || pendingRegister.nombre);
+            localStorage.setItem('customerPhone', data.session.telefono || pendingRegister.telefono);
+            currentUser = {
+              uid: data.session.uid,
+              displayName: data.session.nombre || pendingRegister.nombre,
+              phoneNumber: data.session.telefono || pendingRegister.telefono
+            };
+
+            if (verifySuccess) {
+              setText(verifySuccess, 'Cuenta verificada correctamente.');
+              show(verifySuccess);
             }
-            toast('Enlace enviado');
+            pendingRegister = null;
+            closeVerifyModal();
+            // Mostrar vista "Sesión iniciada como ..." dentro del modal
+            if (viewLoggedIn) {
+              hide(viewLogin);
+              hide(viewRegister);
+              show(viewLoggedIn);
+              setText(loggedInName, currentUser.displayName || currentUser.phoneNumber || 'Sesión iniciada');
+            }
+            toast('Cuenta verificada');
           } catch (err) {
-            if (loginError) {
-              const code = err && err.code ? String(err.code) : '';
-              if (code === 'auth/user-not-found') {
-                if (forgotSuccess) {
-                  setText(forgotSuccess, 'Si el correo está registrado, recibirás un enlace de recuperación. Revisa tu bandeja (y Spam).');
-                  show(forgotSuccess);
-                }
-                toast('Revisa tu correo');
-              } else {
-                setText(loginError, mapAuthError(err, 'No se pudo enviar el enlace.'));
-                show(loginError);
-              }
+            if (verifyError) {
+              setText(verifyError, err && err.message ? String(err.message) : 'No se pudo validar el código.');
+              show(verifyError);
             }
           } finally {
-            forgotBtn.disabled = false;
-            forgotSpinner && hide(forgotSpinner);
+            verifySubmitBtn.disabled = false;
+            verifySpinner && hide(verifySpinner);
+          }
+        });
+      }
+
+      if (verifyResendBtn) {
+        verifyResendBtn.addEventListener('click', async () => {
+          if (!pendingRegister) return;
+          verifyError && hide(verifyError);
+          verifySuccess && hide(verifySuccess);
+          verifyResendBtn.disabled = true;
+          try {
+            const resp = await fetch('/api/auth/send-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nombre: pendingRegister.nombre,
+                telefono: pendingRegister.telefono,
+                password: pendingRegister.password
+              })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data || !data.ok) {
+              throw new Error((data && data.error) ? String(data.error) : 'No se pudo reenviar el código.');
+            }
+            if (verifySuccess) {
+              setText(verifySuccess, 'Código reenviado por WhatsApp.');
+              show(verifySuccess);
+            }
+          } catch (err) {
+            if (verifyError) {
+              setText(verifyError, err && err.message ? String(err.message) : 'No se pudo reenviar el código.');
+              show(verifyError);
+            }
+          } finally {
+            verifyResendBtn.disabled = false;
           }
         });
       }
@@ -377,12 +695,125 @@
         logoutBtn.addEventListener('click', async () => {
           try {
             logoutBtn.disabled = true;
-            await manager.logout();
+            try { localStorage.removeItem('sr_verified_customer_session'); } catch (_) {}
+            currentUser = null;
+            if (manager && typeof manager.logout === 'function') {
+              await manager.logout();
+            }
             close();
             toast('Sesión cerrada');
           } catch (_) {
           } finally {
             logoutBtn.disabled = false;
+          }
+        });
+      }
+
+      // ── Olvidé contraseña ───────────────────────────────────────────────
+      const forgotModal = byId('sr-auth-forgot-modal');
+      const forgotCloseBtn = byId('sr-auth-forgot-close');
+      const forgotStep1 = byId('sr-auth-forgot-step1');
+      const forgotStep2 = byId('sr-auth-forgot-step2');
+      const forgotStep3 = byId('sr-auth-forgot-step3');
+      const forgotPhoneInput = byId('sr-auth-forgot-phone');
+      const forgotErr = byId('sr-auth-forgot-error');
+      const forgotErr2 = byId('sr-auth-forgot-error2');
+      const forgotSendBtn2 = byId('sr-auth-forgot-send');
+      const forgotSendSpin = byId('sr-auth-forgot-send-spin');
+      const forgotCodeInput = byId('sr-auth-forgot-code');
+      const forgotVerifyBtn = byId('sr-auth-forgot-verify');
+      const forgotVerifySpin = byId('sr-auth-forgot-verify-spin');
+      const forgotResult = byId('sr-auth-forgot-result');
+      const forgotDoneBtn = byId('sr-auth-forgot-done');
+      let forgotPhone = '';
+
+      function openForgot() {
+        if (!forgotModal) return;
+        forgotPhone = '';
+        if (forgotPhoneInput) forgotPhoneInput.value = '';
+        if (forgotCodeInput) forgotCodeInput.value = '';
+        if (forgotResult) forgotResult.textContent = '';
+        if (forgotErr) hide(forgotErr);
+        if (forgotErr2) hide(forgotErr2);
+        if (forgotStep1) forgotStep1.classList.remove('hidden');
+        if (forgotStep2) forgotStep2.classList.add('hidden');
+        if (forgotStep3) forgotStep3.classList.add('hidden');
+        forgotModal.classList.remove('hidden');
+        forgotModal.classList.add('flex');
+      }
+      function closeForgot() {
+        if (!forgotModal) return;
+        forgotModal.classList.add('hidden');
+        forgotModal.classList.remove('flex');
+      }
+
+      if (forgotBtn) forgotBtn.addEventListener('click', openForgot);
+      if (forgotCloseBtn) forgotCloseBtn.addEventListener('click', closeForgot);
+      if (forgotDoneBtn) forgotDoneBtn.addEventListener('click', closeForgot);
+
+      if (forgotSendBtn2) {
+        forgotSendBtn2.addEventListener('click', async () => {
+          const tel = String(forgotPhoneInput && forgotPhoneInput.value || '').replace(/\D/g, '');
+          if (forgotErr) hide(forgotErr);
+          if (tel.length < 10) {
+            if (forgotErr) { forgotErr.textContent = 'Teléfono inválido. Usa lada y 10 dígitos.'; show(forgotErr); }
+            return;
+          }
+          forgotSendBtn2.disabled = true;
+          if (forgotSendSpin) show(forgotSendSpin);
+          try {
+            const res = await fetch('/api/auth/recover-send-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ telefono: tel })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+              if (forgotErr) { forgotErr.textContent = data.error || `Error ${res.status}`; show(forgotErr); }
+              return;
+            }
+            forgotPhone = tel;
+            if (forgotStep1) forgotStep1.classList.add('hidden');
+            if (forgotStep2) forgotStep2.classList.remove('hidden');
+            if (forgotCodeInput) forgotCodeInput.focus();
+          } catch (e) {
+            if (forgotErr) { forgotErr.textContent = e.message || 'Error de red'; show(forgotErr); }
+          } finally {
+            forgotSendBtn2.disabled = false;
+            if (forgotSendSpin) hide(forgotSendSpin);
+          }
+        });
+      }
+
+      if (forgotVerifyBtn) {
+        forgotVerifyBtn.addEventListener('click', async () => {
+          const code = String(forgotCodeInput && forgotCodeInput.value || '').replace(/\D/g, '');
+          if (forgotErr2) hide(forgotErr2);
+          if (code.length < 4) {
+            if (forgotErr2) { forgotErr2.textContent = 'Código inválido.'; show(forgotErr2); }
+            return;
+          }
+          forgotVerifyBtn.disabled = true;
+          if (forgotVerifySpin) show(forgotVerifySpin);
+          try {
+            const res = await fetch('/api/auth/recover-verify-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ telefono: forgotPhone, codigo: code })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+              if (forgotErr2) { forgotErr2.textContent = data.error || `Error ${res.status}`; show(forgotErr2); }
+              return;
+            }
+            if (forgotResult) forgotResult.textContent = data.password || '';
+            if (forgotStep2) forgotStep2.classList.add('hidden');
+            if (forgotStep3) forgotStep3.classList.remove('hidden');
+          } catch (e) {
+            if (forgotErr2) { forgotErr2.textContent = e.message || 'Error de red'; show(forgotErr2); }
+          } finally {
+            forgotVerifyBtn.disabled = false;
+            if (forgotVerifySpin) hide(forgotVerifySpin);
           }
         });
       }

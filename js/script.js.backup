@@ -4000,6 +4000,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     return window.firebaseAuth.currentUser.uid;
                 }
             } catch (_) {}
+
+            // Sesión verificada por código de WhatsApp (local)
+            try {
+                const raw = localStorage.getItem('sr_verified_customer_session');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.uid && parsed.telefono) {
+                        return String(parsed.uid);
+                    }
+                }
+            } catch (_) {}
             return null;
         }
 
@@ -4016,6 +4027,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = 'cliente.html';
             }
         }
+
+        function openAuthForCheckout(tab) {
+            const selectedTab = tab === 'register' ? 'register' : 'login';
+            try {
+                if (typeof window.srOpenAuthModal === 'function') {
+                    window.srOpenAuthModal({ tab: selectedTab, reason: 'checkout' });
+                    return;
+                }
+
+                // Fallback: abrir el modal manualmente si existe en el DOM
+                const modal = document.getElementById('sr-auth-modal');
+                const loginView = document.getElementById('sr-auth-view-login');
+                const registerView = document.getElementById('sr-auth-view-register');
+                const loggedView = document.getElementById('sr-auth-view-loggedin');
+                const loginTabBtn = document.getElementById('sr-auth-tab-login');
+                const registerTabBtn = document.getElementById('sr-auth-tab-register');
+
+                if (modal && loginView && registerView) {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    document.body.classList.add('overflow-hidden');
+
+                    if (loggedView) loggedView.classList.add('hidden');
+
+                    const showRegister = selectedTab === 'register';
+                    loginView.classList.toggle('hidden', showRegister);
+                    registerView.classList.toggle('hidden', !showRegister);
+
+                    if (loginTabBtn) {
+                        loginTabBtn.classList.toggle('bg-white/10', !showRegister);
+                        loginTabBtn.classList.toggle('bg-white/5', showRegister);
+                    }
+                    if (registerTabBtn) {
+                        registerTabBtn.classList.toggle('bg-white/10', showRegister);
+                        registerTabBtn.classList.toggle('bg-white/5', !showRegister);
+                    }
+
+                    const focusTarget = document.getElementById(showRegister ? 'sr-auth-reg-telefono' : 'sr-auth-login-correo');
+                    try { focusTarget && focusTarget.focus(); } catch (_) {}
+                    return;
+                }
+
+                const next = encodeURIComponent('paginaburger.html');
+                const authTab = encodeURIComponent(selectedTab);
+                window.location.href = `cliente.html?next=${next}&tab=${authTab}`;
+            } catch (_) {
+                window.location.href = 'cliente.html';
+            }
+        }
+
+        // Exponer helper para otros bloques/handlers fuera de este scope.
+        window.openAuthForCheckout = openAuthForCheckout;
 
         // Confirmación de pedido: enviar a backend y mostrar confirmación
         sendWhatsappBtn.addEventListener('click', async () => {
@@ -5668,15 +5731,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Sesión requerida para finalizar
         const isManualMode = (typeof window.__MANUAL_MODE !== 'undefined' && window.__MANUAL_MODE === true);
-        let isLoggedIn = false;
-        try {
-            isLoggedIn = !!(
-                (window.firebaseClientManager && typeof window.firebaseClientManager.getCurrentUser === 'function' && window.firebaseClientManager.getCurrentUser() && window.firebaseClientManager.getCurrentUser().uid) ||
-                (window.firebaseAuth && window.firebaseAuth.currentUser && window.firebaseAuth.currentUser.uid)
-            );
-        } catch (_) {
-            isLoggedIn = false;
-        }
+        let isLoggedIn = !!getLoggedInClientUid();
         if (isManualMode) isLoggedIn = true;
         
         if (!deliveryTypeElement || !paymentMethodElement) {
@@ -5764,6 +5819,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Mostrar mensajes de error relevantes
         const errorMsgId = 'checkout-validation-msg';
         let errorMsg = document.getElementById(errorMsgId);
+        const authCtaId = 'checkout-auth-cta';
+        let authCtaBtn = document.getElementById(authCtaId);
         
         if (!errorMsg) {
             errorMsg = document.createElement('div');
@@ -5771,28 +5828,64 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMsg.className = 'bg-red-50 text-red-700 p-3 rounded-md mt-3 text-sm hidden';
             sendWhatsappBtn.parentNode.insertBefore(errorMsg, sendWhatsappBtn);
         }
+
+        if (!authCtaBtn) {
+            authCtaBtn = document.createElement('button');
+            authCtaBtn.id = authCtaId;
+            authCtaBtn.type = 'button';
+            authCtaBtn.className = 'hidden w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-gray-900 to-black text-white font-extrabold shadow-lg shadow-black/30 hover:from-black hover:to-gray-800 active:scale-[0.99] transition-all duration-200';
+            authCtaBtn.innerHTML = '<i class="fas fa-user-plus"></i><span>Crear cuenta o iniciar sesión</span>';
+            sendWhatsappBtn.parentNode.insertBefore(authCtaBtn, sendWhatsappBtn);
+        }
+
+        if (authCtaBtn && authCtaBtn.dataset.authBound !== '1') {
+            authCtaBtn.addEventListener('click', function(ev) {
+                try { ev && ev.preventDefault(); } catch (_) {}
+
+                if (typeof window.openAuthForCheckout === 'function') {
+                    window.openAuthForCheckout('register');
+                    return;
+                }
+
+                if (typeof window.srOpenAuthModal === 'function') {
+                    window.srOpenAuthModal({ tab: 'register', reason: 'checkout' });
+                    return;
+                }
+
+                const next = encodeURIComponent('paginaburger.html');
+                window.location.href = `cliente.html?next=${next}&tab=register`;
+            });
+            authCtaBtn.dataset.authBound = '1';
+        }
         
         // Determinar qué mensaje mostrar
         if (!isLoggedIn) {
             errorMsg.textContent = 'Debes iniciar sesión (Mi cuenta) para finalizar tu compra.';
             errorMsg.classList.remove('hidden');
+            authCtaBtn.classList.remove('hidden');
         } else if (!nameValid) {
             errorMsg.textContent = "Por favor ingresa tu nombre";
             errorMsg.classList.remove('hidden');
+            authCtaBtn.classList.add('hidden');
         } else if (!phoneValid) {
             errorMsg.textContent = "Por favor ingresa un número de teléfono válido";
             errorMsg.classList.remove('hidden');
+            authCtaBtn.classList.add('hidden');
         } else if (deliveryTypeValue === 'delivery' && !locationValid && !isManualMode) {
             errorMsg.textContent = "Por favor selecciona una dirección guardada (Mi cuenta)";
             errorMsg.classList.remove('hidden');
+            authCtaBtn.classList.add('hidden');
         } else if (deliveryTypeValue === 'delivery' && !locationValid && isManualMode) {
             errorMsg.textContent = "Por favor ingresa la dirección de entrega";
             errorMsg.classList.remove('hidden');
+            authCtaBtn.classList.add('hidden');
         } else if (paymentMethod === 'Efectivo' && !paymentValid && document.activeElement !== document.getElementById('cash-amount')) {
             errorMsg.textContent = "El monto de efectivo es insuficiente";
             errorMsg.classList.remove('hidden');
+            authCtaBtn.classList.add('hidden');
         } else {
             errorMsg.classList.add('hidden');
+            authCtaBtn.classList.add('hidden');
         }
         
         // Habilitar o deshabilitar botón de WhatsApp
@@ -6111,17 +6204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const pointsEarned = Math.max(0, Math.floor(Number(total || 0) / 10)); // 1 punto por cada $10 MXN
 
         // Detectar si hay sesión para acreditar puntos
-        let isLoggedIn = false;
-        try {
-            if (window.firebaseClientManager && typeof window.firebaseClientManager.getCurrentUser === 'function') {
-                const u = window.firebaseClientManager.getCurrentUser();
-                isLoggedIn = !!(u && u.uid);
-            } else if (window.firebaseAuth && window.firebaseAuth.currentUser) {
-                isLoggedIn = !!window.firebaseAuth.currentUser.uid;
-            }
-        } catch (_) {
-            isLoggedIn = false;
-        }
+        let isLoggedIn = !!getLoggedInClientUid();
 
         const deliveryLabel = deliveryTypeValue === 'delivery' ? '🚚 A domicilio' : '🏪 Recoger en local';
         const paymentLabel = paymentMethod === 'Efectivo' ? '💵 Efectivo' : `💳 ${paymentMethod}`;
@@ -6335,6 +6418,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (_) {
                 isLoggedIn = false;
             }
+        }
+
+        if (!isLoggedIn) {
+            try {
+                const raw = localStorage.getItem('sr_verified_customer_session');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    isLoggedIn = !!(parsed && parsed.uid);
+                }
+            } catch (_) {}
         }
 
         // Mostrar solo si NO hay sesión y no fue cerrado en esta vista
@@ -9029,17 +9122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Intentar asociar el pedido al usuario autenticado (para puntos)
-            let clienteId = null;
-            try {
-                if (window.firebaseClientManager && typeof window.firebaseClientManager.getCurrentUser === 'function') {
-                    const u = window.firebaseClientManager.getCurrentUser();
-                    if (u && u.uid) clienteId = u.uid;
-                } else if (window.firebaseAuth && window.firebaseAuth.currentUser) {
-                    clienteId = window.firebaseAuth.currentUser.uid;
-                }
-            } catch (_) {
-                // Si falla, seguimos sin clienteId (pedido anónimo)
-            }
+            const clienteId = getLoggedInClientUid();
             
             // Crear objeto de datos del pedido
             const orderData = {

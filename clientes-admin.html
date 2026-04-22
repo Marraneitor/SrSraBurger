@@ -119,6 +119,37 @@
          </table>
        </div>
     </section>
+
+    <!-- Sección de cuentas con contraseña (servidor local) -->
+    <section id="phone-users-section" class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3 hidden">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <i class="fas fa-key text-yellow-400"></i>
+            Cuentas con contraseña
+          </h2>
+          <p class="text-xs text-slate-400">Usuarios registrados con tel + contraseña en el servidor local.</p>
+        </div>
+        <button id="phone-users-load" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs flex items-center gap-1">
+          <i class="fas fa-rotate"></i><span>Cargar</span>
+        </button>
+      </div>
+      <div id="phone-users-empty" class="text-xs text-slate-400 py-2 hidden">No hay cuentas con contraseña aún.</div>
+      <div id="phone-users-error" class="text-xs text-red-300 py-2 hidden"></div>
+      <div id="phone-users-table-wrap" class="overflow-x-auto hidden">
+        <table class="min-w-full text-xs">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="px-3 py-2 text-left font-semibold">Nombre</th>
+              <th class="px-3 py-2 text-left font-semibold">Teléfono</th>
+              <th class="px-3 py-2 text-left font-semibold">Contraseña</th>
+              <th class="px-3 py-2 text-left font-semibold">Registrado</th>
+            </tr>
+          </thead>
+          <tbody id="phone-users-body" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <!-- Modal de historial de compras por cliente -->
@@ -162,7 +193,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/firebase-config.js?v=2026-04-21-delclient"></script>
   <script type="module">
     import { collection, onSnapshot, query, where } from 'https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js';
 
@@ -259,7 +290,9 @@
               if (status) status.textContent = 'Panel ADMIN desbloqueado.';
               hide(guard);
               show(content);
+              show(byId('phone-users-section'));
               loadClients(manager);
+              loadPhoneUsers();
             } else {
               alert('Contraseña de administrador incorrecta.');
               if (adminPasswordInput) {
@@ -315,7 +348,8 @@
               const btnOpen = e.target.closest('button[data-action="open-orders"]');
               const btnReset = e.target.closest('button[data-action="reset-points"]');
               const btnAdd = e.target.closest('button[data-action="add-points"]');
-              const btn = btnOpen || btnReset || btnAdd;
+              const btnDelete = e.target.closest('button[data-action="delete-client"]');
+              const btn = btnOpen || btnReset || btnAdd || btnDelete;
               if (!btn) return;
               const tr = btn.closest('tr[data-client-id]');
               if (!tr) return;
@@ -329,6 +363,8 @@
                 await resetClientPointsFromAdmin(currentManager, client);
               } else if (btnAdd) {
                 await addManualPointsFromAdmin(currentManager, client);
+              } else if (btnDelete) {
+                await deleteClientFromAdmin(currentManager, client);
               }
             });
           }
@@ -348,6 +384,69 @@
             console.error('Error cargando clientes:', e);
           }
         }
+
+        // ── Cuentas con contraseña (servidor local) ──────────────────────
+        function getOrPromptAdminKey() {
+          let key = '';
+          try { key = sessionStorage.getItem('sr_admin_key') || ''; } catch (_) {}
+          if (!key) {
+            key = window.prompt('Para ver contraseñas: ingresa la ADMIN_KEY del servidor (variable de entorno).');
+            if (!key) return null;
+            try { sessionStorage.setItem('sr_admin_key', key); } catch (_) {}
+          }
+          return key;
+        }
+
+        async function loadPhoneUsers() {
+          const wrap = byId('phone-users-table-wrap');
+          const body = byId('phone-users-body');
+          const emptyEl = byId('phone-users-empty');
+          const errEl = byId('phone-users-error');
+          if (!wrap || !body) return;
+          hide(wrap); hide(emptyEl); hide(errEl);
+          const key = getOrPromptAdminKey();
+          if (!key) {
+            errEl.textContent = 'No se ingresó ADMIN_KEY.';
+            show(errEl);
+            return;
+          }
+          try {
+            const res = await fetch('/api/admin/phone-users', { headers: { 'x-admin-key': key } });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+              if (res.status === 401 || res.status === 503) {
+                try { sessionStorage.removeItem('sr_admin_key'); } catch (_) {}
+              }
+              errEl.textContent = data.error || `Error ${res.status}`;
+              show(errEl);
+              return;
+            }
+            const list = (data.users || []).slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            if (!list.length) {
+              show(emptyEl);
+              return;
+            }
+            body.innerHTML = list.map((u) => {
+              const fecha = u.createdAt ? formatDate(u.createdAt) : '—';
+              const pwd = u.password
+                ? `<code class="px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-yellow-200 select-all">${escapeHtml(u.password)}</code>`
+                : `<span class="text-slate-500 italic">no almacenada</span>`;
+              return `<tr class="hover:bg-slate-900/60">
+                <td class="px-3 py-2 text-slate-50">${escapeHtml(u.nombre || '')}</td>
+                <td class="px-3 py-2 text-slate-300 whitespace-nowrap">${escapeHtml(u.telefono || '')}</td>
+                <td class="px-3 py-2">${pwd}</td>
+                <td class="px-3 py-2 text-slate-400 whitespace-nowrap">${escapeHtml(fecha)}</td>
+              </tr>`;
+            }).join('');
+            show(wrap);
+          } catch (e) {
+            errEl.textContent = e.message || 'Error de red';
+            show(errEl);
+          }
+        }
+
+        const phoneLoadBtn = byId('phone-users-load');
+        if (phoneLoadBtn) phoneLoadBtn.addEventListener('click', loadPhoneUsers);
 
         function formatDate(iso) {
           try {
@@ -384,6 +483,9 @@
                   </button>
                   <button class="text-xs px-2 py-1 rounded border border-red-500 text-red-300 hover:bg-red-500 hover:text-white" data-action="reset-points">
                     <i class="fas fa-eraser mr-1"></i>Reset puntos
+                  </button>
+                  <button class="text-xs px-2 py-1 rounded border border-red-700 bg-red-900/40 text-red-200 hover:bg-red-700 hover:text-white" data-action="delete-client" title="Eliminar cuenta del cliente">
+                    <i class="fas fa-user-slash mr-1"></i>Eliminar cuenta
                   </button>
                 </td>
               </tr>`;
@@ -579,6 +681,57 @@
           } catch (e) {
             console.error('Error cargando pedidos del cliente:', e);
             show(ordersModalEmpty);
+          }
+        }
+
+        async function deleteClientFromAdmin(manager, client) {
+          const label = client.nombre || client.correo || client.telefono || 'este cliente';
+          const first = window.confirm(`¿Eliminar la cuenta de ${label}?\n\nEsto borrará su perfil del sistema. Sus pedidos NO se eliminan, pero quedarán huérfanos.`);
+          if (!first) return;
+          const typed = window.prompt(`Para confirmar, escribe ELIMINAR para borrar la cuenta de ${label}:`);
+          if (typed == null) return;
+          if (String(typed).trim().toUpperCase() !== 'ELIMINAR') {
+            alert('Confirmación incorrecta. La cuenta no se eliminó.');
+            return;
+          }
+          try {
+            if (typeof manager.deleteClient !== 'function') {
+              alert('No se encontró la función para eliminar cuentas.');
+              return;
+            }
+            await manager.deleteClient(client.id);
+
+            // También borrar la entrada del registro de teléfonos (clientes-phone-auth.json)
+            // para que el número quede LIBRE y se pueda registrar de nuevo.
+            const tel = String(client.telefono || '').replace(/\D/g, '');
+            if (tel) {
+              try {
+                let adminKey = sessionStorage.getItem('sr_admin_key') || '';
+                if (!adminKey) {
+                  adminKey = window.prompt('Clave ADMIN_KEY para liberar el teléfono:') || '';
+                  if (adminKey) sessionStorage.setItem('sr_admin_key', adminKey);
+                }
+                if (adminKey) {
+                  const r = await fetch('/api/admin/phone-users', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+                    body: JSON.stringify({ telefono: tel })
+                  });
+                  if (!r.ok) {
+                    const t = await r.text().catch(() => '');
+                    console.warn('[deleteClient] No se pudo liberar el teléfono:', r.status, t);
+                  }
+                }
+              } catch (e) {
+                console.warn('[deleteClient] Error liberando teléfono:', e);
+              }
+            }
+
+            await loadClients(manager);
+            alert(`Cuenta de ${label} eliminada.`);
+          } catch (e) {
+            console.error('Error eliminando cuenta del cliente:', e);
+            alert('No se pudo eliminar la cuenta. Revisa la consola para más detalles.');
           }
         }
 
