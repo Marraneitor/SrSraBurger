@@ -1181,36 +1181,44 @@
         function cleanFriesType(raw) {
             return String(raw || '').replace(/^Tipo\s+/i, '').trim();
         }
+        function getPapasGramaje(name) {
+            const n = String(name || '').toLowerCase();
+            if (!/papa/i.test(n)) return null;
+            if (/extragrande|xl\b/i.test(n)) return '560g';
+            if (/mediana/i.test(n)) return '280g';
+            if (/complemento|gajo/i.test(n)) return '140g';
+            return null;
+        }
+
         function friesLabelForContext(itemOrName, friesRaw, portionGrams, opts) {
             const friesType = cleanFriesType(friesRaw);
             const grams = Number(portionGrams);
             const boneless = isBonelessItem(itemOrName);
 
+            let label;
             // Si es combo, SIEMPRE respetar tamaño de combo (sobre todo en Combo Boneles)
             const comboKey = opts && opts.comboKey ? String(opts.comboKey) : '';
             if (comboKey) {
                 const sizeLabel = comboKey.includes('combofamiliar') ? 'Papas Extragrandes' : 'Papas Medianas';
-                return friesType ? `${sizeLabel} (${friesType})` : sizeLabel;
-            }
-
-            if (boneless) {
+                label = friesType ? `${sizeLabel} (${friesType})` : sizeLabel;
+            } else if (boneless) {
                 const sizeLabel = (Number.isFinite(grams) && grams >= 1000)
                     ? 'Papas Extragrandes'
                     : (Number.isFinite(grams) && grams >= 500)
                         ? 'Papas Medianas'
                         : 'Papas Complemento';
-                return friesType ? `${sizeLabel} (${friesType})` : sizeLabel;
+                label = friesType ? `${sizeLabel} (${friesType})` : sizeLabel;
+            } else if (/(complemento|mediana|medianas|grande|grandes|xl)/i.test(friesType)) {
+                // Si ya trae tamaño explícito (mediana/grande/xl/complemento), respetarlo
+                label = friesType.startsWith('Papas') ? friesType : `Papas ${friesType}`;
+            } else if (friesType) {
+                // Papas de $25 (hamburguesas/hotdogs): siempre son complemento
+                label = `Papas Complemento (${friesType})`;
+            } else {
+                label = 'Papas Complemento';
             }
-
-            const lower = friesType.toLowerCase();
-            // Si ya trae tamaño explícito (mediana/grande/xl/complemento), respetarlo
-            if (/(complemento|mediana|medianas|grande|grandes|xl)/i.test(friesType)) {
-                return friesType.startsWith('Papas') ? friesType : `Papas ${friesType}`;
-            }
-
-            // Papas de $25 (hamburguesas/hotdogs): siempre son complemento
-            if (friesType) return `Papas Complemento (${friesType})`;
-            return 'Papas Complemento';
+            const g = getPapasGramaje(label);
+            return g ? `${label} · ${g}` : label;
         }
 
         // Escapar texto para evitar inyectar HTML en nombres de productos/toppings
@@ -1729,7 +1737,7 @@
                                         <div class="order-item ${isItemChecked(order.id, itemIndex) ? 'checked' : ''}" onclick="toggleItemChecked('${order.id}', ${itemIndex})">
                                             <div class="flex justify-between items-start gap-3">
                                                 <div class="min-w-0 flex-1">
-                                                    <div class="item-title">${Number(item.quantity || 1)}x ${escapeHtml(item.name || '')}</div>
+                                                    <div class="item-title">${Number(item.quantity || 1)}x ${escapeHtml(item.name || '')}${(() => { const g = getPapasGramaje(item.name); return g ? ` <span class="text-xs font-bold text-orange-400 ml-1">(${g})</span>` : ''; })()}</div>
                                                     <div class="checkmark"><i class="fas fa-check"></i></div>
                                                     ${(item.specifications && !shouldInlineSpecs) ? `<div class=\"mt-1 text-sm md:text-base text-red-400 font-extrabold spec-warning\">${escapeHtml(formatSpecificationsForDisplay(item.specifications))}</div>` : ''}
                                                     <div class="breakdown" onclick="event.stopPropagation()">${renderItemBreakdown(item, order.id, itemIndex)}</div>
@@ -2498,7 +2506,9 @@
 
                     // Modo cocina: enfocado en preparación (burgers + especificaciones + elementos del combo)
                     if (mode === 'kitchen') {
-                        const leftBaseKitchen = `${qty}x ${name}`;
+                        const gramajeKitchen = getPapasGramaje(name);
+                        const nameKitchen = gramajeKitchen ? `${name} (${gramajeKitchen})` : name;
+                        const leftBaseKitchen = `${qty}x ${nameKitchen}`;
                         const nameLinesKitchen = wrap(leftBaseKitchen, PAPER_CHARS);
                         if (nameLinesKitchen.length) {
                             lines.push(nameLinesKitchen[0]);
