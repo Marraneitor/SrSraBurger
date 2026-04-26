@@ -285,38 +285,10 @@
       b.addEventListener('click', () => setLoginMode(b.getAttribute('data-login-mode')));
     });
 
-    // ── Toggle método de REGISTRO (teléfono / correo) ───────────────────
-    let regMode = 'phone'; // 'phone' | 'email'
+    // Registro siempre por correo + contraseña
+    const regMode = 'email';
     const regCorreoRow = byId('sr-auth-reg-correo-row');
     const regCorreoInput = byId('sr-auth-reg-correo');
-    const regCorreo2Row = byId('sr-auth-reg-correo2-row');
-    const regCorreo2Input = byId('sr-auth-reg-correo2');
-    const regSubmitText = byId('sr-auth-reg-submit-text');
-    const regHint = byId('sr-auth-reg-hint');
-    const regTelefonoLabel = byId('sr-auth-reg-telefono-label');
-    function setRegMode(mode) {
-      regMode = mode === 'email' ? 'email' : 'phone';
-      document.querySelectorAll('.sr-reg-mode-btn').forEach((b) => {
-        const active = b.getAttribute('data-reg-mode') === regMode;
-        b.classList.toggle('bg-white/15', active);
-        b.classList.toggle('text-white', active);
-        b.classList.toggle('text-white/70', !active);
-      });
-      if (regCorreoRow) regCorreoRow.classList.toggle('hidden', regMode !== 'email');
-      if (regCorreo2Row) regCorreo2Row.classList.toggle('hidden', regMode !== 'email');
-      if (regCorreoInput) regCorreoInput.required = (regMode === 'email');
-      if (regCorreo2Input) regCorreo2Input.required = (regMode === 'email');
-      if (regSubmitText) regSubmitText.textContent = regMode === 'email' ? 'Crear cuenta' : 'Enviar código por WhatsApp';
-      if (regHint) regHint.textContent = regMode === 'email'
-        ? 'Crearemos tu cuenta con correo + contraseña. El teléfono se usa para tus pedidos.'
-        : 'Te enviaremos un código de confirmación por WhatsApp para activar tu cuenta.';
-      if (regTelefonoLabel) regTelefonoLabel.textContent = regMode === 'email' ? 'Teléfono (para tus pedidos)' : 'Teléfono con WhatsApp';
-      if (regError) hide(regError);
-      if (regSuccess) hide(regSuccess);
-    }
-    document.querySelectorAll('.sr-reg-mode-btn').forEach((b) => {
-      b.addEventListener('click', () => setRegMode(b.getAttribute('data-reg-mode')));
-    });
 
     // Attach to any link/button requesting auth modal
     document.querySelectorAll('[data-sr-auth-open="1"]').forEach((el) => {
@@ -469,10 +441,11 @@
           const pass = (byId('sr-auth-reg-pass') && byId('sr-auth-reg-pass').value) || '';
           const pass2 = (byId('sr-auth-reg-pass2') && byId('sr-auth-reg-pass2').value) || '';
           const phoneDigits = String(telefono || '').replace(/\D/g, '');
+          const correo = (regCorreoInput && regCorreoInput.value || '').trim();
 
-          if (!nombre || !phoneDigits || !pass || !pass2) {
+          if (!nombre || !correo || !phoneDigits || !pass || !pass2) {
             if (regError) {
-              setText(regError, 'Completa nombre, teléfono y contraseña.');
+              setText(regError, 'Completa todos los campos.');
               show(regError);
             }
             return;
@@ -506,75 +479,41 @@
           regSpinner && show(regSpinner);
 
           try {
-            if (regMode === 'email') {
-              // Registro vía Firebase Auth (correo + contraseña)
-              const correo = (regCorreoInput && regCorreoInput.value || '').trim();
-              const correo2 = (regCorreo2Input && regCorreo2Input.value || '').trim();
-              if (!correo || !/@/.test(correo)) {
-                throw new Error('Ingresa un correo válido.');
-              }
-              if (correo !== correo2) {
-                throw new Error('Los correos no coinciden.');
-              }
-              if (!manager || typeof manager.registerClient !== 'function') {
-                throw new Error('El registro con correo aún no está disponible. Recarga la página.');
-              }
-              const uid = await manager.registerClient({
-                nombre,
-                correo,
-                telefono,
-                password: pass
-              });
-              const session = {
-                uid,
-                nombre,
-                telefono: phoneDigits,
-                correo,
-                authType: 'email_password'
-              };
-              try {
-                localStorage.setItem('sr_verified_customer_session', JSON.stringify(session));
-                localStorage.setItem('customerName', nombre);
-                localStorage.setItem('customerPhone', phoneDigits);
-              } catch (_) {}
-              currentUser = { uid, displayName: nombre, phoneNumber: phoneDigits, email: correo };
-              if (viewLoggedIn) {
-                hide(viewLogin);
-                hide(viewRegister);
-                show(viewLoggedIn);
-                setText(loggedInName, nombre || correo);
-              }
-              toast('Cuenta creada');
-              return;
+            // Registro siempre vía correo + contraseña (Firebase Auth)
+            const correo = (regCorreoInput && regCorreoInput.value || '').trim();
+            if (!correo || !/@/.test(correo)) {
+              throw new Error('Ingresa un correo válido.');
             }
-
-            // Registro vía teléfono + WhatsApp (flujo OTP)
-            const resp = await fetch('/api/auth/send-code', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ nombre, telefono: phoneDigits, password: pass })
+            if (!manager || typeof manager.registerClient !== 'function') {
+              throw new Error('El registro no está disponible. Recarga la página.');
+            }
+            const uid = await manager.registerClient({
+              nombre,
+              correo,
+              telefono,
+              password: pass
             });
-
-            let data = null;
-            try { data = await resp.json(); } catch (_) {}
-            if (!resp.ok || !data || !data.ok) {
-              const msg = (data && data.error) ? String(data.error) : 'No se pudo enviar el código.';
-              throw new Error(msg);
-            }
-
+            const session = {
+              uid,
+              nombre,
+              telefono: phoneDigits,
+              correo,
+              authType: 'email_password'
+            };
             try {
-              sessionStorage.setItem('sr_auth_pending_name', nombre);
-              sessionStorage.setItem('sr_auth_pending_phone', phoneDigits);
-              sessionStorage.setItem('sr_auth_pending_password', pass);
+              localStorage.setItem('sr_verified_customer_session', JSON.stringify(session));
+              localStorage.setItem('customerName', nombre);
+              localStorage.setItem('customerPhone', phoneDigits);
             } catch (_) {}
-
-            pendingRegister = { nombre, telefono: phoneDigits, password: pass };
-
-            if (regSuccess) {
-              setText(regSuccess, 'Código enviado por WhatsApp.');
-              show(regSuccess);
+            currentUser = { uid, displayName: nombre, phoneNumber: phoneDigits, email: correo };
+            if (viewLoggedIn) {
+              hide(viewLogin);
+              hide(viewRegister);
+              show(viewLoggedIn);
+              setText(loggedInName, nombre || correo);
             }
-            openVerifyModal();
+            toast('Cuenta creada');
+            return;
           } catch (err) {
             console.error('[registro] error:', err && err.code, err);
             if (regError) {
