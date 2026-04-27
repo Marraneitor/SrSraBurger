@@ -1446,6 +1446,66 @@ app.delete('/api/admin/phone-users', (req, res) => {
   }
 });
 
+// POST /api/admin/broadcast — envía un mensaje promocional por WhatsApp a una
+// lista de teléfonos. Protegido por ADMIN_KEY. Espera entre envíos para evitar
+// que WhatsApp marque la cuenta como spam.
+app.post('/api/admin/broadcast', async (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+  try {
+    const message = String((req.body && req.body.message) || '').trim();
+    const telsRaw = (req.body && Array.isArray(req.body.telefonos)) ? req.body.telefonos : [];
+
+    if (!message) return res.status(400).json({ ok: false, error: 'El mensaje está vacío.' });
+    if (message.length > 4000) return res.status(400).json({ ok: false, error: 'El mensaje es demasiado largo (máx. 4000 caracteres).' });
+
+    // Normalizar y deduplicar teléfonos (mínimo 10 dígitos)
+    const seen = new Set();
+    const telefonos = [];
+    for (const t of telsRaw) {
+      const d = String(t || '').replace(/\D/g, '');
+      if (d.length < 10) continue;
+      // Tomar últimos 10 para dedupe (por si llegan con/ sin lada)
+      const key = d.slice(-10);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      telefonos.push(d);
+    }
+
+    if (!telefonos.length) return res.status(400).json({ ok: false, error: 'No hay teléfonos válidos en la lista.' });
+    if (telefonos.length > 500) return res.status(400).json({ ok: false, error: 'Demasiados destinatarios (máx. 500 por envío).' });
+
+    const wa = getWAService();
+    if (!wa.connected) {
+      return res.status(503).json({ ok: false, error: 'WhatsApp no está conectado. Abre notifi.html y escanea el QR.' });
+    }
+
+    const results = [];
+    let sent = 0;
+    let failed = 0;
+    const delayMs = Math.max(400, Math.min(5000, Number(req.body && req.body.delayMs) || 900));
+
+    for (let i = 0; i < telefonos.length; i++) {
+      const tel = telefonos[i];
+      try {
+        await wa.sendToPhone(tel, message);
+        sent++;
+        results.push({ telefono: tel, ok: true });
+      } catch (err) {
+        failed++;
+        results.push({ telefono: tel, ok: false, error: (err && err.message) || 'Error al enviar' });
+      }
+      if (i < telefonos.length - 1) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+
+    return res.json({ ok: true, total: telefonos.length, sent, failed, results });
+  } catch (e) {
+    console.error('[broadcast] error:', e && e.message);
+    return res.status(500).json({ ok: false, error: e.message || 'No se pudo enviar el broadcast.' });
+  }
+});
+
 /**
  * Extrae datos comunes del objeto order de Firestore.
  * Soporta los distintos nombres de campo que usa el frontend.
