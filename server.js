@@ -1804,6 +1804,148 @@ app.get('/api/whatsapp/events', (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── Chat WhatsApp tipo WhatsApp Web (panel del operador) ─────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+const _waChatJsonParser = express.json({ limit: '8mb' });
+const _waChatSSEClients = new Set();
+
+function _broadcastChatUpdate(payload) {
+  for (const res of _waChatSSEClients) {
+    try { res.write(`event: chat-update\ndata: ${JSON.stringify(payload)}\n\n`); } catch (_) {}
+  }
+}
+try {
+  const wa0 = getWAService();
+  wa0.on('chat-update', (p) => _broadcastChatUpdate(p));
+} catch (_) {}
+
+// SSE: notificación de nuevos mensajes
+app.get('/api/whatsapp/chat/events', requireAdminKey, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  res.write(`event: hello\ndata: {}\n\n`);
+  _waChatSSEClients.add(res);
+  const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch(_){} }, 25000);
+  req.on('close', () => { clearInterval(ping); _waChatSSEClients.delete(res); });
+});
+
+// Lista de chats (resumen)
+app.get('/api/whatsapp/chat/list', requireAdminKey, (_req, res) => {
+  try {
+    const wa = getWAService();
+    res.json({ ok: true, chats: wa.listChats() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Mensajes de un chat
+app.get('/api/whatsapp/chat/:jid/messages', requireAdminKey, (req, res) => {
+  try {
+    const jid = decodeURIComponent(req.params.jid);
+    const wa = getWAService();
+    const data = wa.getChatMessages(jid);
+    if (!data) return res.status(404).json({ ok: false, error: 'Chat no encontrado.' });
+    wa.markChatRead(jid);
+    res.json({ ok: true, ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Marcar como leído
+app.post('/api/whatsapp/chat/:jid/read', requireAdminKey, (req, res) => {
+  try {
+    const jid = decodeURIComponent(req.params.jid);
+    const wa = getWAService();
+    wa.markChatRead(jid);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Pausar / reanudar bot por chat
+app.post('/api/whatsapp/chat/:jid/bot', requireAdminKey, _waChatJsonParser, (req, res) => {
+  try {
+    const jid = decodeURIComponent(req.params.jid);
+    const paused = !!req.body?.paused;
+    const wa = getWAService();
+    wa.setBotPaused(jid, paused);
+    res.json({ ok: true, paused });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Enviar texto
+app.post('/api/whatsapp/chat/:jid/send', requireAdminKey, _waChatJsonParser, async (req, res) => {
+  try {
+    const jid = decodeURIComponent(req.params.jid);
+    const text = String(req.body?.text || '').slice(0, 4000);
+    const wa = getWAService();
+    await wa.sendChatText(jid, text);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Enviar imagen (base64 dataURL en body.image)
+app.post('/api/whatsapp/chat/:jid/send-image', requireAdminKey, _waChatJsonParser, async (req, res) => {
+  try {
+    const jid = decodeURIComponent(req.params.jid);
+    const dataUrl = String(req.body?.image || '');
+    const caption = String(req.body?.caption || '').slice(0, 1000);
+    const m = dataUrl.match(/^data:([\w/+.-]+);base64,(.+)$/);
+    if (!m) return res.status(400).json({ ok: false, error: 'image debe ser dataURL base64.' });
+    const mime = m[1] || 'image/jpeg';
+    const buf = Buffer.from(m[2], 'base64');
+    if (!buf.length) return res.status(400).json({ ok: false, error: 'Imagen vacía.' });
+    if (buf.length > 6 * 1024 * 1024) return res.status(413).json({ ok: false, error: 'Imagen demasiado grande (máx 6MB).' });
+    const wa = getWAService();
+    await wa.sendChatImage(jid, buf, mime, caption);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Imágenes del menú (banco para el bot) ──────────────────────────────────
+app.get('/api/whatsapp/menu-images', requireAdminKey, (_req, res) => {
+  try {
+    const wa = getWAService();
+    const list = wa.listMenuImages().map(i => ({ filename: i.filename, caption: i.caption, mimetype: i.mimetype }));
+    res.json({ ok: true, images: list });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/whatsapp/menu-images/:filename', (req, res) => {
+  try {
+    const wa = getWAService();
+    const p = wa.getMenuImagePath(req.params.filename);
+    if (!p) return res.status(404).end();
+    res.sendFile(p);
+  } catch (e) { res.status(500).end(); }
+});
+
+app.post('/api/whatsapp/menu-images', requireAdminKey, _waChatJsonParser, (req, res) => {
+  try {
+    const dataUrl = String(req.body?.image || '');
+    const filename = String(req.body?.filename || '').trim();
+    const caption  = String(req.body?.caption || '').slice(0, 500);
+    const m = dataUrl.match(/^data:([\w/+.-]+);base64,(.+)$/);
+    if (!m) return res.status(400).json({ ok: false, error: 'image debe ser dataURL base64.' });
+    const ext = m[1].includes('png') ? '.png' : m[1].includes('webp') ? '.webp' : '.jpg';
+    const safeName = (filename || `menu_${Date.now()}${ext}`).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const buf = Buffer.from(m[2], 'base64');
+    if (!buf.length) return res.status(400).json({ ok: false, error: 'Imagen vacía.' });
+    if (buf.length > 6 * 1024 * 1024) return res.status(413).json({ ok: false, error: 'Imagen demasiado grande (máx 6MB).' });
+    const wa = getWAService();
+    const saved = wa.saveMenuImage(safeName, buf, caption);
+    res.json({ ok: true, filename: saved });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete('/api/whatsapp/menu-images/:filename', requireAdminKey, (req, res) => {
+  try {
+    const wa = getWAService();
+    wa.deleteMenuImage(req.params.filename);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // GET /api/whatsapp/groups — lista de grupos (solo si está conectado)
 app.get('/api/whatsapp/groups', async (_req, res) => {
   try {
