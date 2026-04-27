@@ -4049,6 +4049,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (_) {}
             return null;
         }
+        // Exponer al scope global para que validateCheckoutForm (definida fuera
+        // de este DOMContentLoaded) pueda usarla sin ReferenceError.
+        try { window.getLoggedInClientUid = getLoggedInClientUid; } catch (_) {}
 
         function redirectToLoginForCheckout() {
             try {
@@ -5774,7 +5777,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Sesión requerida para finalizar
         const isManualMode = (typeof window.__MANUAL_MODE !== 'undefined' && window.__MANUAL_MODE === true);
-        let isLoggedIn = !!getLoggedInClientUid();
+        const _getUid = (typeof getLoggedInClientUid === 'function') ? getLoggedInClientUid
+                       : (typeof window !== 'undefined' && typeof window.getLoggedInClientUid === 'function' ? window.getLoggedInClientUid
+                       : function () { return null; });
+        let isLoggedIn = !!_getUid();
         if (isManualMode) isLoggedIn = true;
         
         if (!deliveryTypeElement || !paymentMethodElement) {
@@ -6247,7 +6253,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const pointsEarned = Math.max(0, Math.floor(Number(total || 0) / 10)); // 1 punto por cada $10 MXN
 
         // Detectar si hay sesión para acreditar puntos
-        let isLoggedIn = !!getLoggedInClientUid();
+        let isLoggedIn = !!((typeof getLoggedInClientUid === 'function')
+            ? getLoggedInClientUid()
+            : (typeof window !== 'undefined' && typeof window.getLoggedInClientUid === 'function' ? window.getLoggedInClientUid() : null));
 
         const deliveryLabel = deliveryTypeValue === 'delivery' ? '🚚 A domicilio' : '🏪 Recoger en local';
         const paymentLabel = paymentMethod === 'Efectivo' ? '💵 Efectivo' : `💳 ${paymentMethod}`;
@@ -9189,7 +9197,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Intentar asociar el pedido al usuario autenticado (para puntos)
-            const clienteId = getLoggedInClientUid();
+            const clienteId = (typeof getLoggedInClientUid === 'function')
+                ? getLoggedInClientUid()
+                : (typeof window !== 'undefined' && typeof window.getLoggedInClientUid === 'function' ? window.getLoggedInClientUid() : null);
             
             // Crear objeto de datos del pedido
             const orderData = {
