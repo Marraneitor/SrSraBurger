@@ -1201,6 +1201,31 @@
             return g ? `${s} (${g})` : s;
         }
 
+        // ── Gramaje del Boneles Burger (hamburguesa con boneles, 150g) ──────
+        // Detecta nombres tipo "BonelesBurger", "Boneles Burger", "Boneless Burger"
+        // (NO confundir con "Boneles 250g" o "Combo Boneles" — esos son piezas)
+        function isBurgerBonelesName(name) {
+            const n = String(name || '').toLowerCase();
+            return /boneles\s*burger|bonelesburger|boneless\s*burger/i.test(n);
+        }
+        function getBurgerBonelesGramaje(name) {
+            return isBurgerBonelesName(name) ? '150g' : null;
+        }
+        function annotateBurgerBonelesGramaje(line) {
+            const s = String(line || '');
+            if (!isBurgerBonelesName(s)) return s;
+            if (/\d+\s*g\b/i.test(s)) return s; // ya trae gramaje
+            return `${s} (150g)`;
+        }
+        // Anotador unificado para líneas de detalle (papas + boneles burger)
+        function annotateItemGramaje(line) {
+            return annotateBurgerBonelesGramaje(annotatePapasGramaje(line));
+        }
+        // Devuelve gramaje para nombre de item (papas o boneles burger)
+        function getItemGramaje(name) {
+            return getPapasGramaje(name) || getBurgerBonelesGramaje(name);
+        }
+
         function friesLabelForContext(itemOrName, friesRaw, portionGrams, opts) {
             const friesType = cleanFriesType(friesRaw);
             const grams = Number(portionGrams);
@@ -1748,7 +1773,7 @@
                                         <div class="order-item ${isItemChecked(order.id, itemIndex) ? 'checked' : ''}" onclick="toggleItemChecked('${order.id}', ${itemIndex})">
                                             <div class="flex justify-between items-start gap-3">
                                                 <div class="min-w-0 flex-1">
-                                                    <div class="item-title">${Number(item.quantity || 1)}x ${escapeHtml(item.name || '')}${(() => { const g = getPapasGramaje(item.name); return g ? ` <span class="text-xs font-bold text-orange-400 ml-1">(${g})</span>` : ''; })()}</div>
+                                                    <div class="item-title">${Number(item.quantity || 1)}x ${escapeHtml(item.name || '')}${(() => { const g = getItemGramaje(item.name); return g ? ` <span class="text-xs font-bold text-orange-400 ml-1">(${g})</span>` : ''; })()}</div>
                                                     <div class="checkmark"><i class="fas fa-check"></i></div>
                                                     ${(item.specifications && !shouldInlineSpecs) ? `<div class=\"mt-1 text-sm md:text-base text-red-400 font-extrabold spec-warning\">${escapeHtml(formatSpecificationsForDisplay(item.specifications))}</div>` : ''}
                                                     <div class="breakdown" onclick="event.stopPropagation()">${renderItemBreakdown(item, order.id, itemIndex)}</div>
@@ -2394,7 +2419,7 @@
                     }
 
                     const right = '$' + money(lineTotal);
-                    const gramajeCust = getPapasGramaje(name);
+                    const gramajeCust = getItemGramaje(name);
                     const nameWithGramCust = gramajeCust ? `${name} (${gramajeCust})` : name;
                     const leftBase = `${qty}x ${nameWithGramCust}`;
                     const maxLeft = Math.max(8, PAPER_CHARS - right.length - 1);
@@ -2412,7 +2437,7 @@
                     const details = [custom, specs].filter(Boolean).join(' | ')
                         .split('|').map(s => s.trim()).filter(Boolean);
                     details.forEach(d => {
-                        const dAnn = annotatePapasGramaje(d);
+                        const dAnn = annotateItemGramaje(d);
                         wrap(dAnn, PAPER_CHARS - 2).forEach(dl => custLines.push('  ' + dl));
                     });
                 });
@@ -2520,7 +2545,7 @@
 
                     // Modo cocina: enfocado en preparación (burgers + especificaciones + elementos del combo)
                     if (mode === 'kitchen') {
-                        const gramajeKitchen = getPapasGramaje(name);
+                        const gramajeKitchen = getItemGramaje(name);
                         const nameKitchen = gramajeKitchen ? `${name} (${gramajeKitchen})` : name;
                         const leftBaseKitchen = `${qty}x ${nameKitchen}`;
                         const nameLinesKitchen = wrap(leftBaseKitchen, PAPER_CHARS);
@@ -2618,7 +2643,7 @@
                                 .filter(Boolean);
 
                             detailsKitchen.forEach(d => {
-                                const dAnn = annotatePapasGramaje(d);
+                                const dAnn = annotateItemGramaje(d);
                                 const detailLines = wrap(dAnn, PAPER_CHARS - 2);
                                 detailLines.forEach(dl => lines.push('  - ' + dl));
                             });
@@ -2669,7 +2694,7 @@
 
                     const right = '$' + money(lineTotal);
 
-                    const gramajeStd = getPapasGramaje(name);
+                    const gramajeStd = getItemGramaje(name);
                     const nameWithGramStd = gramajeStd ? `${name} (${gramajeStd})` : name;
                     const leftBase = `${qty}x ${nameWithGramStd}`;
                     const maxLeft = Math.max(8, PAPER_CHARS - right.length - 1);
@@ -2716,7 +2741,7 @@
                     });
 
                     details.forEach(d => {
-                        const dAnn = annotatePapasGramaje(d);
+                        const dAnn = annotateItemGramaje(d);
                         const detailLines = wrap(`- ${dAnn}`, PAPER_CHARS - 2);
                         detailLines.forEach(dl => lines.push('  ' + dl));
                     });

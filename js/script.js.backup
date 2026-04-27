@@ -1908,6 +1908,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return c.includes('boneles') && c !== 'boneles';
     }
 
+    // Detecta si un item específico es la "Boneles Burger" / "BonelesBurger"
+    // (independiente de la categoría — vive en "Hamburguesas")
+    function isBonelesBurgerItem(item) {
+        const n = String(item && item.name || '').toLowerCase();
+        return /boneles\s*burger|bonelesburger|boneless\s*burger/i.test(n);
+    }
+    // Salsas disponibles para hamburguesa con boneles (mismas que Boneles piezas)
+    const BURGER_BONELES_SAUCES = ['NATURAL', 'BBQ DULCE', 'BBQ PICANTE', 'PARMESANO RANCH'];
+
     // Modal de salsa para hamburguesas de boneles NO customizables
     function openBurgerBonelesSauceModal(itemId, buttonEl) {
         const found = findItemByIdWithCategory(itemId);
@@ -3770,6 +3779,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     summaryEl.textContent = summaryText.length > 0 ? summaryText.join(', ') : 'Sin personalización.';
                 } else {
+                    // Si la hamburguesa elegida es BonelesBurger, inyectar la salsa seleccionada
+                    try {
+                        const _comboBurger = tempComboConfig.choices[choiceIndex] && tempComboConfig.choices[choiceIndex].burger;
+                        if (isBonelesBurgerItem(_comboBurger)) {
+                            // Quitar cualquier 'Salsa: X' previa para no duplicar
+                            for (let i = customizations.length - 1; i >= 0; i--) {
+                                if (/^salsa\s*:/i.test(String(customizations[i] && customizations[i].name || ''))) customizations.splice(i, 1);
+                            }
+                            const sauce = document.querySelector('input[name="burger-boneles-sauce"]:checked')?.value || 'NATURAL';
+                            customizations.push({ name: `Salsa: ${sauce}`, price: 0 });
+                        }
+                    } catch (_) {}
                     // Actualizar configuración de la hamburguesa en el combo
                     tempComboConfig.choices[choiceIndex].customizations = customizations;
                     tempComboConfig.choices[choiceIndex].fries = fries;
@@ -3817,7 +3838,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const item = applyDailyPromotion(originalItem, category);
 
                 // Salsa para hamburguesas de boneles (inyectada al final de customizations)
-                if (isBurgerBonelesCategory(category)) {
+                if (isBurgerBonelesCategory(category) || isBonelesBurgerItem(item)) {
+                    // Quitar cualquier 'Salsa: X' previa para no duplicar
+                    for (let i = customizations.length - 1; i >= 0; i--) {
+                        if (/^salsa\s*:/i.test(String(customizations[i] && customizations[i].name || ''))) customizations.splice(i, 1);
+                    }
                     const sauce = document.querySelector('input[name="burger-boneles-sauce"]:checked')?.value || 'NATURAL';
                     customizations.push({ name: `Salsa: ${sauce}`, price: 0 });
                 }
@@ -4838,8 +4863,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const _existBBSauce = document.getElementById('burger-boneles-sauce-section');
         if (_existBBSauce) _existBBSauce.remove();
         const _bbCat = isCombo ? '' : getCategoryForItemId(context.itemId);
-        if (!isCombo && isBurgerBonelesCategory(_bbCat)) {
-            const BURGER_BONELES_SAUCES = ['NATURAL', 'BBQ DULCE', 'BBQ PICANTE', 'PARMESANO RANCH'];
+        // Activar para: (a) item en categoría boneles (no piezas), o
+        // (b) cuando el item específico es BonelesBurger (regular o dentro de combo)
+        const _isBonelesBurger = isBonelesBurgerItem(item);
+        if ((!isCombo && isBurgerBonelesCategory(_bbCat)) || _isBonelesBurger) {
+            // Recordar la salsa previamente elegida (si existe en customizations)
+            const _prevSauceMatch = (currentCustomizations || []).find(c => /^salsa\s*:/i.test(String(c && c.name || '')));
+            const _prevSauce = _prevSauceMatch ? String(_prevSauceMatch.name).replace(/^salsa\s*:\s*/i, '').trim().toUpperCase() : '';
             const _sauceSection = document.createElement('div');
             _sauceSection.id = 'burger-boneles-sauce-section';
             _sauceSection.className = 'mt-4 pt-4 border-t border-gray-200 dark:border-white/10';
@@ -4848,12 +4878,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fas fa-pepper-hot text-red-500"></i>Tipo de salsa
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                    ${BURGER_BONELES_SAUCES.map((s, idx) => `
+                    ${BURGER_BONELES_SAUCES.map((s, idx) => {
+                        const _checked = _prevSauce ? (s === _prevSauce) : (idx === 0);
+                        return `
                         <label class="flex items-center gap-2 border border-gray-200 dark:border-white/20 rounded-xl p-3 cursor-pointer hover:border-yellow-400 dark:hover:border-yellow-400 transition-colors">
-                            <input type="radio" name="burger-boneles-sauce" value="${s}" class="form-radio text-yellow-500" ${idx === 0 ? 'checked' : ''}>
+                            <input type="radio" name="burger-boneles-sauce" value="${s}" class="form-radio text-yellow-500" ${_checked ? 'checked' : ''}>
                             <span class="font-semibold text-sm text-gray-800 dark:text-gray-200">${s}</span>
-                        </label>
-                    `).join('')}
+                        </label>`;
+                    }).join('')}
                 </div>
             `;
             const _modalBody = document.getElementById('custom-modal-body');
@@ -5040,7 +5072,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             tempComboConfig.choices[i] = {
                 burger: defaultBurger,
-                customizations: [],
+                customizations: isBonelesBurgerItem(defaultBurger) ? [{ name: 'Salsa: NATURAL', price: 0 }] : [],
                 fries: null
             };
             
@@ -5291,14 +5323,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!newBurger) return;
         
         tempComboConfig.choices[choiceIndex].burger = newBurger;
-        tempComboConfig.choices[choiceIndex].customizations = [];
+        tempComboConfig.choices[choiceIndex].customizations = isBonelesBurgerItem(newBurger) ? [{ name: 'Salsa: NATURAL', price: 0 }] : [];
         tempComboConfig.choices[choiceIndex].fries = null;
         tempComboConfig.choices[choiceIndex].onionRings = null;
         
         updateBurgerDisplay(choiceIndex, newBurger);
         
         const summaryEl = document.querySelector(`[data-choice-index="${choiceIndex}"] .customizations-summary`);
-        summaryEl.textContent = 'Sin personalización.';
+        summaryEl.textContent = isBonelesBurgerItem(newBurger) ? 'Salsa: NATURAL' : 'Sin personalización.';
         
         updateComboModalTotal();
     }
