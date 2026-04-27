@@ -1184,10 +1184,21 @@
         function getPapasGramaje(name) {
             const n = String(name || '').toLowerCase();
             if (!/papa/i.test(n)) return null;
-            if (/extragrande|xl\b/i.test(n)) return '560g';
+            if (/extragrande|xl\b|extra\s*grande|extragrandes/i.test(n)) return '560g';
             if (/mediana/i.test(n)) return '280g';
             if (/complemento|gajo/i.test(n)) return '140g';
-            return null;
+            // Por defecto, papas mencionadas sin tamaño explícito (típico en
+            // customizaciones de hamburguesas/hot dogs) son complemento → 140g
+            return '140g';
+        }
+        // Agrega gramaje a una línea de detalle si menciona papas sin tamaño
+        function annotatePapasGramaje(line) {
+            const s = String(line || '');
+            if (!/papa/i.test(s)) return s;
+            // Si ya trae un gramaje (ej: "280g", "(560g)"), no tocar
+            if (/\d+\s*g\b/i.test(s)) return s;
+            const g = getPapasGramaje(s);
+            return g ? `${s} (${g})` : s;
         }
 
         function friesLabelForContext(itemOrName, friesRaw, portionGrams, opts) {
@@ -2383,7 +2394,9 @@
                     }
 
                     const right = '$' + money(lineTotal);
-                    const leftBase = `${qty}x ${name}`;
+                    const gramajeCust = getPapasGramaje(name);
+                    const nameWithGramCust = gramajeCust ? `${name} (${gramajeCust})` : name;
+                    const leftBase = `${qty}x ${nameWithGramCust}`;
                     const maxLeft = Math.max(8, PAPER_CHARS - right.length - 1);
                     const nameLines = wrap(leftBase, maxLeft);
                     if (nameLines.length) {
@@ -2399,7 +2412,8 @@
                     const details = [custom, specs].filter(Boolean).join(' | ')
                         .split('|').map(s => s.trim()).filter(Boolean);
                     details.forEach(d => {
-                        wrap(d, PAPER_CHARS - 2).forEach(dl => custLines.push('  ' + dl));
+                        const dAnn = annotatePapasGramaje(d);
+                        wrap(dAnn, PAPER_CHARS - 2).forEach(dl => custLines.push('  ' + dl));
                     });
                 });
 
@@ -2604,7 +2618,8 @@
                                 .filter(Boolean);
 
                             detailsKitchen.forEach(d => {
-                                const detailLines = wrap(d, PAPER_CHARS - 2);
+                                const dAnn = annotatePapasGramaje(d);
+                                const detailLines = wrap(dAnn, PAPER_CHARS - 2);
                                 detailLines.forEach(dl => lines.push('  - ' + dl));
                             });
                         }
@@ -2654,7 +2669,9 @@
 
                     const right = '$' + money(lineTotal);
 
-                    const leftBase = `${qty}x ${name}`;
+                    const gramajeStd = getPapasGramaje(name);
+                    const nameWithGramStd = gramajeStd ? `${name} (${gramajeStd})` : name;
+                    const leftBase = `${qty}x ${nameWithGramStd}`;
                     const maxLeft = Math.max(8, PAPER_CHARS - right.length - 1);
                     const nameLines = wrap(leftBase, maxLeft);
                     if (nameLines.length) {
@@ -2699,7 +2716,8 @@
                     });
 
                     details.forEach(d => {
-                        const detailLines = wrap(`- ${d}`, PAPER_CHARS - 2);
+                        const dAnn = annotatePapasGramaje(d);
+                        const detailLines = wrap(`- ${dAnn}`, PAPER_CHARS - 2);
                         detailLines.forEach(dl => lines.push('  ' + dl));
                     });
                 });
