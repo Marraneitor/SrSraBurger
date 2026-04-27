@@ -1009,6 +1009,95 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// ── API: generar texto de promoción con IA ──────────────────────────────────
+// Protegido por ADMIN_KEY. Usa Gemini para devolver { tipo, texto } JSON.
+app.post('/api/generate-promo', async (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+
+  const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!apiKey) {
+    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY no configurada.' });
+  }
+
+  const idea = String(req.body?.idea || '').replace(/<[^>]*>/g, '').trim().slice(0, 500);
+  const tipoActual = String(req.body?.tipo || '').replace(/<[^>]*>/g, '').trim().slice(0, 120);
+  const textoActual = String(req.body?.texto || '').replace(/<[^>]*>/g, '').trim().slice(0, 800);
+
+  const SYS = `Eres un copywriter experto de **Sr. y Sra. Burger**, dark kitchen de hamburguesas artesanales en Minatitlán, Veracruz.
+Tu tarea: redactar mensajes BREVES de promoción para enviar por WhatsApp a clientes registrados.
+
+REGLAS ESTRICTAS:
+- Responde SIEMPRE en JSON válido con esta forma exacta:
+  {"tipo":"TÍTULO CORTO EN MAYÚSCULAS","texto":"Cuerpo del mensaje"}
+- "tipo": 3 a 6 palabras, mayúsculas, atractivo (ej. "PROMO DOBLE BURGER HOY", "MARTES DE LOCURA").
+- "texto": 2 a 4 líneas. Tono cercano, mexicano, energético. Puedes usar 1-3 emojis (🍔🔥🎉🥤🍟). Incluye un llamado a la acción claro.
+- NO incluyas saludo (Hola...) ni firma (SR & SRA BURGER) — eso lo agrega el sistema.
+- NO inventes precios ni productos si no se proporcionan en el "Brief". Si no hay precios, escribe sin números específicos.
+- NO uses markdown, ni \`\`\`json, solo el objeto JSON puro.
+
+CATÁLOGO DE REFERENCIA:
+🍔 Sencilla $90 · Premium $105 · BBQ Beacon $115 · Alohawai $120 · Chistorraburger $125 · Salchiburger $125 · Choriargentina $125 · Guacamole $140 · Boneless Burger $150
+🌭 Hot Dog Jumbo $65
+🎁 Combo Duo $190 · Triple Dog $215 · Combo Boneless $215 · Combo Amigos $380 · Combo Familiar $680
+🍟 Papas M $65/XL $130 · Salchipapas Parmesanas M $90/XL $140 · Aros M $50/XL $95
+📍 Coahuila #36, Col. Emiliano Zapata, Minatitlán · Envío $8/km`;
+
+  const briefParts = [];
+  if (idea) briefParts.push(`Idea / objetivo: ${idea}`);
+  if (tipoActual) briefParts.push(`Título actual (mejóralo si conviene): ${tipoActual}`);
+  if (textoActual) briefParts.push(`Texto actual (úsalo como base, hazlo más persuasivo): ${textoActual}`);
+  if (!briefParts.length) briefParts.push('Genera una promoción atractiva del día para llenar el local. Elige libremente entre el catálogo.');
+  const userMessage = `Brief:\n${briefParts.join('\n')}\n\nResponde solo con el JSON solicitado.`;
+
+  try {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const geminiRes = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYS }] },
+        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+        generationConfig: {
+          temperature: 0.95,
+          maxOutputTokens: 512,
+          topP: 0.95,
+          responseMimeType: 'application/json',
+        },
+      }),
+    });
+
+    if (!geminiRes.ok) {
+      const errBody = await geminiRes.json().catch(() => ({}));
+      console.error('[generate-promo] Gemini error', geminiRes.status, JSON.stringify(errBody).slice(0, 200));
+      return res.status(502).json({ ok: false, error: 'Error al conectar con la IA.' });
+    }
+
+    const data = await geminiRes.json();
+    let raw = String(data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+    raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+
+    let parsed = null;
+    try { parsed = JSON.parse(raw); }
+    catch (_) {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) { try { parsed = JSON.parse(m[0]); } catch (_) {} }
+    }
+    if (!parsed) {
+      console.error('[generate-promo] Respuesta no parseable:', raw.slice(0, 300));
+      return res.status(502).json({ ok: false, error: 'La IA no devolvió un JSON válido.' });
+    }
+
+    return res.json({
+      ok: true,
+      tipo: String(parsed.tipo || '').trim().slice(0, 120),
+      texto: String(parsed.texto || '').trim().slice(0, 1500),
+    });
+  } catch (e) {
+    console.error('[generate-promo] Error interno:', e.message);
+    return res.status(500).json({ ok: false, error: 'Error interno del generador.' });
+  }
+});
+
 // ── API de configuración del chatbot ────────────────────────────────────────
 
 // GET — devuelve el prompt actual (custom de Firestore o el default hardcodeado)

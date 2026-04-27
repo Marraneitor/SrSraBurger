@@ -98,6 +98,34 @@
             class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-400 resize-y"></textarea>
         </div>
 
+        <!-- Generar con IA -->
+        <div class="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-fuchsia-900/10 p-3 space-y-2">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-purple-400/15 flex items-center justify-center text-purple-300">
+              <i class="fas fa-wand-magic-sparkles text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="text-sm font-bold title-font text-purple-100">Generar con IA</div>
+              <div class="text-[11px] text-slate-400">Da una idea y la IA redactará la promoción.</div>
+            </div>
+          </div>
+          <input id="promo-ai-idea" type="text" maxlength="240"
+            placeholder="Ej. Promo del martes para mover combos familiares con descuento"
+            class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400" />
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="promo-ai-generate" type="button"
+              class="px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fas fa-wand-magic-sparkles"></i>
+              <span id="promo-ai-generate-label">Generar</span>
+            </button>
+            <button id="promo-ai-improve" type="button"
+              class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fas fa-arrows-rotate"></i> Mejorar texto actual
+            </button>
+            <span id="promo-ai-status" class="text-[11px] text-slate-400"></span>
+          </div>
+        </div>
+
         <div class="flex items-center gap-3 text-xs flex-wrap">
           <label class="flex items-center gap-2">
             <input id="promo-incluir-saludo" type="checkbox" checked class="rounded">
@@ -286,6 +314,94 @@
         tipoEl.value = '';
         textoEl.value = '';
         refreshPreview();
+      });
+
+      // ── Generador IA ────────────────────────────────────────────
+      const aiIdeaEl = byId('promo-ai-idea');
+      const aiGenBtn = byId('promo-ai-generate');
+      const aiImproveBtn = byId('promo-ai-improve');
+      const aiStatus = byId('promo-ai-status');
+      const aiGenLabel = byId('promo-ai-generate-label');
+
+      function setAiBusy(busy, msg) {
+        aiGenBtn.disabled = busy;
+        aiImproveBtn.disabled = busy;
+        if (busy) {
+          aiGenLabel.textContent = 'Generando…';
+          aiStatus.textContent = msg || 'Pensando…';
+          aiStatus.className = 'text-[11px] text-purple-300';
+        } else {
+          aiGenLabel.textContent = 'Generar';
+          if (msg) {
+            aiStatus.textContent = msg;
+          }
+        }
+      }
+
+      async function callGeneratePromo({ improve }) {
+        const key = getOrPromptAdminKey();
+        if (!key) return;
+        const idea = String(aiIdeaEl.value || '').trim();
+        const tipoActual = String(tipoEl.value || '').trim();
+        const textoActual = String(textoEl.value || '').trim();
+
+        if (!improve && !idea) {
+          aiStatus.textContent = 'Escribe una idea o pulsa "Mejorar texto actual".';
+          aiStatus.className = 'text-[11px] text-amber-300';
+          aiIdeaEl.focus();
+          return;
+        }
+        if (improve && !textoActual && !tipoActual) {
+          aiStatus.textContent = 'No hay texto actual para mejorar.';
+          aiStatus.className = 'text-[11px] text-amber-300';
+          return;
+        }
+
+        setAiBusy(true);
+        try {
+          const r = await fetch('/api/generate-promo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+            body: JSON.stringify({
+              idea,
+              tipo: improve ? tipoActual : '',
+              texto: improve ? textoActual : '',
+            }),
+          });
+          const d = await r.json().catch(() => ({}));
+          if (r.status === 401) {
+            try { sessionStorage.removeItem('sr_admin_key'); } catch (_) {}
+            setAiBusy(false, '');
+            aiStatus.textContent = 'ADMIN_KEY incorrecta. Vuelve a intentarlo.';
+            aiStatus.className = 'text-[11px] text-red-300';
+            return;
+          }
+          if (!r.ok || !d.ok) {
+            setAiBusy(false, '');
+            aiStatus.textContent = d.error || 'No se pudo generar.';
+            aiStatus.className = 'text-[11px] text-red-300';
+            return;
+          }
+          if (d.tipo) tipoEl.value = d.tipo;
+          if (d.texto) textoEl.value = d.texto;
+          refreshPreview();
+          setAiBusy(false, '');
+          aiStatus.textContent = '✨ Generado. Revisa y ajusta antes de enviar.';
+          aiStatus.className = 'text-[11px] text-emerald-300';
+        } catch (e) {
+          setAiBusy(false, '');
+          aiStatus.textContent = 'Error de red al contactar la IA.';
+          aiStatus.className = 'text-[11px] text-red-300';
+        }
+      }
+
+      aiGenBtn.addEventListener('click', () => callGeneratePromo({ improve: false }));
+      aiImproveBtn.addEventListener('click', () => callGeneratePromo({ improve: true }));
+      aiIdeaEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          callGeneratePromo({ improve: false });
+        }
       });
 
       // ── Contactos ───────────────────────────────────────────────
