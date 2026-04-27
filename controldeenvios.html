@@ -2560,7 +2560,7 @@
                             const drinkBadges = [];
                             let hasOnion = false;
                             includePieces.forEach(ch => {
-                                if (ch.fries) friesBadges.push(`Tipo ${ch.fries}`);
+                                if (ch.fries) friesBadges.push(friesLabelForContext(item, ch.fries, ch.portionGrams, { comboKey: comboConfig && comboConfig.key }));
                                 if (ch.sauce) sauceBadges.push(ch.sauce);
                                 if (ch.drinks && ch.drinks.length) drinkBadges.push(...ch.drinks);
                                 if (ch.onionRings) hasOnion = true;
