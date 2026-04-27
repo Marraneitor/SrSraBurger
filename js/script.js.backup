@@ -4001,12 +4001,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (_) {}
 
-            // Sesión verificada por código de WhatsApp (local)
+            // Sesión local (registro/login con correo+contraseña o por código WhatsApp)
             try {
                 const raw = localStorage.getItem('sr_verified_customer_session');
                 if (raw) {
                     const parsed = JSON.parse(raw);
-                    if (parsed && parsed.uid && parsed.telefono) {
+                    if (parsed && parsed.uid) {
                         return String(parsed.uid);
                     }
                 }
