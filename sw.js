@@ -6,7 +6,7 @@
  * Versiona el cache incrementando CACHE_VERSION al desplegar cambios.
  */
 
-const CACHE_VERSION = 'sr-v7';
+const CACHE_VERSION = 'sr-v8';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const IMAGE_CACHE   = `${CACHE_VERSION}-images`;
 

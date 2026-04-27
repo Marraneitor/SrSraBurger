@@ -3953,6 +3953,17 @@ document.addEventListener('DOMContentLoaded', () => {
             validateCheckoutForm();
         });
 
+        // Re-validar el checkout cuando cambia el estado de sesión
+        // (login / registro / verificación / logout).
+        window.addEventListener('sr-auth-changed', () => {
+            try { validateCheckoutForm(); } catch (_) {}
+        });
+        // También sincronizar entre pestañas (storage event nativo)
+        window.addEventListener('storage', (e) => {
+            if (!e || e.key !== 'sr_verified_customer_session') return;
+            try { validateCheckoutForm(); } catch (_) {}
+        });
+
         // Cerrar modal de checkout
         closeModalBtn.addEventListener('click', () => {
             checkoutModal.classList.add('hidden');
