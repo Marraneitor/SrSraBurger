@@ -260,30 +260,9 @@
       setTab('register');
     });
 
-    // ── Toggle método de LOGIN (teléfono / correo) ──────────────────────
-    let loginMode = 'phone'; // 'phone' | 'email'
+    // Login siempre por correo + contraseña
+    const loginMode = 'email';
     const loginCorreoInput = byId('sr-auth-login-correo');
-    const loginCorreoLabel = byId('sr-auth-login-correo-label');
-    function setLoginMode(mode) {
-      loginMode = mode === 'email' ? 'email' : 'phone';
-      document.querySelectorAll('.sr-login-mode-btn').forEach((b) => {
-        const active = b.getAttribute('data-login-mode') === loginMode;
-        b.classList.toggle('bg-white/15', active);
-        b.classList.toggle('text-white', active);
-        b.classList.toggle('text-white/70', !active);
-      });
-      if (loginCorreoLabel) loginCorreoLabel.textContent = loginMode === 'email' ? 'Correo electrónico' : 'Teléfono';
-      if (loginCorreoInput) {
-        loginCorreoInput.type = loginMode === 'email' ? 'email' : 'tel';
-        loginCorreoInput.placeholder = loginMode === 'email' ? 'tucorreo@ejemplo.com' : '9221234567';
-        loginCorreoInput.autocomplete = loginMode === 'email' ? 'email' : 'tel';
-        loginCorreoInput.value = '';
-      }
-      if (loginError) hide(loginError);
-    }
-    document.querySelectorAll('.sr-login-mode-btn').forEach((b) => {
-      b.addEventListener('click', () => setLoginMode(b.getAttribute('data-login-mode')));
-    });
 
     // Registro siempre por correo + contraseña
     const regMode = 'email';
@@ -325,7 +304,7 @@
 
           if (!rawId || !pass) {
             if (loginError) {
-              setText(loginError, 'Escribe tu teléfono o correo y contraseña.');
+              setText(loginError, 'Escribe tu correo y contraseña.');
               show(loginError);
             }
             return;
