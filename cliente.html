@@ -251,28 +251,19 @@
       <!-- Register panel -->
       <div id="panel-register" class="c2 p-6 su hidden">
         <p class="text-xs text-slate-500 mb-5">Llena tus datos para crear tu cuenta gratis.</p>
-        <div class="c2 p-1.5 flex gap-1.5 mb-4" style="background:rgba(2,6,23,.4);">
-          <button type="button" class="c2-tab on sr-client-reg-mode-btn flex-1" data-client-reg-mode="phone"><i class="fa-brands fa-whatsapp mr-1"></i> Teléfono</button>
-          <button type="button" class="c2-tab sr-client-reg-mode-btn flex-1" data-client-reg-mode="email"><i class="fa-regular fa-envelope mr-1"></i> Correo</button>
-        </div>
         <form id="register-form" class="space-y-4">
           <div>
             <label class="c2-lbl" for="reg-nombre">Nombre completo</label>
             <input id="reg-nombre" type="text" required class="c2-inp"
               placeholder="Tu nombre" autocomplete="name" />
           </div>
-          <div id="reg-correo-row" class="hidden">
+          <div id="reg-correo-row">
             <label class="c2-lbl" for="reg-correo">Correo electrónico</label>
-            <input id="reg-correo" type="email" class="c2-inp"
+            <input id="reg-correo" type="email" required class="c2-inp"
               placeholder="tucorreo@ejemplo.com" autocomplete="email" />
           </div>
-          <div id="reg-correo2-row" class="hidden">
-            <label class="c2-lbl" for="reg-correo2">Confirmar correo</label>
-            <input id="reg-correo2" type="email" class="c2-inp"
-              placeholder="Repite tu correo" autocomplete="email" />
-          </div>
           <div>
-            <label class="c2-lbl" for="reg-telefono" id="reg-telefono-label">Teléfono con WhatsApp</label>
+            <label class="c2-lbl" for="reg-telefono" id="reg-telefono-label">Número de teléfono</label>
             <input id="reg-telefono" type="tel" required class="c2-inp"
               placeholder="Ej. 9221234567" autocomplete="tel" />
           </div>
@@ -283,14 +274,13 @@
                 placeholder="Mín. 6 caracteres" autocomplete="new-password" />
             </div>
             <div>
-              <label class="c2-lbl" for="reg-pass2">Confirmar</label>
+              <label class="c2-lbl" for="reg-pass2">Confirmar contraseña</label>
               <input id="reg-pass2" type="password" required minlength="6" class="c2-inp"
                 placeholder="Repite tu clave" autocomplete="new-password" />
             </div>
           </div>
-          <p class="text-xs text-slate-600" id="reg-hint">Te enviaremos un código por WhatsApp para confirmar tu cuenta.</p>
           <button id="reg-submit" type="submit" class="c2-btn w-full">
-            <span id="reg-submit-text">Enviar código por WhatsApp</span>
+            <span id="reg-submit-text">Crear cuenta</span>
             <span id="reg-spinner" class="hidden w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
           </button>
           <p id="reg-error" class="text-xs text-red-400 hidden"></p>
@@ -928,7 +918,7 @@
 
         let pendingRegister = null;
         let clientLoginMode = 'phone';
-        let clientRegMode = 'phone';
+        const clientRegMode = 'email';
 
         function setClientLoginMode(mode) {
           clientLoginMode = mode === 'email' ? 'email' : 'phone';
@@ -957,39 +947,8 @@
           if (loginError) loginError.classList.add('hidden');
         }
 
-        function setClientRegMode(mode) {
-          clientRegMode = mode === 'email' ? 'email' : 'phone';
-          document.querySelectorAll('.sr-client-reg-mode-btn').forEach((b) => {
-            b.classList.toggle('on', b.getAttribute('data-client-reg-mode') === clientRegMode);
-          });
-          const correoRow = byId('reg-correo-row');
-          const correo2Row = byId('reg-correo2-row');
-          const correoInp = byId('reg-correo');
-          const correo2Inp = byId('reg-correo2');
-          const submitText = byId('reg-submit-text');
-          const hint = byId('reg-hint');
-          const telLbl = byId('reg-telefono-label');
-          if (correoRow) correoRow.classList.toggle('hidden', clientRegMode !== 'email');
-          if (correo2Row) correo2Row.classList.toggle('hidden', clientRegMode !== 'email');
-          if (correoInp) correoInp.required = (clientRegMode === 'email');
-          if (correo2Inp) correo2Inp.required = (clientRegMode === 'email');
-          if (clientRegMode === 'email') {
-            if (submitText) submitText.textContent = 'Crear cuenta';
-            if (hint) hint.textContent = 'Te crearemos tu cuenta con correo y contraseña.';
-            if (telLbl) telLbl.textContent = 'Teléfono (opcional)';
-          } else {
-            if (submitText) submitText.textContent = 'Enviar código por WhatsApp';
-            if (hint) hint.textContent = 'Te enviaremos un código por WhatsApp para confirmar tu cuenta.';
-            if (telLbl) telLbl.textContent = 'Teléfono con WhatsApp';
-          }
-          if (regError) regError.classList.add('hidden');
-        }
-
         document.querySelectorAll('.sr-client-login-mode-btn').forEach((b) => {
           b.addEventListener('click', () => setClientLoginMode(b.getAttribute('data-client-login-mode')));
-        });
-        document.querySelectorAll('.sr-client-reg-mode-btn').forEach((b) => {
-          b.addEventListener('click', () => setClientRegMode(b.getAttribute('data-client-reg-mode')));
         });
 
         function updateRewardButtons(points, activeReward) {
@@ -1356,9 +1315,10 @@
               const telefono = String(byId('reg-telefono').value || '').replace(/\D/g, '');
               const pass = byId('reg-pass').value;
               const pass2 = byId('reg-pass2').value;
+              const correoVal = String((byId('reg-correo') || {}).value || '').trim();
 
-              if (!nombre || !pass || !pass2) {
-                regError.textContent = 'Completa nombre y contraseña.';
+              if (!nombre || !correoVal || !telefono || !pass || !pass2) {
+                regError.textContent = 'Completa todos los campos.';
                 regError.classList.remove('hidden');
                 return;
               }
@@ -1376,42 +1336,21 @@
               regBtn.disabled = true;
               regSpinner.classList.remove('hidden');
               try {
-                if (clientRegMode === 'email') {
-                  const correo = String((byId('reg-correo') || {}).value || '').trim();
-                  const correo2 = String((byId('reg-correo2') || {}).value || '').trim();
-                  if (!correo || !/@/.test(correo)) throw new Error('Ingresa un correo válido.');
-                  if (correo !== correo2) throw new Error('Los correos no coinciden.');
-                  if (!manager || typeof manager.registerClient !== 'function') {
-                    throw new Error('El registro con correo no está disponible. Recarga la página.');
-                  }
-                  const uid = await manager.registerClient({ nombre, correo, telefono, password: pass });
-                  const session = { uid, nombre, telefono: telefono || '', correo, authType: 'email' };
-                  try { localStorage.setItem('sr_verified_customer_session', JSON.stringify(session)); } catch (_) {}
-                  try { localStorage.setItem('customerName', nombre); } catch (_) {}
-                  if (telefono) { try { localStorage.setItem('customerPhone', telefono); } catch (_) {} }
-                  regSuccess.textContent = 'Cuenta creada correctamente.';
-                  regSuccess.classList.remove('hidden');
-                  showToast('Cuenta creada');
-                  return;
+                // Registro siempre con correo + contraseña
+                const correo = String((byId('reg-correo') || {}).value || '').trim();
+                if (!correo || !/@/.test(correo)) throw new Error('Ingresa un correo válido.');
+                if (!manager || typeof manager.registerClient !== 'function') {
+                  throw new Error('El registro no está disponible. Recarga la página.');
                 }
-
-                if (telefono.length < 10) {
-                  throw new Error('Ingresa un teléfono válido (mínimo 10 dígitos).');
-                }
-                const resp = await fetch('/api/auth/send-code', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ nombre, telefono, password: pass })
-                });
-                const data = await resp.json().catch(() => ({}));
-                if (!resp.ok || !data || !data.ok) {
-                  throw new Error((data && data.error) ? String(data.error) : 'No se pudo enviar el código.');
-                }
-
-                pendingRegister = { nombre, telefono, password: pass };
-                regSuccess.textContent = 'Código enviado por WhatsApp.';
+                const uid = await manager.registerClient({ nombre, correo, telefono, password: pass });
+                const session = { uid, nombre, telefono: telefono || '', correo, authType: 'email' };
+                try { localStorage.setItem('sr_verified_customer_session', JSON.stringify(session)); } catch (_) {}
+                try { localStorage.setItem('customerName', nombre); } catch (_) {}
+                if (telefono) { try { localStorage.setItem('customerPhone', telefono); } catch (_) {} }
+                regSuccess.textContent = 'Cuenta creada correctamente.';
                 regSuccess.classList.remove('hidden');
-                openVerifyModal();
+                showToast('Cuenta creada');
+                return;
               } catch (e) {
                 regError.textContent = e && e.message ? String(e.message) : mapAuthError(e, 'Ocurrió un error al registrar la cuenta.');
                 regError.classList.remove('hidden');
