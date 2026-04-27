@@ -6436,6 +6436,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedPhone && customerPhoneInput && !customerPhoneInput.dataset.userEdited && !customerPhoneInput.value) {
             customerPhoneInput.value = savedPhone;
         }
+
+        // 3) Fallback: nombre/teléfono desde sesión local (sr_verified_customer_session)
+        //    o desde 'customerName' (localStorage), por si la sesión Firebase aún no respondió.
+        try {
+            const savedName = localStorage.getItem('customerName');
+            if (savedName && customerNameInput && !customerNameInput.dataset.userEdited && !customerNameInput.value) {
+                customerNameInput.value = savedName;
+            }
+            const rawSess = localStorage.getItem('sr_verified_customer_session');
+            if (rawSess) {
+                const sess = JSON.parse(rawSess);
+                if (sess) {
+                    if (customerNameInput && !customerNameInput.dataset.userEdited && !customerNameInput.value && sess.nombre) {
+                        customerNameInput.value = sess.nombre;
+                    }
+                    if (customerPhoneInput && !customerPhoneInput.dataset.userEdited && !customerPhoneInput.value && sess.telefono) {
+                        customerPhoneInput.value = sess.telefono;
+                    }
+                }
+            }
+        } catch (_) {}
+
+        // 4) Forzar validación tras prellenar (habilita el botón si los datos quedan completos)
+        try { validateCheckoutForm(); } catch (_) {}
     }
 
     // Modal CTA de registro: solo para usuarios SIN sesión iniciada
