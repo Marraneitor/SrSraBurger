@@ -4289,34 +4289,35 @@
                         </div>
                     </div>
 
-                    <!-- Modal Olvidé Contraseña -->
-                    <div id="sr-auth-forgot-modal" class="hidden fixed inset-0 z-[85] bg-black/70 backdrop-blur-sm items-center justify-center p-4">
-                        <div class="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl">
-                            <div class="flex items-center justify-between gap-3 mb-3">
-                                <div>
-                                    <p class="text-sm font-black text-white">Recuperar contraseña</p>
-                                    <p class="text-xs text-white/60">Te enviaremos un enlace a tu correo.</p>
-                                </div>
-                                <button id="sr-auth-forgot-close" type="button" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20">✕</button>
-                            </div>
-                            <!-- Paso 1: pedir correo -->
-                            <div id="sr-auth-forgot-step1" class="space-y-3">
-                                <input id="sr-auth-forgot-email" type="email" autocomplete="email" class="w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="tucorreo@ejemplo.com" />
-                                <p id="sr-auth-forgot-error" class="hidden text-xs text-red-300"></p>
-                                <button id="sr-auth-forgot-send" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 font-black">
-                                    Enviar correo de recuperación
-                                    <span id="sr-auth-forgot-send-spin" class="hidden w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin"></span>
-                                </button>
-                            </div>
-                            <!-- Paso 2: éxito -->
-                            <div id="sr-auth-forgot-step2" class="hidden space-y-3">
-                                <p class="text-sm text-emerald-400 font-bold">✅ Correo enviado</p>
-                                <p class="text-xs text-white/60">Revisa tu bandeja de entrada y sigue el enlace para restablecer tu contraseña.</p>
-                                <button id="sr-auth-forgot-done" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 font-bold">Cerrar</button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Olvidé Contraseña -->
+    <div id="sr-auth-forgot-modal" class="hidden fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+        <div class="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl">
+            <div class="flex items-center justify-between gap-3 mb-3">
+                <div>
+                    <p class="text-sm font-black text-white">Recuperar contraseña</p>
+                    <p class="text-xs text-white/60">Te enviaremos un enlace a tu correo.</p>
+                </div>
+                <button id="sr-auth-forgot-close" type="button" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20">✕</button>
+            </div>
+            <!-- Paso 1: pedir correo -->
+            <div id="sr-auth-forgot-step1" class="space-y-3">
+                <input id="sr-auth-forgot-email" type="email" autocomplete="email" class="w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-yellow-400/60" placeholder="tucorreo@ejemplo.com" />
+                <p id="sr-auth-forgot-error" class="hidden text-xs text-red-300"></p>
+                <button id="sr-auth-forgot-send" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-600 text-slate-900 font-black">
+                    Enviar correo de recuperación
+                    <span id="sr-auth-forgot-send-spin" class="hidden w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin"></span>
+                </button>
+            </div>
+            <!-- Paso 2: éxito -->
+            <div id="sr-auth-forgot-step2" class="hidden space-y-3">
+                <p class="text-sm text-emerald-400 font-bold">✅ Correo enviado</p>
+                <p class="text-xs text-white/60">Revisa tu bandeja de entrada y sigue el enlace para restablecer tu contraseña.</p>
+                <button id="sr-auth-forgot-done" type="button" class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 font-bold">Cerrar</button>
             </div>
         </div>
     </div>
