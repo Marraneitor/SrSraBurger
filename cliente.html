@@ -221,15 +221,11 @@
       <!-- Login panel -->
       <div id="panel-login" class="c2 p-6 su">
         <p class="text-xs text-slate-500 mb-5">Accede a tus pedidos, puntos y direcciones guardadas.</p>
-        <div class="c2 p-1.5 flex gap-1.5 mb-4" style="background:rgba(2,6,23,.4);">
-          <button type="button" class="c2-tab on sr-client-login-mode-btn flex-1" data-client-login-mode="phone"><i class="fa-brands fa-whatsapp mr-1"></i> Teléfono</button>
-          <button type="button" class="c2-tab sr-client-login-mode-btn flex-1" data-client-login-mode="email"><i class="fa-regular fa-envelope mr-1"></i> Correo</button>
-        </div>
         <form id="login-form" class="space-y-4">
           <div>
-            <label class="c2-lbl" for="login-correo" id="login-correo-label">Teléfono</label>
-            <input id="login-correo" type="tel" required class="c2-inp"
-              placeholder="9221234567" autocomplete="tel" />
+            <label class="c2-lbl" for="login-correo" id="login-correo-label">Correo electrónico</label>
+            <input id="login-correo" type="email" required class="c2-inp"
+              placeholder="tucorreo@ejemplo.com" autocomplete="email" />
           </div>
           <div>
             <label class="c2-lbl" for="login-pass">Contraseña</label>
@@ -245,7 +241,6 @@
             <button type="button" id="forgot-pass-btn" class="text-xs text-yellow-400 hover:text-yellow-300 underline-offset-2 hover:underline">¿Olvidaste tu contraseña?</button>
           </div>
         </form>
-        <p class="mt-4 text-xs text-slate-600 text-center">Inicia sesión con tu número y contraseña.</p>
       </div>
 
       <!-- Register panel -->
@@ -323,38 +318,26 @@
           <div class="flex items-center justify-between gap-3 mb-3">
             <div>
               <h3 class="text-lg font-black text-white">Recuperar contraseña</h3>
-              <p id="client-forgot-step-label" class="text-xs text-slate-500 mt-0.5">Te enviaremos un código por WhatsApp.</p>
+              <p class="text-xs text-slate-500 mt-0.5">Te enviaremos un enlace a tu correo.</p>
             </div>
             <button id="client-forgot-close" type="button" class="c2-ghost px-3 py-2 text-xs">Cerrar</button>
           </div>
 
           <div id="client-forgot-step1" class="space-y-3">
             <div>
-              <label class="c2-lbl" for="client-forgot-phone">Teléfono</label>
-              <input id="client-forgot-phone" type="tel" inputmode="numeric" maxlength="13" class="c2-inp" placeholder="9221234567" />
+              <label class="c2-lbl" for="client-forgot-email">Correo electrónico</label>
+              <input id="client-forgot-email" type="email" class="c2-inp" placeholder="tucorreo@ejemplo.com" autocomplete="email" />
             </div>
             <p id="client-forgot-error" class="text-xs text-red-400 hidden"></p>
             <button id="client-forgot-send" type="button" class="c2-btn w-full">
-              <span>Obtener código</span>
+              <span>Enviar correo de recuperación</span>
               <span id="client-forgot-send-spin" class="hidden w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
             </button>
           </div>
 
           <div id="client-forgot-step2" class="hidden space-y-3">
-            <div>
-              <label class="c2-lbl" for="client-forgot-code">Código</label>
-              <input id="client-forgot-code" type="text" inputmode="numeric" maxlength="8" class="c2-inp text-center tracking-[0.22em] font-black" placeholder="000000" />
-            </div>
-            <p id="client-forgot-error2" class="text-xs text-red-400 hidden"></p>
-            <button id="client-forgot-verify" type="button" class="c2-btn w-full">
-              <span>Ver mi contraseña</span>
-              <span id="client-forgot-verify-spin" class="hidden w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
-            </button>
-          </div>
-
-          <div id="client-forgot-step3" class="hidden space-y-3">
-            <p class="text-xs text-slate-500">Tu contraseña es:</p>
-            <div id="client-forgot-result" class="w-full text-center font-mono font-black text-yellow-400 text-2xl bg-slate-950 border border-slate-800 rounded-xl py-4 select-all"></div>
+            <p class="text-sm text-emerald-400 font-bold">✅ Correo enviado</p>
+            <p class="text-xs text-slate-400">Revisa tu bandeja de entrada y sigue el enlace para restablecer tu contraseña.</p>
             <button id="client-forgot-done" type="button" class="c2-ghost w-full">Cerrar</button>
           </div>
         </div>
@@ -917,39 +900,8 @@
         const btnRewardEnvio = byId('btn-reward-envio');
 
         let pendingRegister = null;
-        let clientLoginMode = 'phone';
+        const clientLoginMode = 'email';
         const clientRegMode = 'email';
-
-        function setClientLoginMode(mode) {
-          clientLoginMode = mode === 'email' ? 'email' : 'phone';
-          document.querySelectorAll('.sr-client-login-mode-btn').forEach((b) => {
-            b.classList.toggle('on', b.getAttribute('data-client-login-mode') === clientLoginMode);
-          });
-          const inp = byId('login-correo');
-          const lbl = byId('login-correo-label');
-          if (clientLoginMode === 'email') {
-            if (lbl) lbl.textContent = 'Correo electrónico';
-            if (inp) {
-              inp.type = 'email';
-              inp.placeholder = 'tucorreo@ejemplo.com';
-              inp.autocomplete = 'email';
-              inp.value = '';
-            }
-          } else {
-            if (lbl) lbl.textContent = 'Teléfono';
-            if (inp) {
-              inp.type = 'tel';
-              inp.placeholder = '9221234567';
-              inp.autocomplete = 'tel';
-              inp.value = '';
-            }
-          }
-          if (loginError) loginError.classList.add('hidden');
-        }
-
-        document.querySelectorAll('.sr-client-login-mode-btn').forEach((b) => {
-          b.addEventListener('click', () => setClientLoginMode(b.getAttribute('data-client-login-mode')));
-        });
 
         function updateRewardButtons(points, activeReward) {
           const safePoints = Number(points || 0);
@@ -1197,35 +1149,24 @@
             });
           }
 
-          // ── Olvidé contraseña ─────────────────────────────────────────
+          // ── Olvidé contraseña (Firebase email reset) ─────────────────
           const forgotBtn = byId('forgot-pass-btn');
           const forgotModal = byId('client-forgot-modal');
           const forgotCloseBtn = byId('client-forgot-close');
           const forgotDoneBtn = byId('client-forgot-done');
           const forgotStep1 = byId('client-forgot-step1');
           const forgotStep2 = byId('client-forgot-step2');
-          const forgotStep3 = byId('client-forgot-step3');
-          const forgotPhoneInput = byId('client-forgot-phone');
+          const forgotEmailInput = byId('client-forgot-email');
           const forgotErr = byId('client-forgot-error');
-          const forgotErr2 = byId('client-forgot-error2');
           const forgotSendBtn = byId('client-forgot-send');
           const forgotSendSpin = byId('client-forgot-send-spin');
-          const forgotCodeInput = byId('client-forgot-code');
-          const forgotVerifyBtn2 = byId('client-forgot-verify');
-          const forgotVerifySpin = byId('client-forgot-verify-spin');
-          const forgotResult = byId('client-forgot-result');
-          let forgotPhone = '';
+
           function openForgot() {
             if (!forgotModal) return;
-            forgotPhone = '';
-            if (forgotPhoneInput) forgotPhoneInput.value = '';
-            if (forgotCodeInput) forgotCodeInput.value = '';
-            if (forgotResult) forgotResult.textContent = '';
+            if (forgotEmailInput) forgotEmailInput.value = '';
             forgotErr && forgotErr.classList.add('hidden');
-            forgotErr2 && forgotErr2.classList.add('hidden');
             forgotStep1 && forgotStep1.classList.remove('hidden');
             forgotStep2 && forgotStep2.classList.add('hidden');
-            forgotStep3 && forgotStep3.classList.add('hidden');
             forgotModal.classList.remove('hidden');
             forgotModal.classList.add('flex');
           }
@@ -1240,67 +1181,24 @@
 
           if (forgotSendBtn) {
             forgotSendBtn.addEventListener('click', async () => {
-              const tel = String(forgotPhoneInput && forgotPhoneInput.value || '').replace(/\D/g, '');
+              const email = String(forgotEmailInput && forgotEmailInput.value || '').trim();
               forgotErr && forgotErr.classList.add('hidden');
-              if (tel.length < 10) {
-                if (forgotErr) { forgotErr.textContent = 'Teléfono inválido. Usa lada y 10 dígitos.'; forgotErr.classList.remove('hidden'); }
+              if (!email || !/@/.test(email)) {
+                if (forgotErr) { forgotErr.textContent = 'Ingresa un correo válido.'; forgotErr.classList.remove('hidden'); }
                 return;
               }
               forgotSendBtn.disabled = true;
               forgotSendSpin && forgotSendSpin.classList.remove('hidden');
               try {
-                const res = await fetch('/api/auth/recover-send-code', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ telefono: tel })
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.ok) {
-                  if (forgotErr) { forgotErr.textContent = (data && data.error) || `Error ${res.status}`; forgotErr.classList.remove('hidden'); }
-                  return;
-                }
-                forgotPhone = tel;
+                if (!manager || typeof manager.sendPasswordReset !== 'function') throw new Error('No disponible.');
+                await manager.sendPasswordReset(email);
                 forgotStep1 && forgotStep1.classList.add('hidden');
                 forgotStep2 && forgotStep2.classList.remove('hidden');
-                forgotCodeInput && forgotCodeInput.focus();
               } catch (err) {
-                if (forgotErr) { forgotErr.textContent = err.message || 'Error de red'; forgotErr.classList.remove('hidden'); }
+                if (forgotErr) { forgotErr.textContent = err.message || 'Error al enviar correo.'; forgotErr.classList.remove('hidden'); }
               } finally {
                 forgotSendBtn.disabled = false;
                 forgotSendSpin && forgotSendSpin.classList.add('hidden');
-              }
-            });
-          }
-
-          if (forgotVerifyBtn2) {
-            forgotVerifyBtn2.addEventListener('click', async () => {
-              const code = String(forgotCodeInput && forgotCodeInput.value || '').replace(/\D/g, '');
-              forgotErr2 && forgotErr2.classList.add('hidden');
-              if (code.length < 4) {
-                if (forgotErr2) { forgotErr2.textContent = 'Código inválido.'; forgotErr2.classList.remove('hidden'); }
-                return;
-              }
-              forgotVerifyBtn2.disabled = true;
-              forgotVerifySpin && forgotVerifySpin.classList.remove('hidden');
-              try {
-                const res = await fetch('/api/auth/recover-verify-code', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ telefono: forgotPhone, codigo: code })
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.ok) {
-                  if (forgotErr2) { forgotErr2.textContent = (data && data.error) || `Error ${res.status}`; forgotErr2.classList.remove('hidden'); }
-                  return;
-                }
-                if (forgotResult) forgotResult.textContent = data.password || '';
-                forgotStep2 && forgotStep2.classList.add('hidden');
-                forgotStep3 && forgotStep3.classList.remove('hidden');
-              } catch (err) {
-                if (forgotErr2) { forgotErr2.textContent = err.message || 'Error de red'; forgotErr2.classList.remove('hidden'); }
-              } finally {
-                forgotVerifyBtn2.disabled = false;
-                forgotVerifySpin && forgotVerifySpin.classList.add('hidden');
               }
             });
           }

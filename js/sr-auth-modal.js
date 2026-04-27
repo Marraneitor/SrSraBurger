@@ -627,35 +627,23 @@
         });
       }
 
-      // ── Olvidé contraseña ───────────────────────────────────────────────
+      // ── Olvidé contraseña (Firebase email reset) ───────────────────────
       const forgotModal = byId('sr-auth-forgot-modal');
       const forgotCloseBtn = byId('sr-auth-forgot-close');
       const forgotStep1 = byId('sr-auth-forgot-step1');
       const forgotStep2 = byId('sr-auth-forgot-step2');
-      const forgotStep3 = byId('sr-auth-forgot-step3');
-      const forgotPhoneInput = byId('sr-auth-forgot-phone');
+      const forgotEmailInput = byId('sr-auth-forgot-email');
       const forgotErr = byId('sr-auth-forgot-error');
-      const forgotErr2 = byId('sr-auth-forgot-error2');
       const forgotSendBtn2 = byId('sr-auth-forgot-send');
       const forgotSendSpin = byId('sr-auth-forgot-send-spin');
-      const forgotCodeInput = byId('sr-auth-forgot-code');
-      const forgotVerifyBtn = byId('sr-auth-forgot-verify');
-      const forgotVerifySpin = byId('sr-auth-forgot-verify-spin');
-      const forgotResult = byId('sr-auth-forgot-result');
       const forgotDoneBtn = byId('sr-auth-forgot-done');
-      let forgotPhone = '';
 
       function openForgot() {
         if (!forgotModal) return;
-        forgotPhone = '';
-        if (forgotPhoneInput) forgotPhoneInput.value = '';
-        if (forgotCodeInput) forgotCodeInput.value = '';
-        if (forgotResult) forgotResult.textContent = '';
+        if (forgotEmailInput) forgotEmailInput.value = '';
         if (forgotErr) hide(forgotErr);
-        if (forgotErr2) hide(forgotErr2);
         if (forgotStep1) forgotStep1.classList.remove('hidden');
         if (forgotStep2) forgotStep2.classList.add('hidden');
-        if (forgotStep3) forgotStep3.classList.add('hidden');
         forgotModal.classList.remove('hidden');
         forgotModal.classList.add('flex');
       }
@@ -671,67 +659,24 @@
 
       if (forgotSendBtn2) {
         forgotSendBtn2.addEventListener('click', async () => {
-          const tel = String(forgotPhoneInput && forgotPhoneInput.value || '').replace(/\D/g, '');
+          const email = String(forgotEmailInput && forgotEmailInput.value || '').trim();
           if (forgotErr) hide(forgotErr);
-          if (tel.length < 10) {
-            if (forgotErr) { forgotErr.textContent = 'Teléfono inválido. Usa lada y 10 dígitos.'; show(forgotErr); }
+          if (!email || !/@/.test(email)) {
+            if (forgotErr) { forgotErr.textContent = 'Ingresa un correo válido.'; show(forgotErr); }
             return;
           }
           forgotSendBtn2.disabled = true;
           if (forgotSendSpin) show(forgotSendSpin);
           try {
-            const res = await fetch('/api/auth/recover-send-code', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ telefono: tel })
-            });
-            const data = await res.json();
-            if (!res.ok || !data.ok) {
-              if (forgotErr) { forgotErr.textContent = data.error || `Error ${res.status}`; show(forgotErr); }
-              return;
-            }
-            forgotPhone = tel;
+            if (!manager || typeof manager.sendPasswordReset !== 'function') throw new Error('No disponible.');
+            await manager.sendPasswordReset(email);
             if (forgotStep1) forgotStep1.classList.add('hidden');
             if (forgotStep2) forgotStep2.classList.remove('hidden');
-            if (forgotCodeInput) forgotCodeInput.focus();
           } catch (e) {
-            if (forgotErr) { forgotErr.textContent = e.message || 'Error de red'; show(forgotErr); }
+            if (forgotErr) { forgotErr.textContent = e.message || 'Error al enviar correo.'; show(forgotErr); }
           } finally {
             forgotSendBtn2.disabled = false;
             if (forgotSendSpin) hide(forgotSendSpin);
-          }
-        });
-      }
-
-      if (forgotVerifyBtn) {
-        forgotVerifyBtn.addEventListener('click', async () => {
-          const code = String(forgotCodeInput && forgotCodeInput.value || '').replace(/\D/g, '');
-          if (forgotErr2) hide(forgotErr2);
-          if (code.length < 4) {
-            if (forgotErr2) { forgotErr2.textContent = 'Código inválido.'; show(forgotErr2); }
-            return;
-          }
-          forgotVerifyBtn.disabled = true;
-          if (forgotVerifySpin) show(forgotVerifySpin);
-          try {
-            const res = await fetch('/api/auth/recover-verify-code', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ telefono: forgotPhone, codigo: code })
-            });
-            const data = await res.json();
-            if (!res.ok || !data.ok) {
-              if (forgotErr2) { forgotErr2.textContent = data.error || `Error ${res.status}`; show(forgotErr2); }
-              return;
-            }
-            if (forgotResult) forgotResult.textContent = data.password || '';
-            if (forgotStep2) forgotStep2.classList.add('hidden');
-            if (forgotStep3) forgotStep3.classList.remove('hidden');
-          } catch (e) {
-            if (forgotErr2) { forgotErr2.textContent = e.message || 'Error de red'; show(forgotErr2); }
-          } finally {
-            forgotVerifyBtn.disabled = false;
-            if (forgotVerifySpin) hide(forgotVerifySpin);
           }
         });
       }
