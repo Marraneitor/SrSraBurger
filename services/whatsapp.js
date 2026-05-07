@@ -126,7 +126,7 @@ class WhatsAppService extends EventEmitter {
         auth                     : state,
         browser                  : Browsers.ubuntu('Desktop'),
         logger                   : baileysLogger,
-        syncFullHistory          : false,
+        syncFullHistory          : true,
         markOnlineOnConnect      : false,
         connectTimeoutMs         : 60_000,
         keepAliveIntervalMs      : 30_000,
@@ -160,8 +160,13 @@ class WhatsAppService extends EventEmitter {
       });
 
       // Historial de chats sincronizado al conectar (últimas conversaciones del teléfono)
-      this.sock.ev.on('messaging-history.set', ({ chats, messages, isLatest }) => {
+      this.sock.ev.on('messaging-history.set', ({ chats, messages, contacts, isLatest }) => {
         try {
+          // Contactos: aplicar nombres a los chats existentes
+          if (Array.isArray(contacts) && contacts.length) {
+            this._applyContacts(contacts);
+            console.log(`[WA chat] history contacts: ${contacts.length} contactos sincronizados`);
+          }
           const indMsgs = Array.isArray(messages) ? messages.filter(m => this._isIndividualJid(m.key?.remoteJid) && m.message) : [];
           console.log(`[WA chat] messaging-history.set chats=${chats?.length || 0} msgs=${messages?.length || 0} (ind=${indMsgs.length}) latest=${isLatest}`);
           // Procesar solo chats individuales y limitar a 200 mensajes por sync para no atragantar
@@ -171,7 +176,7 @@ class WhatsAppService extends EventEmitter {
             for (const c of chats) {
               if (!this._isIndividualJid(c.id)) continue;
               const chat = this._ensureChat(c.id, c.name || '');
-              if (c.name && (!chat.name || chat.name === chat.phone)) chat.name = c.name;
+              if (c.name && this._isBetterName(chat.name, chat.phone, c.name)) chat.name = c.name;
               if (c.conversationTimestamp) {
                 const ts = Number(c.conversationTimestamp) * 1000;
                 if (ts > (chat.lastTs || 0)) chat.lastTs = ts;
@@ -183,6 +188,11 @@ class WhatsAppService extends EventEmitter {
         } catch (e) { console.error('[WA] history.set error:', e.message); }
       });
 
+      // Eventos de contactos (libreta del teléfono)
+      this.sock.ev.on('contacts.set',    ({ contacts }) => this._applyContacts(contacts));
+      this.sock.ev.on('contacts.upsert', (contacts)    => this._applyContacts(contacts));
+      this.sock.ev.on('contacts.update', (contacts)    => this._applyContacts(contacts));
+
       // Lista inicial de chats (más liviano que history)
       const ingestChatsList = (chats) => {
         if (!Array.isArray(chats)) return;
@@ -191,7 +201,8 @@ class WhatsAppService extends EventEmitter {
           const id = c?.id || c?.jid;
           if (!this._isIndividualJid(id)) continue;
           const chat = this._ensureChat(id, c.name || c.subject || '');
-          if (c.name && (!chat.name || chat.name === chat.phone)) chat.name = c.name;
+          const cand = c.name || c.subject || '';
+          if (cand && this._isBetterName(chat.name, chat.phone, cand)) chat.name = cand;
           if (c.conversationTimestamp) {
             const ts = Number(c.conversationTimestamp) * 1000;
             if (ts > (chat.lastTs || 0)) chat.lastTs = ts;
@@ -549,6 +560,46 @@ class WhatsAppService extends EventEmitter {
     }
   }
 
+  // ¿El nombre nuevo es mejor que el actual?
+  // Mejor = el actual está vacío o es solo el teléfono, y el nuevo es un nombre real.
+  _isBetterName(currentName, phone, candidate) {
+    const cand = String(candidate || '').trim();
+    if (!cand) return false;
+    // si el candidato es solo dígitos / igual al teléfono, no es mejor
+    const onlyDigits = cand.replace(/[^0-9]/g, '');
+    if (onlyDigits && onlyDigits === cand) return false;
+    if (cand === phone) return false;
+    const curr = String(currentName || '').trim();
+    if (!curr) return true;
+    if (curr === phone) return true;
+    const currOnlyDigits = curr.replace(/[^0-9]/g, '');
+    if (currOnlyDigits === curr) return true; // actual es solo números
+    return false;
+  }
+
+  // Aplica una lista de contactos (de la libreta del teléfono) a los chats
+  _applyContacts(contacts) {
+    if (!Array.isArray(contacts) || !contacts.length) return;
+    let updated = 0;
+    for (const c of contacts) {
+      const jid = c?.id || c?.jid || '';
+      if (!this._isIndividualJid(jid)) continue;
+      // Prioridad: name (libreta) > verifiedName (business) > notify (pushName)
+      const candidate = c.name || c.verifiedName || c.notify || '';
+      if (!candidate) continue;
+      const chat = this._ensureChat(jid, '');
+      if (this._isBetterName(chat.name, chat.phone, candidate)) {
+        chat.name = String(candidate).trim();
+        updated++;
+      }
+    }
+    if (updated) {
+      console.log(`[WA chat] contactos: ${updated} nombres actualizados desde la libreta`);
+      this._scheduleChatsSave();
+      this.emit('chat-update', { jid: '*' });
+    }
+  }
+
   _pushMessage(chat, msg) {
     // Evitar duplicados por id
     if (msg.id && chat.messages.some(x => x.id === msg.id)) return;
@@ -578,7 +629,7 @@ class WhatsAppService extends EventEmitter {
     const pushName = m.pushName || '';
     const chat = this._ensureChat(jid, '');
     // Solo actualizar nombre si viene de un mensaje del CONTACTO (no nuestro)
-    if (!isFromMe && pushName && (!chat.name || chat.name === chat.phone)) {
+    if (!isFromMe && pushName && this._isBetterName(chat.name, chat.phone, pushName)) {
       chat.name = pushName;
     }
     const msg = {
@@ -606,7 +657,7 @@ class WhatsAppService extends EventEmitter {
 
     const chat = this._ensureChat(remoteJid, pushName);
     // Solo actualizar el nombre desde pushName cuando el mensaje viene del CONTACTO
-    if (!isFromMe && pushName && (!chat.name || chat.name === chat.phone)) {
+    if (!isFromMe && pushName && this._isBetterName(chat.name, chat.phone, pushName)) {
       chat.name = pushName;
     }
 
