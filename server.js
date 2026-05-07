@@ -54,7 +54,7 @@ function getFirebaseAdminApp() {
   return _firebaseAdminApp;
 }
 
-function requireAdminKey(req, res) {
+function requireAdminKey(req, res, next) {
   const expected = (process.env.ADMIN_KEY || '').trim();
   if (!expected) {
     // Fail-closed: si ADMIN_KEY no está configurada, negar acceso
@@ -62,7 +62,10 @@ function requireAdminKey(req, res) {
     return false;
   }
   const provided = String(req.get('x-admin-key') || '').trim();
-  if (provided && provided === expected) return true;
+  if (provided && provided === expected) {
+    if (typeof next === 'function') next();
+    return true;
+  }
   res.status(401).json({ ok: false, error: 'No autorizado.' });
   return false;
 }

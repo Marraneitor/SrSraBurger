@@ -127,6 +127,7 @@ class WhatsAppService extends EventEmitter {
         browser                  : Browsers.ubuntu('Desktop'),
         logger                   : baileysLogger,
         syncFullHistory          : false,
+        markOnlineOnConnect      : false,
         connectTimeoutMs         : 60_000,
         keepAliveIntervalMs      : 30_000,
         retryRequestDelayMs      : 500,
@@ -144,7 +145,11 @@ class WhatsAppService extends EventEmitter {
       this.sock.ev.on('messages.upsert', async (upsert) => {
         try {
           if (!upsert || !Array.isArray(upsert.messages)) return;
+          console.log(`[WA chat] messages.upsert type=${upsert.type} count=${upsert.messages.length}`);
           for (const m of upsert.messages) {
+            const jid = m.key?.remoteJid || '';
+            const isInd = typeof jid === 'string' && jid.endsWith('@s.whatsapp.net');
+            console.log(`[WA chat] msg from=${jid} fromMe=${m.key?.fromMe} ind=${isInd} hasMsg=${!!m.message}`);
             this._handleIncomingMessage(m).catch(err => {
               console.error('[WA] Error procesando mensaje:', err.message);
             });
@@ -153,6 +158,54 @@ class WhatsAppService extends EventEmitter {
           console.error('[WA] messages.upsert error:', e.message);
         }
       });
+
+      // Historial de chats sincronizado al conectar (últimas conversaciones del teléfono)
+      this.sock.ev.on('messaging-history.set', ({ chats, messages, isLatest }) => {
+        try {
+          const indMsgs = Array.isArray(messages) ? messages.filter(m => this._isIndividualJid(m.key?.remoteJid) && m.message) : [];
+          console.log(`[WA chat] messaging-history.set chats=${chats?.length || 0} msgs=${messages?.length || 0} (ind=${indMsgs.length}) latest=${isLatest}`);
+          // Procesar solo chats individuales y limitar a 200 mensajes por sync para no atragantar
+          const slice = indMsgs.slice(0, 200);
+          for (const m of slice) this._ingestHistoryMessage(m);
+          if (Array.isArray(chats)) {
+            for (const c of chats) {
+              if (!this._isIndividualJid(c.id)) continue;
+              const chat = this._ensureChat(c.id, c.name || '');
+              if (c.name && (!chat.name || chat.name === chat.phone)) chat.name = c.name;
+              if (c.conversationTimestamp) {
+                const ts = Number(c.conversationTimestamp) * 1000;
+                if (ts > (chat.lastTs || 0)) chat.lastTs = ts;
+              }
+            }
+            this._scheduleChatsSave();
+            this.emit('chat-update', { jid: '*' });
+          }
+        } catch (e) { console.error('[WA] history.set error:', e.message); }
+      });
+
+      // Lista inicial de chats (más liviano que history)
+      const ingestChatsList = (chats) => {
+        if (!Array.isArray(chats)) return;
+        let added = 0;
+        for (const c of chats) {
+          const id = c?.id || c?.jid;
+          if (!this._isIndividualJid(id)) continue;
+          const chat = this._ensureChat(id, c.name || c.subject || '');
+          if (c.name && (!chat.name || chat.name === chat.phone)) chat.name = c.name;
+          if (c.conversationTimestamp) {
+            const ts = Number(c.conversationTimestamp) * 1000;
+            if (ts > (chat.lastTs || 0)) chat.lastTs = ts;
+          }
+          added++;
+        }
+        if (added) {
+          console.log(`[WA chat] chats sync: ${added} chats individuales agregados a la lista`);
+          this._scheduleChatsSave();
+          this.emit('chat-update', { jid: '*' });
+        }
+      };
+      this.sock.ev.on('chats.set',    ({ chats }) => ingestChatsList(chats));
+      this.sock.ev.on('chats.upsert', (chats)    => ingestChatsList(chats));
 
       // Eventos de conexión
       this.sock.ev.on('connection.update', async (update) => {
@@ -475,29 +528,50 @@ class WhatsAppService extends EventEmitter {
   }
 
   _pushMessage(chat, msg) {
+    // Evitar duplicados por id
+    if (msg.id && chat.messages.some(x => x.id === msg.id)) return;
     chat.messages.push(msg);
+    chat.messages.sort((a, b) => (a.ts || 0) - (b.ts || 0));
     if (chat.messages.length > MAX_MSGS_PER_CHAT) {
       chat.messages.splice(0, chat.messages.length - MAX_MSGS_PER_CHAT);
     }
-    chat.lastTs = msg.ts;
-    if (!msg.fromMe) chat.unread = (chat.unread || 0) + 1;
+    chat.lastTs = Math.max(chat.lastTs || 0, msg.ts || 0);
+    if (!msg.fromMe && !msg._silent) chat.unread = (chat.unread || 0) + 1;
     this._scheduleChatsSave();
     this.emit('chat-update', { jid: chat.jid });
+  }
+
+  // Ingesta del historial sincronizado (no dispara bot ni incrementa unread)
+  _ingestHistoryMessage(m) {
+    const jid = m.key?.remoteJid || '';
+    if (!this._isIndividualJid(jid)) return;
+    const ts = m.messageTimestamp ? Number(m.messageTimestamp) * 1000 : Date.now();
+    const text = this._extractText(m.message);
+    const pushName = m.pushName || '';
+    const chat = this._ensureChat(jid, pushName);
+    if (pushName && (!chat.name || chat.name === chat.phone)) chat.name = pushName;
+    const msg = {
+      id: m.key?.id || `hist_${ts}_${Math.random().toString(36).slice(2,8)}`,
+      ts,
+      fromMe: !!m.key?.fromMe,
+      type: m.message?.imageMessage ? 'image' : 'text',
+      text: text || (m.message?.imageMessage ? '[imagen]' : ''),
+      imageUrl: null, // no descargamos imágenes del historial para evitar bloat
+      _silent: true,  // no incrementar unread
+    };
+    this._pushMessage(chat, msg);
   }
 
   async _handleIncomingMessage(m) {
     if (!m || !m.message) return;
     const remoteJid = m.key?.remoteJid || '';
     if (!this._isIndividualJid(remoteJid)) return; // solo chats 1-a-1
-    if (m.key.fromMe) {
-      // Mensaje propio (puede ser eco de envío). Lo ignoramos aquí porque ya lo guardamos al enviar.
-      return;
-    }
+    const isFromMe = !!m.key.fromMe;
 
     const ts = (m.messageTimestamp ? Number(m.messageTimestamp) * 1000 : Date.now());
     const pushName = m.pushName || '';
     const text = this._extractText(m.message);
-    const imageInfo = await this._maybeDownloadIncomingImage(m);
+    const imageInfo = isFromMe ? null : await this._maybeDownloadIncomingImage(m);
 
     const chat = this._ensureChat(remoteJid, pushName);
     if (pushName && (!chat.name || chat.name === chat.phone)) chat.name = pushName;
@@ -505,16 +579,18 @@ class WhatsAppService extends EventEmitter {
     const msg = {
       id: m.key?.id || `in_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
       ts,
-      fromMe: false,
+      fromMe: isFromMe,
       type: imageInfo ? 'image' : 'text',
       text: text || '',
       imageUrl: imageInfo?.dataUrl || null,
     };
     this._pushMessage(chat, msg);
 
-    // Auto-bot
-    try { await this._maybeAutoReply(chat, text); }
-    catch (e) { console.error('[WA bot] Error auto-respuesta:', e.message); }
+    // Auto-bot (solo para mensajes entrantes, no propios)
+    if (!isFromMe) {
+      try { await this._maybeAutoReply(chat, text); }
+      catch (e) { console.error('[WA bot] Error auto-respuesta:', e.message); }
+    }
   }
 
   _extractText(message) {
@@ -657,22 +733,22 @@ class WhatsAppService extends EventEmitter {
   }
 
   // ── API pública para el panel del operador ─────────────────────────────
-  listChats() {
-    return Object.values(this._chats)
-      .map(c => {
-        const last = c.messages[c.messages.length - 1];
-        return {
-          jid: c.jid,
-          phone: c.phone,
-          name: c.name,
-          unread: c.unread || 0,
-          lastTs: c.lastTs || 0,
-          botPaused: !!c.botPaused,
-          preview: last ? (last.type === 'image' ? '📷 Foto' : (last.text || '')).slice(0, 80) : '',
-          lastFromMe: last ? !!last.fromMe : false,
-        };
-      })
-      .sort((a, b) => b.lastTs - a.lastTs);
+  listChats(limit = 20) {
+    const all = Object.values(this._chats);
+    all.sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0));
+    return all.slice(0, limit).map(c => {
+      const last = c.messages.length ? c.messages[c.messages.length - 1] : null;
+      return {
+        jid: c.jid,
+        phone: c.phone,
+        name: c.name,
+        unread: c.unread || 0,
+        lastTs: c.lastTs || 0,
+        botPaused: !!c.botPaused,
+        preview: last ? (last.type === 'image' ? '📷 Foto' : (last.text || '')).slice(0, 80) : '',
+        lastFromMe: last ? !!last.fromMe : false,
+      };
+    });
   }
 
   getChatMessages(jid) {
