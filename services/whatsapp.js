@@ -231,6 +231,8 @@ class WhatsAppService extends EventEmitter {
             const jid = this.sock.user?.id || '';
             this.phoneNumber = jid.split(':')[0].split('@')[0];
           } catch (_) {}
+          // Limpiar nombres de chat que quedaron como el propio operador
+          try { this._cleanupSelfNamedChats(this.sock.user?.name || ''); } catch (_) {}
           this.emit('connected', { phoneNumber: this.phoneNumber });
           console.log(`✅ [WhatsApp] Conectado como +${this.phoneNumber}`);
         }
@@ -527,6 +529,26 @@ class WhatsAppService extends EventEmitter {
     return this._chats[jid];
   }
 
+  // Si el nombre del chat coincide con el del propio operador (porque se
+  // tomó por error del pushName de un mensaje fromMe), reseteamos al teléfono
+  // para que se actualice con el nombre real del contacto cuando llegue uno.
+  _cleanupSelfNamedChats(selfName) {
+    const self = String(selfName || '').trim().toLowerCase();
+    if (!self) return;
+    let changed = 0;
+    for (const c of Object.values(this._chats)) {
+      if (c && typeof c.name === 'string' && c.name.trim().toLowerCase() === self) {
+        c.name = c.phone;
+        changed++;
+      }
+    }
+    if (changed) {
+      console.log(`[WA chat] limpieza: ${changed} chats reseteados (nombre era el del operador "${selfName}")`);
+      this._scheduleChatsSave();
+      this.emit('chat-update', { jid: '*' });
+    }
+  }
+
   _pushMessage(chat, msg) {
     // Evitar duplicados por id
     if (msg.id && chat.messages.some(x => x.id === msg.id)) return;
@@ -545,17 +567,26 @@ class WhatsAppService extends EventEmitter {
   _ingestHistoryMessage(m) {
     const jid = m.key?.remoteJid || '';
     if (!this._isIndividualJid(jid)) return;
+    // Saltar mensajes sin contenido útil (protocolo, claves de sync, vacíos)
+    const msgObj = m.message || {};
+    const isProtocol = !!(msgObj.protocolMessage || msgObj.senderKeyDistributionMessage || msgObj.messageContextInfo && Object.keys(msgObj).length === 1);
+    if (isProtocol) return;
     const ts = m.messageTimestamp ? Number(m.messageTimestamp) * 1000 : Date.now();
-    const text = this._extractText(m.message);
+    const text = this._extractText(msgObj);
+    if (!text) return; // sin nada que mostrar, no contaminar la lista
+    const isFromMe = !!m.key?.fromMe;
     const pushName = m.pushName || '';
-    const chat = this._ensureChat(jid, pushName);
-    if (pushName && (!chat.name || chat.name === chat.phone)) chat.name = pushName;
+    const chat = this._ensureChat(jid, '');
+    // Solo actualizar nombre si viene de un mensaje del CONTACTO (no nuestro)
+    if (!isFromMe && pushName && (!chat.name || chat.name === chat.phone)) {
+      chat.name = pushName;
+    }
     const msg = {
       id: m.key?.id || `hist_${ts}_${Math.random().toString(36).slice(2,8)}`,
       ts,
-      fromMe: !!m.key?.fromMe,
-      type: m.message?.imageMessage ? 'image' : 'text',
-      text: text || (m.message?.imageMessage ? '[imagen]' : ''),
+      fromMe: isFromMe,
+      type: msgObj.imageMessage ? 'image' : 'text',
+      text,
       imageUrl: null, // no descargamos imágenes del historial para evitar bloat
       _silent: true,  // no incrementar unread
     };
@@ -574,7 +605,10 @@ class WhatsAppService extends EventEmitter {
     const imageInfo = isFromMe ? null : await this._maybeDownloadIncomingImage(m);
 
     const chat = this._ensureChat(remoteJid, pushName);
-    if (pushName && (!chat.name || chat.name === chat.phone)) chat.name = pushName;
+    // Solo actualizar el nombre desde pushName cuando el mensaje viene del CONTACTO
+    if (!isFromMe && pushName && (!chat.name || chat.name === chat.phone)) {
+      chat.name = pushName;
+    }
 
     const msg = {
       id: m.key?.id || `in_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
@@ -595,15 +629,32 @@ class WhatsAppService extends EventEmitter {
 
   _extractText(message) {
     if (!message) return '';
-    return (
+    // Texto plano / extendido / captions
+    const direct = (
       message.conversation ||
       message.extendedTextMessage?.text ||
       message.imageMessage?.caption ||
       message.videoMessage?.caption ||
+      message.documentMessage?.caption ||
       message.buttonsResponseMessage?.selectedDisplayText ||
       message.listResponseMessage?.title ||
+      message.templateButtonReplyMessage?.selectedDisplayText ||
       ''
-    ).toString();
+    );
+    if (direct) return String(direct);
+    // Placeholders para mensajes multimedia / especiales (para que la burbuja no quede vacía)
+    if (message.imageMessage)        return '📷 Imagen';
+    if (message.videoMessage)        return '🎬 Video';
+    if (message.audioMessage)        return message.audioMessage.ptt ? '🎤 Nota de voz' : '🎵 Audio';
+    if (message.stickerMessage)      return '🏷️ Sticker';
+    if (message.documentMessage)     return `📄 ${message.documentMessage.fileName || 'Documento'}`;
+    if (message.locationMessage)     return '📍 Ubicación';
+    if (message.liveLocationMessage) return '📍 Ubicación en tiempo real';
+    if (message.contactMessage)      return `👤 Contacto: ${message.contactMessage.displayName || ''}`.trim();
+    if (message.contactsArrayMessage) return '👥 Contactos';
+    if (message.reactionMessage)     return `↩️ Reacción ${message.reactionMessage.text || ''}`.trim();
+    if (message.pollCreationMessage || message.pollCreationMessageV3) return '📊 Encuesta';
+    return '';
   }
 
   async _maybeDownloadIncomingImage(m) {
