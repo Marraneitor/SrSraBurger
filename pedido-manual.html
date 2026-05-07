@@ -6107,7 +6107,7 @@
               if (sse) { sse.close(); sse = null; }
               const k = getAdminKey();
               if (!k) return;
-              // EventSource no soporta headers — usamos query string fallback con polling
+              // EventSource no soporta headers — usamos polling cuando el panel está abierto
               if (pollTimer) clearInterval(pollTimer);
               pollTimer = setInterval(() => {
                 loadChatList();
@@ -6116,18 +6116,39 @@
             } catch (_) {}
           }
 
+          // Polling ligero del badge SIEMPRE (aunque el panel esté cerrado),
+          // para que veas mensajes nuevos que llegaron mientras no estabas mirando.
+          let badgeTimer = null;
+          function startBadgePolling() {
+            if (badgeTimer) return;
+            // primer chequeo inmediato
+            loadChatList();
+            badgeTimer = setInterval(() => {
+              // si el panel está abierto, ya hay otro polling más frecuente
+              if (panel.classList.contains('hidden')) loadChatList();
+            }, 10000);
+          }
+
           fab.addEventListener('click', () => {
             panel.classList.remove('hidden');
             fab.classList.add('hidden');
             checkWaStatus();
             loadChatList();
             startSSE();
+            startBadgePolling();
           });
           closeBtn.addEventListener('click', () => {
             panel.classList.add('hidden');
             fab.classList.remove('hidden');
             if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            // mantenemos badgeTimer activo para seguir avisando de mensajes nuevos
           });
+
+          // Arrancar polling del badge en cuanto carga la página (si hay admin key)
+          try {
+            const hasKey = !!(sessionStorage.getItem('sr_admin_key') || '').trim();
+            if (hasKey) startBadgePolling();
+          } catch (_) {}
 
           // ─── Modal de imágenes del menú ───
           async function loadMenuImages() {
